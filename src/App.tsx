@@ -1,26 +1,23 @@
 import { useState, useEffect } from 'react'
-import { StorageService, type Note, type CloudItemMeta } from './services/api'
+import { StorageService, Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
 
 function App() {
   const [notes, setNotes] = useState<CloudItemMeta[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [currentNote, setCurrentNote] = useState<Note>({ title: '', content: '', tags: '' })
-
+  
+  // Initialize with default Subject/Section
+  const [currentNote, setCurrentNote] = useState<Note>({ 
+    title: '', content: '', tags: '', subject: 'General', section: 'Inbox' 
+  })
+  
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [authorName, setAuthorName] = useState(() => localStorage.getItem('author_name') || 'Anon')
 
-  // Load list on mount
-  useEffect(() => {
-    refreshList()
-  }, [])
-
-  // Persist author name
-  useEffect(() => {
-    localStorage.setItem('author_name', authorName)
-  }, [authorName])
+  useEffect(() => { refreshList() }, [])
+  useEffect(() => { localStorage.setItem('author_name', authorName) }, [authorName])
 
   const refreshList = async () => {
     setIsLoading(true)
@@ -35,7 +32,7 @@ function App() {
       const content = await StorageService.getNoteContent(id)
       setCurrentNote(content)
       setSelectedId(id)
-    } catch {
+    } catch (e) {
       alert("Failed to load note")
     } finally {
       setIsLoading(false)
@@ -44,18 +41,21 @@ function App() {
 
   const handleNew = () => {
     setSelectedId(null)
-    setCurrentNote({ title: '', content: '', tags: '' })
+    // Keep current subject/section for rapid entry, or reset to defaults
+    setCurrentNote({ 
+      title: '', content: '', tags: '', 
+      subject: 'General', section: 'Inbox' 
+    })
   }
 
   const handleSave = async () => {
     if (!currentNote.title.trim()) return alert("Title required")
-
+    
     setIsSaving(true)
     const res = await StorageService.saveNote(currentNote, authorName)
-
+    
     if (res.success) {
       await refreshList()
-      // If creating new, select it
       if (!selectedId && res.id) setSelectedId(res.id)
     } else {
       alert("Save failed")
@@ -64,78 +64,97 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen bg-neutral-900 text-gray-200 font-sans overflow-hidden">
-
-      {/* Sidebar List */}
-      <Sidebar
-        notes={notes}
-        selectedId={selectedId}
-        onSelect={handleSelectNote}
+    <div className="flex h-screen w-screen bg-[#0a0a0c] text-gray-200 font-sans overflow-hidden">
+      
+      <Sidebar 
+        notes={notes} 
+        selectedId={selectedId} 
+        onSelect={handleSelectNote} 
         onNew={handleNew}
         isLoading={isLoading}
       />
 
-      {/* Main Editor */}
+      {/* Main Area */}
       <div className="flex-1 flex flex-col h-full relative">
-        {/* Top Bar */}
-        <div className="h-16 border-b border-gray-800 flex items-center justify-between px-6 bg-neutral-900/50 backdrop-blur-md z-10">
-          <div className="flex items-center gap-4 flex-1">
-            <input
+        
+        {/* 1. Header: Meta Inputs */}
+        <div className="h-16 border-b border-gray-800 flex items-center px-6 bg-[#131315] gap-4">
+           {/* Breadcrumb-style Inputs for Subject/Section */}
+           <div className="flex items-center bg-[#0a0a0c] border border-gray-700 rounded-md overflow-hidden">
+              <input 
+                type="text"
+                value={currentNote.subject}
+                onChange={e => setCurrentNote({...currentNote, subject: e.target.value})}
+                placeholder="Subject"
+                className="bg-transparent px-3 py-1.5 text-xs font-bold text-cyan-500 w-24 outline-none text-right border-r border-gray-800 placeholder-cyan-900"
+              />
+              <div className="px-2 text-gray-600 text-[10px]">▶</div>
+              <input 
+                type="text"
+                value={currentNote.section}
+                onChange={e => setCurrentNote({...currentNote, section: e.target.value})}
+                placeholder="Section"
+                className="bg-transparent px-3 py-1.5 text-xs text-gray-300 w-32 outline-none placeholder-gray-700"
+              />
+           </div>
+
+           <div className="h-6 w-px bg-gray-800 mx-2"></div>
+
+           {/* Title Input */}
+           <input 
               type="text"
               value={currentNote.title}
               onChange={e => setCurrentNote({...currentNote, title: e.target.value})}
               placeholder="Note Title..."
-              className="bg-transparent text-2xl font-bold text-white placeholder-gray-700 outline-none w-full"
+              className="flex-1 bg-transparent text-xl font-bold text-white placeholder-gray-700 outline-none"
             />
-          </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-gray-800 rounded px-3 py-1">
-              <span className="text-xs text-gray-500 uppercase font-mono">User</span>
-              <input
-                value={authorName}
-                onChange={e => setAuthorName(e.target.value)}
-                className="bg-transparent text-sm text-cyan-400 font-bold outline-none w-20"
-              />
-            </div>
-
-            <button
+            {/* Save Button */}
+            <button 
               onClick={handleSave}
               disabled={isSaving}
-              className={`px-6 py-2 rounded font-bold text-sm tracking-wide transition-all
-                ${isSaving
-                  ? 'bg-yellow-600 cursor-wait'
-                  : 'bg-indigo-600 hover:bg-indigo-500 hover:shadow-[0_0_15px_rgba(99,102,241,0.4)] text-white'
+              className={`px-6 py-2 rounded font-bold text-xs tracking-widest transition-all
+                ${isSaving 
+                  ? 'bg-yellow-600/50 text-yellow-200' 
+                  : 'bg-cyan-700 hover:bg-cyan-600 text-white shadow-lg shadow-cyan-900/20'
                 }`}
             >
-              {isSaving ? 'SAVING...' : 'SAVE NOTE'}
+              {isSaving ? 'SAVING...' : 'SAVE'}
             </button>
-          </div>
         </div>
 
-        {/* Editor Area */}
+        {/* 2. Editor */}
         <div className="flex-1 relative">
-          <Editor
-            value={currentNote.content}
-            onChange={(val: string) => setCurrentNote({...currentNote, content: val})}
+          <Editor 
+            value={currentNote.content} 
+            onChange={val => setCurrentNote({...currentNote, content: val})} 
           />
-
           {isLoading && (
-            <div className="absolute inset-0 bg-neutral-900/80 flex items-center justify-center z-20">
-              <div className="animate-spin h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full"></div>
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-20">
+              <div className="text-cyan-500 font-mono animate-pulse">Loading Content...</div>
             </div>
           )}
         </div>
 
-        {/* Footer / Tags */}
-        <div className="h-12 border-t border-gray-800 bg-neutral-950 flex items-center px-6 gap-2">
-          <span className="text-gray-600 text-xs uppercase font-mono">Tags:</span>
-          <input
-            value={currentNote.tags}
-            onChange={e => setCurrentNote({...currentNote, tags: e.target.value})}
-            placeholder="music, ideas, lyrics..."
-            className="bg-transparent text-sm text-gray-400 w-full outline-none"
-          />
+        {/* 3. Footer: Tags & Author */}
+        <div className="h-10 border-t border-gray-800 bg-[#0f0f11] flex items-center px-6 justify-between">
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-gray-600 text-[10px] uppercase font-bold">Tags</span>
+            <input 
+              value={currentNote.tags}
+              onChange={e => setCurrentNote({...currentNote, tags: e.target.value})}
+              placeholder="Add tags..."
+              className="bg-transparent text-xs text-gray-400 w-full outline-none placeholder-gray-700"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+             <span className="text-gray-600 text-[10px]">Author:</span>
+             <input 
+                value={authorName} 
+                onChange={e => setAuthorName(e.target.value)}
+                className="bg-transparent text-xs text-cyan-600 font-bold outline-none w-16 text-right"
+              />
+          </div>
         </div>
       </div>
     </div>

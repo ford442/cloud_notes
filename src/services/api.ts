@@ -6,6 +6,8 @@ export interface Note {
   id?: string;
   title: string;
   content: string;
+  subject: string; // NEW
+  section: string; // NEW
   tags: string;
   updatedAt?: string;
 }
@@ -16,7 +18,7 @@ export interface CloudItemMeta {
   author: string;
   date: string;
   type: string;
-  description?: string;
+  description: string; // We will store "Subject ::: Section ::: Tags" here
 }
 
 export const StorageService = {
@@ -37,7 +39,15 @@ export const StorageService = {
     try {
       const res = await fetch(`${API_BASE_URL}/api/songs/${id}?type=note`);
       if (!res.ok) throw new Error("Failed to load note");
-      return await res.json();
+      
+      const data = await res.json();
+      
+      // Migration safety: Ensure new fields exist if loading old notes
+      return {
+        ...data,
+        subject: data.subject || "General",
+        section: data.section || "Notes"
+      };
     } catch (e) {
       console.error(e);
       throw e;
@@ -47,12 +57,17 @@ export const StorageService = {
   // Save a note (Create or Update)
   async saveNote(note: Note, author: string = "User"): Promise<{ success: boolean; id?: string }> {
     try {
+      // PACKING METADATA:
+      // We format the description as: "Subject ::: Section ::: Tags"
+      // This allows the Sidebar to parse the tree structure instantly.
+      const packedDesc = `${note.subject} ::: ${note.section} ::: ${note.tags}`;
+
       const payload = {
         name: note.title,
         author: author,
-        description: note.tags, // Storing tags in description for easy viewing in list
+        description: packedDesc, 
         type: 'note',
-        data: note // The full note object is stored in the 'data' field
+        data: note 
       };
 
       const res = await fetch(`${API_BASE_URL}/api/songs`, {
