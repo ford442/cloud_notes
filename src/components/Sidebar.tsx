@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { CloudItemMeta } from '../services/api'
+import type { CloudItemMeta } from '../services/api'
 
 interface SidebarProps {
   notes: CloudItemMeta[];

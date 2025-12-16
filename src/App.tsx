@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { StorageService, Note, CloudItemMeta } from './services/api'
+import { StorageService } from './services/api'
+import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
-import { Editor } from './components/Editor'
+import { Editor } from './components/Editor'    
 
 function App() {
   const [notes, setNotes] = useState<CloudItemMeta[]>([])
