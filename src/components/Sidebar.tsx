@@ -1,5 +1,5 @@
 // src/components/Sidebar.tsx
-import { CloudItemMeta } from '../services/api'
+import type { CloudItemMeta } from '../services/api'
 
 interface SidebarProps {
   notes: CloudItemMeta[];
