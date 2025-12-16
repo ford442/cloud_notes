@@ -16,6 +16,7 @@ export interface CloudItemMeta {
   author: string;
   date: string;
   type: string;
+  description?: string;
 }
 
 export const StorageService = {

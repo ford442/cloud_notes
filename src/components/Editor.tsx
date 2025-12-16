@@ -1,5 +1,4 @@
 // src/components/Editor.tsx
-import React from 'react'
 
 interface EditorProps {
   value: string;

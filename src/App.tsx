@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { StorageService, Note, CloudItemMeta } from './services/api'
+import { StorageService, type Note, type CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
 
@@ -35,7 +35,7 @@ function App() {
       const content = await StorageService.getNoteContent(id)
       setCurrentNote(content)
       setSelectedId(id)
-    } catch (e) {
+    } catch {
       alert("Failed to load note")
     } finally {
       setIsLoading(false)
@@ -117,7 +117,7 @@ function App() {
         <div className="flex-1 relative">
           <Editor
             value={currentNote.content}
-            onChange={val => setCurrentNote({...currentNote, content: val})}
+            onChange={(val: string) => setCurrentNote({...currentNote, content: val})}
           />
 
           {isLoading && (
