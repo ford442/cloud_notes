@@ -10,8 +10,8 @@ export const Editor = ({ value, onChange }: EditorProps) => {
     <textarea
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="w-full h-full bg-[#0a0a0c] p-8 text-gray-300 text-base leading-relaxed resize-none outline-none font-mono selection:bg-cyan-500/30"
-      placeholder="Start typing..."
+      className="w-full h-full bg-transparent p-8 text-slate-100 text-lg leading-relaxed resize-none outline-none font-mono selection:bg-blue-500/30 placeholder:text-slate-400"
+      placeholder="Start writing your note..."
       spellCheck={false}
     />
   )

@@ -65,7 +65,7 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-screen bg-[#0a0a0c] text-gray-200 font-sans overflow-hidden">
+    <div className="flex h-screen w-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-gray-100 font-sans overflow-hidden">
       
       <Sidebar 
         notes={notes} 
@@ -75,82 +75,112 @@ function App() {
         isLoading={isLoading}
       />
 
-      {/* Main Area */}
-      <div className="flex-1 flex flex-col h-full relative">
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col h-full relative p-6 gap-6">
         
-          {/* Navigation Bar */}
-        <div className="h-14 border-b border-gray-800 flex items-center px-6 bg-[#131315] gap-4">
-           
-           {/* Subject / Section Inputs */}
-           <div className="flex items-center bg-[#0a0a0c] border border-gray-700/50 rounded overflow-hidden shadow-inner">
+        {/* Header Card */}
+        <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-6 shadow-2xl">
+          <div className="flex items-center gap-6">
+            
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center bg-slate-900/50 border border-slate-600/30 rounded-xl overflow-hidden">
               <input 
                 type="text"
                 value={currentNote.subject}
                 onChange={e => setCurrentNote({...currentNote, subject: e.target.value})}
-                className="bg-transparent px-3 py-1.5 text-xs font-bold text-cyan-500 w-24 outline-none text-right border-r border-gray-800/50 focus:bg-white/5 transition-colors"
+                className="bg-transparent px-4 py-3 text-sm font-semibold text-blue-400 w-32 outline-none text-center border-r border-slate-600/30 focus:bg-slate-700/30 transition-colors placeholder:text-slate-500"
                 placeholder="Subject"
               />
-              <span className="px-2 text-gray-600 text-[10px]">/</span>
+              <div className="px-3 text-slate-500 text-sm">›</div>
               <input 
                 type="text"
                 value={currentNote.section}
                 onChange={e => setCurrentNote({...currentNote, section: e.target.value})}
-                className="bg-transparent px-3 py-1.5 text-xs text-indigo-300 w-32 outline-none focus:bg-white/5 transition-colors"
+                className="bg-transparent px-4 py-3 text-sm text-purple-400 w-36 outline-none text-center focus:bg-slate-700/30 transition-colors placeholder:text-slate-500"
                 placeholder="Section"
               />
-           </div>
+            </div>
 
-           <div className="h-6 w-px bg-gray-800 mx-2"></div>
+            <div className="h-8 w-px bg-slate-600/50"></div>
 
-           {/* Title */}
-           <input 
+            {/* Title Input */}
+            <input 
               type="text"
               value={currentNote.title}
               onChange={e => setCurrentNote({...currentNote, title: e.target.value})}
-              placeholder="Note Title..."
-              className="flex-1 bg-transparent text-lg font-bold text-white placeholder-gray-700 outline-none"
+              placeholder="Untitled Note..."
+              className="flex-1 bg-transparent text-2xl font-bold text-white placeholder:text-slate-400 outline-none"
             />
 
-            <button 
-              onClick={handleSave}
-              disabled={isSaving}
-              className="px-5 py-1.5 rounded font-bold text-xs tracking-widest bg-cyan-700 hover:bg-cyan-600 text-white shadow-lg shadow-cyan-900/20 transition-all disabled:opacity-50"
-            >
-              {isSaving ? 'SAVING...' : 'SAVE'}
-            </button>
-        </div>
-
-        {/* 2. Editor */}
-        <div className="flex-1 relative">
-          <Editor 
-            value={currentNote.content} 
-            onChange={val => setCurrentNote({...currentNote, content: val})} 
-          />
-          {isLoading && (
-            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-20">
-              <div className="text-cyan-500 font-mono animate-pulse">Loading Content...</div>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={handleSave}
+                disabled={isSaving}
+                className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg ${
+                  isSaving 
+                    ? 'bg-amber-600/20 text-amber-400 border border-amber-500/30' 
+                    : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-blue-500/25'
+                }`}
+              >
+                {isSaving ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                    Saving...
+                  </div>
+                ) : 'Save Note'}
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* 3. Footer: Tags & Author */}
-        <div className="h-10 border-t border-gray-800 bg-[#0f0f11] flex items-center px-6 justify-between">
-          <div className="flex items-center gap-2 flex-1">
-            <span className="text-gray-600 text-[10px] uppercase font-bold">Tags</span>
-            <input 
-              value={currentNote.tags}
-              onChange={e => setCurrentNote({...currentNote, tags: e.target.value})}
-              placeholder="Add tags..."
-              className="bg-transparent text-xs text-gray-400 w-full outline-none placeholder-gray-700"
+        {/* Editor Card */}
+        <div className="flex-1 bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden">
+          <div className="h-full relative">
+            <Editor 
+              value={currentNote.content} 
+              onChange={val => setCurrentNote({...currentNote, content: val})} 
             />
+            {isLoading && (
+              <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-20">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="text-blue-400 font-medium">Loading Content...</div>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-             <span className="text-gray-600 text-[10px]">Author:</span>
-             <input 
-                value={authorName} 
-                onChange={e => setAuthorName(e.target.value)}
-                className="bg-transparent text-xs text-cyan-600 font-bold outline-none w-16 text-right"
+        </div>
+
+        {/* Footer Card */}
+        <div className="bg-slate-800/60 backdrop-blur-xl border border-slate-700/50 rounded-2xl p-4 shadow-2xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4 flex-1">
+              <div className="flex items-center gap-2 text-slate-400">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                <span className="text-sm font-medium">Tags</span>
+              </div>
+              <input 
+                value={currentNote.tags}
+                onChange={e => setCurrentNote({...currentNote, tags: e.target.value})}
+                placeholder="Add tags separated by commas..."
+                className="bg-transparent text-sm text-slate-300 flex-1 outline-none placeholder:text-slate-500 focus:text-white transition-colors"
               />
+            </div>
+            <div className="flex items-center gap-3 text-slate-400">
+              <div className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <input 
+                  value={authorName} 
+                  onChange={e => setAuthorName(e.target.value)}
+                  className="bg-transparent text-sm text-blue-400 font-medium outline-none w-24 text-right focus:text-blue-300 transition-colors"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
