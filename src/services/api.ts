@@ -42,11 +42,11 @@ export const StorageService = {
       
       const data = await res.json();
       
-      // Migration safety: Ensure new fields exist if loading old notes
+      // Backward compatibility: Default to General/Inbox if missing
       return {
         ...data,
         subject: data.subject || "General",
-        section: data.section || "Notes"
+        section: data.section || "Inbox"
       };
     } catch (e) {
       console.error(e);

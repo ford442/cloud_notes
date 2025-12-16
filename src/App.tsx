@@ -78,47 +78,43 @@ function App() {
       {/* Main Area */}
       <div className="flex-1 flex flex-col h-full relative">
         
-        {/* 1. Header: Meta Inputs */}
-        <div className="h-16 border-b border-gray-800 flex items-center px-6 bg-[#131315] gap-4">
-           {/* Breadcrumb-style Inputs for Subject/Section */}
-           <div className="flex items-center bg-[#0a0a0c] border border-gray-700 rounded-md overflow-hidden">
+          {/* Navigation Bar */}
+        <div className="h-14 border-b border-gray-800 flex items-center px-6 bg-[#131315] gap-4">
+           
+           {/* Subject / Section Inputs */}
+           <div className="flex items-center bg-[#0a0a0c] border border-gray-700/50 rounded overflow-hidden shadow-inner">
               <input 
                 type="text"
                 value={currentNote.subject}
                 onChange={e => setCurrentNote({...currentNote, subject: e.target.value})}
+                className="bg-transparent px-3 py-1.5 text-xs font-bold text-cyan-500 w-24 outline-none text-right border-r border-gray-800/50 focus:bg-white/5 transition-colors"
                 placeholder="Subject"
-                className="bg-transparent px-3 py-1.5 text-xs font-bold text-cyan-500 w-24 outline-none text-right border-r border-gray-800 placeholder-cyan-900"
               />
-              <div className="px-2 text-gray-600 text-[10px]">▶</div>
+              <span className="px-2 text-gray-600 text-[10px]">/</span>
               <input 
                 type="text"
                 value={currentNote.section}
                 onChange={e => setCurrentNote({...currentNote, section: e.target.value})}
+                className="bg-transparent px-3 py-1.5 text-xs text-indigo-300 w-32 outline-none focus:bg-white/5 transition-colors"
                 placeholder="Section"
-                className="bg-transparent px-3 py-1.5 text-xs text-gray-300 w-32 outline-none placeholder-gray-700"
               />
            </div>
 
            <div className="h-6 w-px bg-gray-800 mx-2"></div>
 
-           {/* Title Input */}
+           {/* Title */}
            <input 
               type="text"
               value={currentNote.title}
               onChange={e => setCurrentNote({...currentNote, title: e.target.value})}
               placeholder="Note Title..."
-              className="flex-1 bg-transparent text-xl font-bold text-white placeholder-gray-700 outline-none"
+              className="flex-1 bg-transparent text-lg font-bold text-white placeholder-gray-700 outline-none"
             />
 
-            {/* Save Button */}
             <button 
               onClick={handleSave}
               disabled={isSaving}
-              className={`px-6 py-2 rounded font-bold text-xs tracking-widest transition-all
-                ${isSaving 
-                  ? 'bg-yellow-600/50 text-yellow-200' 
-                  : 'bg-cyan-700 hover:bg-cyan-600 text-white shadow-lg shadow-cyan-900/20'
-                }`}
+              className="px-5 py-1.5 rounded font-bold text-xs tracking-widest bg-cyan-700 hover:bg-cyan-600 text-white shadow-lg shadow-cyan-900/20 transition-all disabled:opacity-50"
             >
               {isSaving ? 'SAVING...' : 'SAVE'}
             </button>

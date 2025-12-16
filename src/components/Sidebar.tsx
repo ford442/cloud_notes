@@ -9,24 +9,31 @@ interface SidebarProps {
   isLoading: boolean;
 }
 
-// Helper to parse the packed description
+// Icons
+const FolderIcon = () => (
+  <svg className="w-3 h-3 text-cyan-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" /></svg>
+)
+const SectionIcon = () => (
+  <svg className="w-3 h-3 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+)
+const NoteIcon = () => (
+  <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+)
+
+// Helper to parse "Subject ::: Section ::: Tags"
 const parseMeta = (desc: string) => {
-  if (!desc) return { subject: 'General', section: 'Notes' };
+  if (!desc) return { subject: 'General', section: 'Inbox' };
   const parts = desc.split(' ::: ');
-  // Handle legacy notes that might just have tags
-  if (parts.length < 2) return { subject: 'General', section: 'Notes' };
-  return { subject: parts[0] || 'General', section: parts[1] || 'Notes' };
+  if (parts.length < 2) return { subject: 'General', section: 'Inbox' };
+  return { subject: parts[0] || 'General', section: parts[1] || 'Inbox' };
 };
 
 export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: SidebarProps) => {
-  // Collapsed state tracking
-  const [collapsedSubjects, setCollapsedSubjects] = useState<Record<string, boolean>>({});
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  const toggleSubject = (sub: string) => setCollapsedSubjects(p => ({...p, [sub]: !p[sub]}));
-  const toggleSection = (sec: string) => setCollapsedSections(p => ({...p, [sec]: !p[sec]}));
+  const toggle = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
 
-  // Build Tree Structure efficiently
+  // Build the Tree Structure
   const tree = useMemo(() => {
     const structure: Record<string, Record<string, CloudItemMeta[]>> = {};
     
@@ -37,32 +44,29 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
       structure[subject][section].push(note);
     });
     
-    // Sort keys for consistent display
-    const sortedSubjects = Object.keys(structure).sort();
-    const sortedTree: typeof structure = {};
-    
-    sortedSubjects.forEach(sub => {
-      sortedTree[sub] = {};
+    // Sort Alphabetically
+    const sorted: typeof structure = {};
+    Object.keys(structure).sort().forEach(sub => {
+      sorted[sub] = {};
       Object.keys(structure[sub]).sort().forEach(sec => {
-        sortedTree[sub][sec] = structure[sub][sec];
+        sorted[sub][sec] = structure[sub][sec];
       });
     });
-
-    return sortedTree;
+    return sorted;
   }, [notes]);
 
   return (
-    <div className="w-80 border-r border-gray-800 bg-[#0f0f11] flex flex-col h-full shrink-0 select-none">
+    <div className="w-80 border-r border-gray-800 bg-[#0f0f11] flex flex-col h-full shrink-0 select-none text-sm">
       {/* Header */}
       <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-[#131315]">
-        <h1 className="font-bold text-gray-200 text-sm tracking-widest flex items-center gap-2">
-          <span className="text-cyan-500">❖</span> KNOWLEDGE
+        <h1 className="font-bold text-gray-200 text-xs tracking-widest flex items-center gap-2">
+          <span className="text-cyan-500 text-lg">❖</span> KNOWLEDGE
         </h1>
         <button 
           onClick={onNew}
-          className="text-[10px] font-bold bg-cyan-900/30 hover:bg-cyan-900/50 text-cyan-400 border border-cyan-800/50 px-3 py-1.5 rounded transition-all"
+          className="text-[10px] font-bold bg-cyan-900/20 hover:bg-cyan-900/40 text-cyan-400 border border-cyan-800/50 px-3 py-1.5 rounded transition-all"
         >
-          + NEW NOTE
+          + NOTE
         </button>
       </div>
 
@@ -73,49 +77,51 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
         ) : (
           Object.entries(tree).map(([subject, sections]) => (
             <div key={subject} className="mb-2">
-              {/* SUBJECT HEADER */}
+              
+              {/* SUBJECT (Root) */}
               <div 
-                onClick={() => toggleSubject(subject)}
-                className="flex items-center gap-2 p-2 hover:bg-white/5 rounded cursor-pointer text-gray-400 hover:text-gray-200 transition-colors"
+                onClick={() => toggle(subject)}
+                className="flex items-center gap-2 p-2 hover:bg-white/5 rounded cursor-pointer text-gray-300 transition-colors group"
               >
-                <span className="text-[10px] transform transition-transform duration-200" style={{ transform: collapsedSubjects[subject] ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
-                  ▼
-                </span>
-                <span className="font-bold text-xs uppercase tracking-wide">{subject}</span>
+                <span className={`text-[10px] text-gray-500 transition-transform ${collapsed[subject] ? '-rotate-90' : ''}`}>▼</span>
+                <FolderIcon />
+                <span className="font-bold text-xs uppercase tracking-wide group-hover:text-white">{subject}</span>
               </div>
 
-              {!collapsedSubjects[subject] && (
+              {!collapsed[subject] && (
                 <div className="ml-2 border-l border-gray-800 pl-2 mt-1 space-y-1">
                   {Object.entries(sections).map(([section, sectionNotes]) => (
                     <div key={section}>
-                      {/* SECTION HEADER */}
+                      
+                      {/* SECTION (Sub-folder) */}
                       <div 
-                        onClick={() => toggleSection(`${subject}-${section}`)}
-                        className="flex items-center gap-2 p-1.5 hover:bg-white/5 rounded cursor-pointer text-gray-500 hover:text-gray-300"
+                        onClick={() => toggle(`${subject}-${section}`)}
+                        className="flex items-center gap-2 p-1.5 hover:bg-white/5 rounded cursor-pointer text-gray-400 hover:text-gray-200"
                       >
-                        <span className="text-[9px] transform transition-transform duration-200" style={{ transform: collapsedSections[`${subject}-${section}`] ? 'rotate(-90deg)' : 'rotate(0deg)' }}>
-                          ▼
-                        </span>
+                        <span className={`text-[9px] text-gray-600 transition-transform ${collapsed[`${subject}-${section}`] ? '-rotate-90' : ''}`}>▼</span>
+                        <SectionIcon />
                         <span className="text-xs font-medium">{section}</span>
-                        <span className="text-[9px] bg-gray-800 px-1 rounded-full text-gray-500">{sectionNotes.length}</span>
+                        <span className="text-[9px] bg-gray-800 px-1.5 py-0.5 rounded-full text-gray-500">{sectionNotes.length}</span>
                       </div>
 
-                      {/* NOTES LIST */}
-                      {!collapsedSections[`${subject}-${section}`] && (
-                        <div className="ml-4 space-y-0.5">
+                      {/* NOTES (Leaf) */}
+                      {!collapsed[`${subject}-${section}`] && (
+                        <div className="ml-5 space-y-0.5 border-l border-gray-800/50 pl-1">
                           {sectionNotes.map(note => (
                             <div
                               key={note.id}
                               onClick={() => onSelect(note.id)}
                               className={`
-                                group px-3 py-2 rounded text-sm cursor-pointer transition-all border-l-2
+                                group flex items-center gap-2 px-3 py-1.5 rounded text-xs cursor-pointer transition-all relative
                                 ${selectedId === note.id 
-                                  ? 'bg-cyan-900/10 border-cyan-500 text-cyan-100' 
-                                  : 'border-transparent text-gray-400 hover:text-gray-200 hover:bg-white/5'
+                                  ? 'bg-cyan-900/20 text-cyan-200' 
+                                  : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
                                 }
                               `}
                             >
+                              <NoteIcon />
                               <div className="truncate">{note.name}</div>
+                              {selectedId === note.id && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-cyan-500 rounded-r"></div>}
                             </div>
                           ))}
                         </div>
@@ -129,10 +135,10 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
         )}
       </div>
       
-      {/* Footer */}
-      <div className="p-3 border-t border-gray-800 bg-[#0a0a0c] text-[10px] text-gray-600 flex justify-between">
-        <span>{notes.length} Notes</span>
-        <span>Synced</span>
+      {/* Footer Status */}
+      <div className="p-3 border-t border-gray-800 bg-[#0a0a0c] text-[10px] text-gray-600 flex justify-between font-mono">
+        <span>{notes.length} ITEMS</span>
+        <span className="text-green-900">● SYNCED</span>
       </div>
     </div>
   )
