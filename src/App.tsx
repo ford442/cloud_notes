@@ -2,13 +2,17 @@ import { useState, useEffect } from 'react'
 import { StorageService } from './services/api'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
-import { Editor } from './components/Editor'    
+import { Editor } from './components/Editor'
+import { BlockEditor } from './components/BlockEditor'
 
 function App() {
   const [notes, setNotes] = useState<CloudItemMeta[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   
+  // Editor mode state
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich'>('rich')
+
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
     title: '', content: '', tags: '', subject: 'General', section: 'Inbox' 
@@ -116,6 +120,22 @@ function App() {
 
               {/* Action Buttons */}
               <div className="flex items-center gap-3">
+                 {/* Editor Mode Toggle */}
+                 <div className="bg-slate-100 dark:bg-slate-700 p-1 rounded-lg flex text-xs font-medium">
+                  <button
+                    onClick={() => setEditorMode('simple')}
+                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'simple' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    Simple
+                  </button>
+                  <button
+                    onClick={() => setEditorMode('rich')}
+                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'rich' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    Rich
+                  </button>
+                </div>
+
                 {/* Theme Toggle */}
                 <select
                   value={theme}
@@ -149,10 +169,19 @@ function App() {
           {/* Editor Card */}
           <div className="flex-1 bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden transition-colors duration-200">
             <div className="h-full relative">
-              <Editor
-                value={currentNote.content}
-                onChange={val => setCurrentNote({...currentNote, content: val})}
-              />
+              {editorMode === 'simple' ? (
+                <Editor
+                  value={currentNote.content}
+                  onChange={val => setCurrentNote({...currentNote, content: val})}
+                />
+              ) : (
+                <BlockEditor
+                  key={selectedId || 'new'}
+                  value={currentNote.content}
+                  onChange={val => setCurrentNote({...currentNote, content: val})}
+                />
+              )}
+
               {isLoading && (
                 <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-20">
                   <div className="flex flex-col items-center gap-4">
