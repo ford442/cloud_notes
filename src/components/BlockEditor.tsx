@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import Placeholder from '@tiptap/extension-placeholder'
+import Image from '@tiptap/extension-image'
 import { useEffect } from 'react'
 import { markdownToHtml, htmlToMarkdown } from '../utils/serialization'
 import { SlashCommand, getSlashSuggestionOptions } from './editor/slash-command'
@@ -29,6 +30,13 @@ const commands: CommandItem[] = [
     },
   },
   {
+    title: 'Heading 3',
+    icon: <strong>H3</strong>,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run()
+    },
+  },
+  {
     title: 'Bullet List',
     icon: <strong>•</strong>,
     command: ({ editor, range }) => {
@@ -36,10 +44,50 @@ const commands: CommandItem[] = [
     },
   },
   {
+    title: 'Ordered List',
+    icon: <strong>1.</strong>,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).toggleOrderedList().run()
+    },
+  },
+  {
     title: 'Task List',
     icon: <strong>☑</strong>,
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).toggleTaskList().run()
+    },
+  },
+  {
+    title: 'Quote',
+    icon: <strong>❝</strong>,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).toggleBlockquote().run()
+    },
+  },
+  {
+    title: 'Code Block',
+    icon: <strong>{'<>'}</strong>,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).toggleCodeBlock().run()
+    },
+  },
+  {
+    title: 'Divider',
+    icon: <strong>—</strong>,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).setHorizontalRule().run()
+    },
+  },
+  {
+    title: 'Image',
+    icon: <strong>🖼️</strong>,
+    command: ({ editor, range }) => {
+      const url = window.prompt('Enter image URL:')
+      if (url) {
+        editor.chain().focus().deleteRange(range).setImage({ src: url }).run()
+      } else {
+        editor.chain().focus().deleteRange(range).run()
+      }
     },
   },
 ]
@@ -57,6 +105,7 @@ export const BlockEditor = ({ value, onChange }: BlockEditorProps) => {
       Placeholder.configure({
         placeholder: 'Type / for commands...',
       }),
+      Image,
       SlashCommand.configure({
         suggestion: getSlashSuggestionOptions(commands),
       }),
