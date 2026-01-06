@@ -1,5 +1,6 @@
 import { marked } from 'marked';
 import TurndownService from 'turndown';
+import { gfm } from 'turndown-plugin-gfm';
 
 // Configure Turndown service
 const turndownService = new TurndownService({
@@ -7,6 +8,9 @@ const turndownService = new TurndownService({
   codeBlockStyle: 'fenced', // Use ``` for code blocks
   bulletListMarker: '-', // Use - for bullets
 });
+
+// Use the GFM plugin to handle tables, strikethrough, and task lists
+turndownService.use(gfm);
 
 /**
  * Converts Markdown string to HTML string
