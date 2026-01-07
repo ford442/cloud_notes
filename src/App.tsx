@@ -179,6 +179,8 @@ function App() {
                   key={selectedId || 'new'}
                   value={currentNote.content}
                   onChange={val => setCurrentNote({...currentNote, content: val})}
+                  availableNotes={notes}
+                  onNavigate={handleSelectNote}
                 />
               )}
 
