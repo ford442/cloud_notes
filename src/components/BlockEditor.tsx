@@ -132,6 +132,7 @@ export const BlockEditor = ({ value, onChange, availableNotes = [], onNavigate }
       SlashCommand.configure({
         suggestion: getSlashSuggestionOptions(commands),
       }),
+      // eslint-disable-next-line react-hooks/refs
       NoteLink.configure({
         suggestion: {
            ...getNoteLinkSuggestionOptions([]),
