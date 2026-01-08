@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import Fuse from 'fuse.js'
 import type { CloudItemMeta } from '../services/api'
 
 interface SidebarProps {
@@ -19,6 +20,9 @@ const SectionIcon = () => (
 const NoteIcon = () => (
   <svg width="16" height="16" className="w-4 h-4 flex-none text-slate-400 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
 )
+const SearchIcon = () => (
+  <svg width="16" height="16" className="w-4 h-4 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+)
 
 // Helper to parse "Subject ::: Section ::: Tags"
 const parseMeta = (desc: string) => {
@@ -30,14 +34,28 @@ const parseMeta = (desc: string) => {
 
 export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [query, setQuery] = useState('');
 
   const toggle = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
+
+  // Fuse Instance
+  const fuse = useMemo(() => new Fuse(notes, {
+    keys: ['name', 'description'],
+    threshold: 0.3,
+    includeScore: true
+  }), [notes]);
+
+  // Filtered Notes
+  const filteredNotes = useMemo(() => {
+    if (!query.trim()) return notes;
+    return fuse.search(query).map(result => result.item);
+  }, [notes, query, fuse]);
 
   // Build the Tree Structure
   const tree = useMemo(() => {
     const structure: Record<string, Record<string, CloudItemMeta[]>> = {};
     
-    notes.forEach(note => {
+    filteredNotes.forEach(note => {
       const { subject, section } = parseMeta(note.description);
       if (!structure[subject]) structure[subject] = {};
       if (!structure[subject][section]) structure[subject][section] = [];
@@ -53,21 +71,40 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
       });
     });
     return sorted;
-  }, [notes]);
+  }, [filteredNotes]);
+
+  // Auto-expand if searching
+  const isSearching = query.trim().length > 0;
 
   return (
     <div className="w-80 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50 flex flex-col h-full shrink-0 select-none text-sm m-6 mr-0 rounded-2xl shadow-2xl transition-colors duration-200">
       {/* Header */}
-      <div className="p-6 border-b border-slate-200/50 dark:border-slate-700/50 flex justify-between items-center transition-colors">
-        <h1 className="font-bold text-gray-800 dark:text-gray-100 text-sm tracking-widest flex items-center gap-3">
-          <span className="text-blue-500 dark:text-blue-400 text-lg">📚</span> KNOWLEDGE
-        </h1>
-        <button 
-          onClick={onNew}
-          className="text-xs font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-4 py-2 rounded-lg transition-all shadow-lg"
-        >
-          + New Note
-        </button>
+      <div className="p-4 border-b border-slate-200/50 dark:border-slate-700/50 space-y-4 transition-colors">
+        <div className="flex justify-between items-center">
+          <h1 className="font-bold text-gray-800 dark:text-gray-100 text-sm tracking-widest flex items-center gap-3">
+            <span className="text-blue-500 dark:text-blue-400 text-lg">📚</span> KNOWLEDGE
+          </h1>
+          <button
+            onClick={onNew}
+            className="text-xs font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-3 py-1.5 rounded-lg transition-all shadow-lg"
+          >
+            + New
+          </button>
+        </div>
+
+        {/* Search Bar */}
+        <div className="relative group">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <SearchIcon />
+          </div>
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search notes..."
+            className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl leading-5 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors shadow-sm"
+          />
+        </div>
       </div>
 
       {/* Tree List */}
@@ -77,6 +114,10 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
             <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             Syncing...
           </div>
+        ) : filteredNotes.length === 0 && isSearching ? (
+             <div className="text-center py-8 text-slate-500 dark:text-slate-400 italic">
+               No matching notes found.
+             </div>
         ) : (
           Object.entries(tree).map(([subject, sections]) => (
             <div key={subject} className="mb-4">
@@ -86,12 +127,13 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
                 onClick={() => toggle(subject)}
                 className="flex items-center gap-3 p-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/30 rounded-xl cursor-pointer text-slate-700 dark:text-slate-200 transition-all group"
               >
-                <span className={`text-xs text-slate-400 dark:text-slate-400 transition-transform ${collapsed[subject] ? '-rotate-90' : ''}`}>▼</span>
+                <span className={`text-xs text-slate-400 dark:text-slate-400 transition-transform ${(!isSearching && collapsed[subject]) ? '-rotate-90' : ''}`}>▼</span>
                 <FolderIcon />
                 <span className="font-semibold text-sm uppercase tracking-wide group-hover:text-slate-900 dark:group-hover:text-white">{subject}</span>
               </div>
 
-              {!collapsed[subject] && (
+              {/* Always expand if searching, otherwise check state */}
+              {(isSearching || !collapsed[subject]) && (
                 <div className="ml-4 border-l border-slate-300/30 dark:border-slate-600/30 pl-4 mt-2 space-y-2">
                   {Object.entries(sections).map(([section, sectionNotes]) => (
                     <div key={section}>
@@ -101,14 +143,14 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
                         onClick={() => toggle(`${subject}-${section}`)}
                         className="flex items-center gap-3 p-2 hover:bg-slate-100/50 dark:hover:bg-slate-700/20 rounded-lg cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
                       >
-                        <span className={`text-xs text-slate-400 dark:text-slate-500 transition-transform ${collapsed[`${subject}-${section}`] ? '-rotate-90' : ''}`}>▼</span>
+                        <span className={`text-xs text-slate-400 dark:text-slate-500 transition-transform ${(!isSearching && collapsed[`${subject}-${section}`]) ? '-rotate-90' : ''}`}>▼</span>
                         <SectionIcon />
                         <span className="text-sm font-medium">{section}</span>
                         <span className="text-xs bg-slate-200/50 dark:bg-slate-700/50 px-2 py-1 rounded-full text-slate-500 dark:text-slate-400">{sectionNotes.length}</span>
                       </div>
 
                       {/* NOTES (Leaf) */}
-                      {!collapsed[`${subject}-${section}`] && (
+                      {(isSearching || !collapsed[`${subject}-${section}`]) && (
                         <div className="ml-6 space-y-1 border-l border-slate-300/20 dark:border-slate-600/20 pl-3">
                           {sectionNotes.map(note => (
                             <div
@@ -140,7 +182,7 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
       
       {/* Footer Status */}
       <div className="p-4 border-t border-slate-200/50 dark:border-slate-700/50 bg-slate-100/30 dark:bg-slate-900/30 text-xs text-slate-500 dark:text-slate-400 flex justify-between font-medium rounded-b-2xl transition-colors">
-        <span>{notes.length} Items</span>
+        <span>{filteredNotes.length} {filteredNotes.length === 1 ? 'Item' : 'Items'}</span>
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full"></div>
           <span>Synced</span>
