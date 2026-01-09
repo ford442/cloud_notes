@@ -60,7 +60,31 @@ export const StorageService = {
       // PACKING METADATA:
       // We format the description as: "Subject ::: Section ::: Tags"
       // This allows the Sidebar to parse the tree structure instantly.
-      const packedDesc = `${note.subject} ::: ${note.section} ::: ${note.tags}`;
+
+      // Extract backlinks from content (Inline regex to avoid circular dependencies)
+      const extractLinks = (text: string): string[] => {
+        if (!text) return [];
+        const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
+        const ids: string[] = [];
+        let match;
+        while ((match = regex.exec(text)) !== null) {
+          const href = match[2];
+          if (!href.startsWith('http://') && !href.startsWith('https://')) {
+            ids.push(href);
+          }
+        }
+        return [...new Set(ids)];
+      };
+
+      const links = extractLinks(note.content);
+      const linksStr = links.join('|');
+
+      let packedDesc = `${note.subject || 'General'} ::: ${note.section || 'Inbox'} ::: ${note.tags || ''}`;
+      if (linksStr) {
+        packedDesc += ` ::: ${linksStr}`;
+      }
+
+      console.log('[API] Saving note:', { title: note.title, packedDesc });
 
       const payload = {
         name: note.title,
