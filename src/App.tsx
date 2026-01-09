@@ -4,6 +4,7 @@ import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
 import { BlockEditor } from './components/BlockEditor'
+import { Backlinks } from './components/Backlinks'
 
 function App() {
   const [notes, setNotes] = useState<CloudItemMeta[]>([])
@@ -167,8 +168,8 @@ function App() {
           </div>
 
           {/* Editor Card */}
-          <div className="flex-1 bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden transition-colors duration-200">
-            <div className="h-full relative">
+          <div className="flex-1 flex flex-col bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden transition-colors duration-200">
+            <div className="flex-1 relative min-h-0">
               {editorMode === 'simple' ? (
                 <Editor
                   value={currentNote.content}
@@ -193,6 +194,12 @@ function App() {
                 </div>
               )}
             </div>
+
+            <Backlinks
+              notes={notes}
+              currentId={selectedId}
+              onNavigate={handleSelectNote}
+            />
           </div>
 
           {/* Footer Card */}
