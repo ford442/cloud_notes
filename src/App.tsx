@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { StorageService } from './services/api'
+import { AIService } from './services/ai'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
@@ -21,6 +22,8 @@ function App() {
   
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isAiLoading, setIsAiLoading] = useState(false)
+  const [aiStatus, setAiStatus] = useState('')
   const [authorName, setAuthorName] = useState(() => localStorage.getItem('author_name') || 'Anon')
 
   useEffect(() => { refreshList() }, [])
@@ -69,6 +72,55 @@ function App() {
     }
     setIsSaving(false)
   }
+
+  const handleAutoTag = async () => {
+    if (!currentNote.content.trim()) return alert("Write some content first!");
+
+    setIsAiLoading(true);
+    setAiStatus('Initializing AI...');
+    try {
+      const currentTags = currentNote.tags.split(',').map(t => t.trim()).filter(Boolean);
+      // Collect all existing tags from all notes to give context
+      const allTags = new Set<string>();
+      notes.forEach(n => {
+        const parts = n.description?.split(' ::: ');
+        if (parts && parts[2]) {
+          parts[2].split(',').forEach(t => allTags.add(t.trim()));
+        }
+      });
+
+      const suggested = await AIService.suggestTags(currentNote.content, Array.from(allTags), (msg) => setAiStatus(msg));
+
+      // Merge with existing
+      const newTags = Array.from(new Set([...currentTags, ...suggested])).join(', ');
+      setCurrentNote(prev => ({ ...prev, tags: newTags }));
+    } catch (e) {
+      console.error(e);
+      alert("AI Tagging failed. Check console.");
+    } finally {
+      setIsAiLoading(false);
+      setAiStatus('');
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (!currentNote.content.trim()) return alert("Write some content first!");
+
+    setIsAiLoading(true);
+    setAiStatus('Initializing AI...');
+    try {
+      const summary = await AIService.summarize(currentNote.content, (msg) => setAiStatus(msg));
+      // Append summary to content
+      const newContent = currentNote.content + '\n\n> **Summary:** ' + summary;
+      setCurrentNote(prev => ({ ...prev, content: newContent }));
+    } catch (e) {
+      console.error(e);
+      alert("AI Summarization failed. Check console.");
+    } finally {
+      setIsAiLoading(false);
+      setAiStatus('');
+    }
+  };
 
   return (
     <div className={theme === 'dark' ? 'dark' : ''}>
@@ -121,6 +173,18 @@ function App() {
 
               {/* Action Buttons */}
               <div className="flex items-center gap-3">
+                 {/* AI Summarize Button */}
+                 <button
+                    onClick={handleSummarize}
+                    disabled={isAiLoading || !currentNote.content}
+                    title="Summarize Note"
+                    className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 disabled:opacity-50 transition-all"
+                 >
+                   <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
+                   </svg>
+                 </button>
+
                  {/* Editor Mode Toggle */}
                  <div className="bg-slate-100 dark:bg-slate-700 p-1 rounded-lg flex text-xs font-medium">
                   <button
@@ -185,11 +249,13 @@ function App() {
                 />
               )}
 
-              {isLoading && (
+              {(isLoading || isAiLoading) && (
                 <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-20">
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <div className="text-blue-500 dark:text-blue-400 font-medium">Loading Content...</div>
+                    <div className="text-blue-500 dark:text-blue-400 font-medium">
+                      {isAiLoading ? aiStatus : 'Loading Content...'}
+                    </div>
                   </div>
                 </div>
               )}
@@ -218,6 +284,18 @@ function App() {
                   placeholder="Add tags separated by commas..."
                   className="bg-transparent text-sm text-slate-600 dark:text-slate-300 flex-1 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:text-slate-900 dark:focus:text-white transition-colors"
                 />
+
+                {/* AI Tag Button */}
+                <button
+                  onClick={handleAutoTag}
+                  disabled={isAiLoading || !currentNote.content}
+                  className="p-2 text-purple-500 hover:text-purple-600 dark:text-purple-400 dark:hover:text-purple-300 transition-colors disabled:opacity-50"
+                  title="Auto-Suggest Tags"
+                >
+                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                  </svg>
+                </button>
               </div>
               <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
                 <div className="flex items-center gap-2">
