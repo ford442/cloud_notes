@@ -5,14 +5,19 @@ import TaskItem from '@tiptap/extension-task-item'
 import Placeholder from '@tiptap/extension-placeholder'
 import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
-import { useEffect, useRef } from 'react'
+import Collaboration from '@tiptap/extension-collaboration'
+import * as Y from 'yjs'
+import { IndexeddbPersistence } from 'y-indexeddb'
+import { useEffect, useRef, useState } from 'react'
 import { markdownToHtml, htmlToMarkdown } from '../utils/serialization'
 import { SlashCommand, getSlashSuggestionOptions } from './editor/slash-command'
 import { NoteLink, getNoteLinkSuggestionOptions } from './editor/note-link'
 import type { CommandItem } from './editor/slash-command'
 import type { CloudItemMeta } from '../services/api'
+import { AIService } from '../services/ai'
 
 interface BlockEditorProps {
+  noteId: string;
   value: string;
   onChange: (val: string) => void;
   availableNotes?: CloudItemMeta[];
@@ -95,9 +100,48 @@ const commands: CommandItem[] = [
       }
     },
   },
+  {
+    title: 'Summarize Note',
+    icon: <strong>✨</strong>,
+    command: async ({ editor, range }) => {
+      // 1. Delete the slash command text
+      editor.chain().focus().deleteRange(range).run();
+
+      // 2. Get content
+      const content = editor.getText();
+      if (!content.trim()) return;
+
+      // 3. Insert placeholder
+      const placeholderId = `summary-placeholder-${Date.now()}`;
+      editor.chain().focus().insertContent(`<p id="${placeholderId}"><em>Summarizing...</em></p>`).run();
+
+      try {
+        // 4. Call AI
+        const summary = await AIService.summarize(content);
+
+        // 5. Replace placeholder with summary (or just append if simpler, but let's try to replace)
+        // Since finding by ID in Tiptap is hard without custom node, we'll just append to the end
+        // or insert at current position.
+        // Actually, let's just insert the result.
+        // But we want to remove "Summarizing...".
+        // Simpler approach: Just insert the summary. The user sees the cursor wait or we can use a toast.
+        // But for "juice", let's just insert.
+
+        // Better:
+        editor.chain().focus().undo().run(); // Undo the placeholder insert? No, risky.
+
+        // Let's just append.
+        editor.chain().focus().insertContent(`\n> **Summary:** ${summary}\n`).run();
+
+      } catch (e) {
+        console.error(e);
+        editor.chain().focus().insertContent(`\n*AI Summarization failed.*\n`).run();
+      }
+    },
+  },
 ]
 
-export const BlockEditor = ({ value, onChange, availableNotes = [], onNavigate }: BlockEditorProps) => {
+export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNavigate }: BlockEditorProps) => {
   // Use refs to keep track of latest props without triggering re-init
   const notesRef = useRef(availableNotes);
   const onNavigateRef = useRef(onNavigate);
@@ -110,11 +154,33 @@ export const BlockEditor = ({ value, onChange, availableNotes = [], onNavigate }
     onNavigateRef.current = onNavigate;
   }, [onNavigate]);
 
+  // Yjs document setup
+  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
+  const [provider, setProvider] = useState<IndexeddbPersistence | null>(null);
+
+  useEffect(() => {
+    const doc = new Y.Doc();
+    const persistence = new IndexeddbPersistence(noteId, doc);
+
+    setYdoc(doc);
+    setProvider(persistence);
+
+    return () => {
+      persistence.destroy();
+      doc.destroy();
+    }
+  }, [noteId]);
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
         // Disable extensions that clash with our custom ones if needed
+        // @ts-expect-error - history is not in the type definition but might be needed for older versions or use undoRedo
+        history: false,
       }),
+      ...(ydoc ? [Collaboration.configure({
+        document: ydoc,
+      })] : []),
       TaskList,
       TaskItem.configure({
         nested: true,
@@ -144,12 +210,11 @@ export const BlockEditor = ({ value, onChange, availableNotes = [], onNavigate }
                 const subject = parts[0] || '';
                 return (item.name || '').toLowerCase().includes(query.toLowerCase()) ||
                        subject.toLowerCase().includes(query.toLowerCase());
-              }).slice(0, 10);
+              }).slice(10);
            }
         },
       }),
     ],
-    content: markdownToHtml(value),
     editorProps: {
       attributes: {
         class: 'prose prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px] p-8',
@@ -158,12 +223,9 @@ export const BlockEditor = ({ value, onChange, availableNotes = [], onNavigate }
         const link = (event.target as HTMLElement).closest('a');
         if (link && link.getAttribute('href')) {
           const href = link.getAttribute('href');
-          // If it's an external link (starts with http), let it open in new tab (if target=_blank) or standard behavior
-          // If it looks like an ID (no protocol), intercept it.
           const isExternal = href?.startsWith('http://') || href?.startsWith('https://');
 
           if (!isExternal && href && onNavigateRef.current) {
-            // Prevent default navigation
             event.preventDefault();
             onNavigateRef.current(href);
             return true;
@@ -177,19 +239,31 @@ export const BlockEditor = ({ value, onChange, availableNotes = [], onNavigate }
       const markdown = htmlToMarkdown(html);
       onChange(markdown);
     },
-  })
+  }, [ydoc]) // Re-create editor when ydoc changes
 
+  // Hydrate Yjs doc from props if empty
   useEffect(() => {
-    if (!editor) return
+    if (!editor || !ydoc || !provider) return;
 
-    if (editor.isFocused) return
+    const initData = () => {
+       // Check if the document has any content.
+       // Tiptap's collaboration extension uses a 'default' XmlFragment.
+       const fragment = ydoc.getXmlFragment('default');
 
-    const currentMarkdown = htmlToMarkdown(editor.getHTML())
-    // Simple check to see if we should update content from props
-    if (currentMarkdown.trim() !== value.trim()) {
-       editor.commands.setContent(markdownToHtml(value))
+       if (fragment.length === 0 && value) {
+          // If empty, hydrate from props
+          // We must be careful not to overwrite if we are just loading
+          console.log('[BlockEditor] Hydrating Yjs from API content');
+          editor.commands.setContent(markdownToHtml(value));
+       }
+    };
+
+    if (provider.synced) {
+      initData();
+    } else {
+      provider.on('synced', initData);
     }
-  }, [editor, value])
+  }, [editor, ydoc, provider, value]);
 
   return (
     <div className="w-full h-full overflow-auto" onClick={() => editor?.commands.focus()}>

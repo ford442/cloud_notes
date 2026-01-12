@@ -258,6 +258,7 @@ function App() {
               ) : (
                 <BlockEditor
                   key={selectedId || 'new'}
+                  noteId={selectedId || 'draft'}
                   value={currentNote.content}
                   onChange={val => setCurrentNote({...currentNote, content: val})}
                   availableNotes={notes}
