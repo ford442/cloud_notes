@@ -6,6 +6,7 @@ import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
 import { BlockEditor } from './components/BlockEditor'
 import { Backlinks } from './components/Backlinks'
+import { GraphView } from './components/GraphView'
 
 function App() {
   const [notes, setNotes] = useState<CloudItemMeta[]>([])
@@ -13,7 +14,7 @@ function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich'>('rich')
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph'>('rich')
 
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
@@ -199,6 +200,12 @@ function App() {
                   >
                     Rich
                   </button>
+                  <button
+                    onClick={() => setEditorMode('graph')}
+                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'graph' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    Graph
+                  </button>
                 </div>
 
                 {/* Theme Toggle */}
@@ -234,7 +241,16 @@ function App() {
           {/* Editor Card */}
           <div className="flex-1 flex flex-col bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden transition-colors duration-200">
             <div className="flex-1 relative min-h-0">
-              {editorMode === 'simple' ? (
+              {editorMode === 'graph' ? (
+                <GraphView
+                  notes={notes}
+                  onNodeClick={(id) => {
+                    handleSelectNote(id);
+                    setEditorMode('rich');
+                  }}
+                  theme={theme}
+                />
+              ) : editorMode === 'simple' ? (
                 <Editor
                   value={currentNote.content}
                   onChange={val => setCurrentNote({...currentNote, content: val})}
@@ -261,11 +277,13 @@ function App() {
               )}
             </div>
 
-            <Backlinks
-              notes={notes}
-              currentId={selectedId}
-              onNavigate={handleSelectNote}
-            />
+            {editorMode !== 'graph' && (
+              <Backlinks
+                notes={notes}
+                currentId={selectedId}
+                onNavigate={handleSelectNote}
+              />
+            )}
           </div>
 
           {/* Footer Card */}

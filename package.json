@@ -26,6 +26,7 @@
     "marked": "^17.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-force-graph-2d": "^1.29.0",
     "tailwindcss": "^4.0.0",
     "tippy.js": "^6.3.7",
     "turndown": "^7.2.2",
