@@ -7,12 +7,17 @@ import { Editor } from './components/Editor'
 import { BlockEditor } from './components/BlockEditor'
 import { Backlinks } from './components/Backlinks'
 import { GraphView } from './components/GraphView'
+import { CommandPalette } from './components/CommandPalette'
+import type { ActionItem } from './components/CommandPalette'
 
 function App() {
   const [notes, setNotes] = useState<CloudItemMeta[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   
+  // Command Palette
+  const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false)
+
   // Editor mode state
   const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph'>('rich')
 
@@ -29,6 +34,18 @@ function App() {
 
   useEffect(() => { refreshList() }, [])
   useEffect(() => { localStorage.setItem('author_name', authorName) }, [authorName])
+
+  // Global Command Palette Listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        setIsCmdPaletteOpen(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   const refreshList = async () => {
     setIsLoading(true)
@@ -123,8 +140,60 @@ function App() {
     }
   };
 
+  const actions: ActionItem[] = [
+    {
+      id: 'new-note',
+      title: 'Create New Note',
+      section: 'Actions',
+      perform: handleNew
+    },
+    {
+      id: 'toggle-theme',
+      title: 'Toggle Theme',
+      section: 'Actions',
+      perform: () => setTheme(prev => prev === 'light' ? 'dark' : 'light')
+    },
+    {
+      id: 'mode-simple',
+      title: 'Switch to Simple Editor',
+      section: 'Actions',
+      perform: () => setEditorMode('simple')
+    },
+    {
+      id: 'mode-rich',
+      title: 'Switch to Rich Editor',
+      section: 'Actions',
+      perform: () => setEditorMode('rich')
+    },
+    {
+      id: 'mode-graph',
+      title: 'Switch to Graph View',
+      section: 'Actions',
+      perform: () => setEditorMode('graph')
+    },
+    {
+      id: 'save-note',
+      title: 'Save Current Note',
+      section: 'Actions',
+      perform: handleSave
+    }
+  ];
+
   return (
     <div className={theme === 'dark' ? 'dark' : ''}>
+      <CommandPalette
+        isOpen={isCmdPaletteOpen}
+        onClose={() => setIsCmdPaletteOpen(false)}
+        notes={notes}
+        actions={actions}
+        onNavigate={(id) => {
+          handleSelectNote(id)
+          // If we are in graph mode, switch back to rich?
+          // Actually, let's respect the current mode unless it's graph,
+          // because graph view doesn't allow editing easily.
+          if (editorMode === 'graph') setEditorMode('rich')
+        }}
+      />
       <div className="flex h-screen w-screen bg-gradient-to-br from-slate-100 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-gray-900 dark:text-gray-100 font-sans overflow-hidden transition-colors duration-200">
         
         <Sidebar
