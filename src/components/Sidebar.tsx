@@ -42,6 +42,7 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
   const fuse = useMemo(() => new Fuse(notes, {
     keys: ['name', 'description'],
     threshold: 0.3,
+    ignoreLocation: true,
     includeScore: true
   }), [notes]);
 
