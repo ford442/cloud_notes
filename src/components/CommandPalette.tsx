@@ -60,6 +60,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
   const fuse = useMemo(() => new Fuse(allItems, {
     keys: ['title', 'section', 'keywords'],
     threshold: 0.3,
+    ignoreLocation: true,
   }), [allItems]);
 
   const results = useMemo(() => {

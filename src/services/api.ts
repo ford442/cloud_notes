@@ -1,5 +1,7 @@
 // src/services/api.ts
 
+import { extractKeywords } from '../utils/keywords';
+
 const API_BASE_URL = "https://ford442-storage-manager.hf.space";
 
 export interface Note {
@@ -79,10 +81,21 @@ export const StorageService = {
       const links = extractLinks(note.content);
       const linksStr = links.join('|');
 
+      // Extract keywords
+      const keywords = extractKeywords(note.content);
+      const keywordsStr = keywords.join(' ');
+
+      // Format: Subject ::: Section ::: Tags ::: Links ::: Keywords
       let packedDesc = `${note.subject || 'General'} ::: ${note.section || 'Inbox'} ::: ${note.tags || ''}`;
-      if (linksStr) {
-        packedDesc += ` ::: ${linksStr}`;
-      }
+
+      // Always ensure we have placeholders if we are adding subsequent fields,
+      // but 'links' is index 3. Current readers handle missing parts.
+      // However, if links is empty but we have keywords, we should probably output "::: " for links?
+      // Backlinks reader: parts[3].
+      // If we put keywords at index 4, we must ensure index 3 exists.
+
+      packedDesc += ` ::: ${linksStr}`; // Index 3 (can be empty string)
+      packedDesc += ` ::: ${keywordsStr}`; // Index 4
 
       console.log('[API] Saving note:', { title: note.title, packedDesc });
 
