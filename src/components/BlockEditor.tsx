@@ -101,6 +101,14 @@ const commands: CommandItem[] = [
     },
   },
   {
+    title: 'Date',
+    icon: <strong>📅</strong>,
+    command: ({ editor, range }) => {
+      const date = new Date().toISOString().split('T')[0]
+      editor.chain().focus().deleteRange(range).insertContent(date).run()
+    },
+  },
+  {
     title: 'Summarize Note',
     icon: <strong>✨</strong>,
     command: async ({ editor, range }) => {
@@ -208,9 +216,11 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
               return items.filter((item) => {
                 const parts = (item.description || '').split(' ::: ');
                 const subject = parts[0] || '';
+                const tags = parts[2] || '';
                 return (item.name || '').toLowerCase().includes(query.toLowerCase()) ||
-                       subject.toLowerCase().includes(query.toLowerCase());
-              }).slice(10);
+                       subject.toLowerCase().includes(query.toLowerCase()) ||
+                       tags.toLowerCase().includes(query.toLowerCase());
+              }).slice(0, 10);
            }
         },
       }),
