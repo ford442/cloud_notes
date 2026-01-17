@@ -50,19 +50,50 @@ function App() {
 
   const refreshList = async () => {
     setIsLoading(true)
-    const list = await StorageService.getNotes()
-    setNotes(list)
-    setIsLoading(false)
+
+    // 1. Instant Load from Cache
+    const cached = await StorageService.getCachedNotes();
+    if (cached.length > 0) {
+      setNotes(cached);
+      setIsLoading(false); // Immediate user feedback
+    }
+
+    // 2. Background Sync
+    try {
+      const fresh = await StorageService.getNotes();
+      setNotes(fresh);
+    } catch {
+      if (cached.length === 0) alert("Failed to fetch notes");
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   const handleSelectNote = async (id: string) => {
     setIsLoading(true)
+    let loadedFromCache = false;
+
     try {
+      // 1. Try Cache First
+      const cached = await StorageService.getCachedNote(id);
+      if (cached) {
+        setCurrentNote(cached);
+        setSelectedId(id);
+        setIsLoading(false);
+        loadedFromCache = true;
+      }
+
+      // 2. Fetch Fresh Content
       const content = await StorageService.getNoteContent(id)
+
+      // Only update if we didn't have cache, or if we want to force update
+      // For now, let's always update to ensure freshness, but user won't see a spinner if cached
       setCurrentNote(content)
       setSelectedId(id)
     } catch {
-      alert("Failed to load note")
+      if (!loadedFromCache) {
+        alert("Failed to load note");
+      }
     } finally {
       setIsLoading(false)
     }
