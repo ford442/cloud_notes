@@ -5,6 +5,7 @@ import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
 import { BlockEditor } from './components/BlockEditor'
+import { CanvasEditor } from './components/CanvasEditor'
 import { Backlinks } from './components/Backlinks'
 import { GraphView } from './components/GraphView'
 import { CommandPalette } from './components/CommandPalette'
@@ -19,7 +20,7 @@ function App() {
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false)
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph'>('rich')
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas'>('rich')
 
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
@@ -172,6 +173,12 @@ function App() {
       perform: () => setEditorMode('graph')
     },
     {
+      id: 'mode-canvas',
+      title: 'Switch to Canvas Mode',
+      section: 'Actions',
+      perform: () => setEditorMode('canvas')
+    },
+    {
       id: 'save-note',
       title: 'Save Current Note',
       section: 'Actions',
@@ -275,6 +282,12 @@ function App() {
                   >
                     Graph
                   </button>
+                  <button
+                    onClick={() => setEditorMode('canvas')}
+                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'canvas' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    Canvas
+                  </button>
                 </div>
 
                 {/* Theme Toggle */}
@@ -319,6 +332,13 @@ function App() {
                   }}
                   theme={theme}
                 />
+              ) : editorMode === 'canvas' ? (
+                <CanvasEditor
+                  key={selectedId || 'new'}
+                  initialData={currentNote.content}
+                  onChange={val => setCurrentNote({...currentNote, content: val})}
+                  theme={theme}
+                />
               ) : editorMode === 'simple' ? (
                 <Editor
                   value={currentNote.content}
@@ -347,7 +367,7 @@ function App() {
               )}
             </div>
 
-            {editorMode !== 'graph' && (
+            {(editorMode !== 'graph' && editorMode !== 'canvas') && (
               <Backlinks
                 notes={notes}
                 currentId={selectedId}
