@@ -2,6 +2,7 @@
 
 import { extractKeywords } from '../utils/keywords';
 import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT } from '../utils/db';
+import { EncryptionService } from '../utils/encryption';
 
 const API_BASE_URL = "https://ford442-storage-manager.hf.space";
 
@@ -80,14 +81,20 @@ export const StorageService = {
       
       const data = await res.json();
       
+      // DECRYPT CONTENT
+      const decryptedContent = await EncryptionService.decrypt(data.content || '');
+
       // Backward compatibility: Default to General/Inbox if missing
       const note: Note = {
         ...data,
+        content: decryptedContent,
         subject: data.subject || "General",
         section: data.section || "Inbox"
       };
 
-      // Update cache
+      // Update cache (We store DECRYPTED content in local cache for speed/offline editing)
+      // This is a trade-off: Local IndexedDB is not encrypted by us, but it is sandboxed by browser.
+      // E2E requirement usually focuses on SERVER not seeing data.
       db.set(STORE_NOTES_CONTENT, id, note).catch(e =>
         console.warn(`[Cache] Failed to update content for ${id}`, e)
       );
@@ -141,12 +148,18 @@ export const StorageService = {
 
       console.log('[API] Saving note:', { title: note.title, packedDesc });
 
+      // ENCRYPT CONTENT BEFORE SENDING
+      const encryptedContent = await EncryptionService.encrypt(note.content);
+
+      // We clone the note to avoid modifying the UI state object
+      const secureNote = { ...note, content: encryptedContent };
+
       const payload = {
         name: note.title,
         author: author,
         description: packedDesc, 
         type: 'note',
-        data: note 
+        data: secureNote
       };
 
       const res = await fetch(`${API_BASE_URL}/api/songs`, {

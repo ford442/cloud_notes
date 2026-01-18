@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { StorageService } from './services/api'
 import { AIService } from './services/ai'
+import { EncryptionService } from './utils/encryption'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
@@ -214,6 +215,29 @@ function App() {
       title: 'Save Current Note',
       section: 'Actions',
       perform: handleSave
+    },
+    {
+      id: 'copy-key',
+      title: 'Copy Encryption Key',
+      section: 'Actions',
+      perform: () => {
+        const key = EncryptionService.getOrInitPassword();
+        navigator.clipboard.writeText(key).then(() => alert("Encryption Key copied to clipboard!"));
+      }
+    },
+    {
+      id: 'set-key',
+      title: 'Set Encryption Key',
+      section: 'Actions',
+      perform: () => {
+        const current = EncryptionService.getOrInitPassword();
+        const newKey = prompt("Enter Encryption Key (Warning: Changing this will make existing encrypted notes unreadable unless you know the old key):", current);
+        if (newKey && newKey !== current) {
+          EncryptionService.setPassword(newKey);
+          alert("Key updated. Reload to apply.");
+          window.location.reload();
+        }
+      }
     }
   ];
 
