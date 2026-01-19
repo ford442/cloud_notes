@@ -51,8 +51,8 @@ export const SlashCommand = Extension.create({
 export const getSlashSuggestionOptions = (items: CommandItem[]): Omit<SuggestionOptions, 'editor'> => ({
   items: ({ query }: { query: string }) => {
     return items.filter((item) =>
-      item.title.toLowerCase().startsWith(query.toLowerCase())
-    ).slice(0, 10)
+      item.title.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 50)
   },
 
   render: () => {
