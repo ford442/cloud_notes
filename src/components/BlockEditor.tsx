@@ -15,6 +15,7 @@ import { NoteLink, getNoteLinkSuggestionOptions } from './editor/note-link'
 import type { CommandItem } from './editor/slash-command'
 import type { CloudItemMeta } from '../services/api'
 import { AIService } from '../services/ai'
+import { PluginRegistry } from '../services/plugin'
 
 interface BlockEditorProps {
   noteId: string;
@@ -24,7 +25,7 @@ interface BlockEditorProps {
   onNavigate?: (id: string) => void;
 }
 
-const commands: CommandItem[] = [
+const defaultCommands: CommandItem[] = [
   {
     title: 'Heading 1',
     icon: <strong>H1</strong>,
@@ -204,7 +205,10 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         },
       }),
       SlashCommand.configure({
-        suggestion: getSlashSuggestionOptions(commands),
+        suggestion: getSlashSuggestionOptions([
+          ...defaultCommands,
+          ...PluginRegistry.getSlashCommands()
+        ]),
       }),
       // eslint-disable-next-line react-hooks/refs
       NoteLink.configure({

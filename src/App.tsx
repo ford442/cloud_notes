@@ -11,6 +11,11 @@ import { Backlinks } from './components/Backlinks'
 import { GraphView } from './components/GraphView'
 import { CommandPalette } from './components/CommandPalette'
 import type { ActionItem } from './components/CommandPalette'
+import { PluginRegistry } from './services/plugin'
+import { CorePlugins } from './plugins/core'
+
+// Initialize Core Plugins once
+PluginRegistry.registerAll(CorePlugins);
 
 function App() {
   const [notes, setNotes] = useState<CloudItemMeta[]>([])
@@ -36,6 +41,11 @@ function App() {
 
   useEffect(() => { refreshList() }, [])
   useEffect(() => { localStorage.setItem('author_name', authorName) }, [authorName])
+
+  // Update Plugin Context
+  useEffect(() => {
+    PluginRegistry.setNoteGetter(() => currentNote);
+  }, [currentNote]);
 
   // Global Command Palette Listener
   useEffect(() => {
@@ -238,7 +248,8 @@ function App() {
           window.location.reload();
         }
       }
-    }
+    },
+    ...PluginRegistry.getActions()
   ];
 
   return (
