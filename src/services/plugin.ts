@@ -1,11 +1,14 @@
 import type { CommandItem } from '../components/editor/slash-command';
 import type { ActionItem } from '../components/CommandPalette';
 import type { Note } from './api';
+import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 
 export interface PluginContext {
   registerCommand: (command: CommandItem) => void;
   registerAction: (action: ActionItem) => void;
   getCurrentNote: () => Note | null;
+  updateNote: (updates: Partial<Note>) => void;
+  getCanvasAPI: () => ExcalidrawImperativeAPI | null;
 }
 
 export interface Plugin {
@@ -18,11 +21,22 @@ class PluginRegistryService {
   private plugins: Map<string, Plugin> = new Map();
   private commands: CommandItem[] = [];
   private actions: ActionItem[] = [];
-  private initialized = false;
+
+  // Callbacks provided by App
   private noteGetter: () => Note | null = () => null;
+  private noteUpdater: (updates: Partial<Note>) => void = () => {};
+  private canvasAPI: ExcalidrawImperativeAPI | null = null;
 
   setNoteGetter(getter: () => Note | null) {
     this.noteGetter = getter;
+  }
+
+  setNoteUpdater(updater: (updates: Partial<Note>) => void) {
+    this.noteUpdater = updater;
+  }
+
+  setCanvasAPI(api: ExcalidrawImperativeAPI | null) {
+    this.canvasAPI = api;
   }
 
   getCurrentNote(): Note | null {
@@ -46,7 +60,9 @@ class PluginRegistryService {
       registerAction: (action) => {
         this.actions.push(action);
       },
-      getCurrentNote: () => this.getCurrentNote()
+      getCurrentNote: () => this.noteGetter(),
+      updateNote: (updates) => this.noteUpdater(updates),
+      getCanvasAPI: () => this.canvasAPI
     };
 
     try {
