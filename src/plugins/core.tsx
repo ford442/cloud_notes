@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Plugin } from '../services/plugin';
+import { CanvasToolsPlugin } from './canvas';
 
 // --- Templates Plugin ---
 
@@ -150,4 +151,34 @@ export const ExportPlugin: Plugin = {
   }
 };
 
-export const CorePlugins = [TemplatesPlugin, StatsPlugin, ExportPlugin];
+// --- Text Tools Plugin ---
+export const TextToolsPlugin: Plugin = {
+  id: 'core-text-tools',
+  name: 'Text Tools',
+  init: (ctx) => {
+    ctx.registerAction({
+      id: 'append-signature',
+      title: 'Append Signature',
+      section: 'Editor',
+      icon: <span className="text-lg">✍️</span>,
+      perform: () => {
+        const note = ctx.getCurrentNote();
+        if (!note) return;
+
+        // Note: note.author might not be on the Note interface strictly speaking, but we can try note.author or fallback
+        // Looking at api.ts Note interface: id, title, content, subject, section, tags.
+        // CloudItemMeta has author.
+        // App.tsx passes currentNote which matches Note.
+        // So author might not be available on 'note'.
+        // We will just use 'Me' or check if we can get it from somewhere else.
+        // Actually, App.tsx manages 'authorName' state but doesn't pass it to the Note object unless saved.
+        // But for now, we just append a static signature or "Me".
+
+        const signature = `\n\n---\n*Signed*`;
+        ctx.updateNote({ content: (note.content || '') + signature });
+      }
+    });
+  }
+};
+
+export const CorePlugins = [TemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin];

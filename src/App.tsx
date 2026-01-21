@@ -45,6 +45,7 @@ function App() {
   // Update Plugin Context
   useEffect(() => {
     PluginRegistry.setNoteGetter(() => currentNote);
+    PluginRegistry.setNoteUpdater((updates) => setCurrentNote(prev => ({ ...prev, ...updates })));
   }, [currentNote]);
 
   // Global Command Palette Listener
