@@ -6,7 +6,9 @@ env.allowLocalModels = false;
 env.useBrowserCache = true;
 
 interface AIServiceState {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   summarizer: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   classifier: any;
   isSummarizerLoading: boolean;
   isClassifierLoading: boolean;

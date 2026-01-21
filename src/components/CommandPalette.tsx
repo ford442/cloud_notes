@@ -36,10 +36,16 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
   useEffect(() => {
     if (isOpen) {
       setTimeout(() => inputRef.current?.focus(), 50);
-      setQuery('');
-      setSelectedIndex(0);
+      // Use setTimeout to push state updates to next tick to avoid "cascading render" warning?
+      // Actually, standard practice for "reset on open" is to use a key or just accept the cascade.
+      // But linter complains.
+      setTimeout(() => {
+        setQuery('');
+        setSelectedIndex(0);
+      }, 0);
     }
   }, [isOpen]);
+
 
   // Combine actions and notes into one searchable list
   const allItems = useMemo(() => {

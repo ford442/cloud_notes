@@ -13,11 +13,22 @@ import { CommandPalette } from './components/CommandPalette'
 import type { ActionItem } from './components/CommandPalette'
 import { PluginRegistry } from './services/plugin'
 import { CorePlugins } from './plugins/core'
+import { ToastProvider, useToast } from './components/Toast'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
 
+// Wrapper to provide toast context
+function AppWrapper() {
+  return (
+    <ToastProvider>
+      <App />
+    </ToastProvider>
+  )
+}
+
 function App() {
+  const { addToast } = useToast()
   const [notes, setNotes] = useState<CloudItemMeta[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
@@ -45,8 +56,9 @@ function App() {
   // Update Plugin Context
   useEffect(() => {
     PluginRegistry.setNoteGetter(() => currentNote);
+    PluginRegistry.setAllNotesGetter(() => notes);
     PluginRegistry.setNoteUpdater((updates) => setCurrentNote(prev => ({ ...prev, ...updates })));
-  }, [currentNote]);
+  }, [currentNote, notes]);
 
   // Global Command Palette Listener
   useEffect(() => {
@@ -75,7 +87,7 @@ function App() {
       const fresh = await StorageService.getNotes();
       setNotes(fresh);
     } catch {
-      if (cached.length === 0) alert("Failed to fetch notes");
+      if (cached.length === 0) addToast("Failed to fetch notes", "error");
     } finally {
       setIsLoading(false);
     }
@@ -104,7 +116,7 @@ function App() {
       setSelectedId(id)
     } catch {
       if (!loadedFromCache) {
-        alert("Failed to load note");
+        addToast("Failed to load note", "error");
       }
     } finally {
       setIsLoading(false)
@@ -121,7 +133,7 @@ function App() {
   }
 
   const handleSave = async () => {
-    if (!currentNote.title.trim()) return alert("Title required")
+    if (!currentNote.title.trim()) return addToast("Title required", "error")
     
     setIsSaving(true)
     const res = await StorageService.saveNote(currentNote, authorName)
@@ -129,14 +141,15 @@ function App() {
     if (res.success) {
       await refreshList()
       if (!selectedId && res.id) setSelectedId(res.id)
+      addToast("Note saved successfully", "success")
     } else {
-      alert("Save failed")
+      addToast("Save failed", "error")
     }
     setIsSaving(false)
   }
 
   const handleAutoTag = async () => {
-    if (!currentNote.content.trim()) return alert("Write some content first!");
+    if (!currentNote.content.trim()) return addToast("Write some content first!", "info");
 
     setIsAiLoading(true);
     setAiStatus('Initializing AI...');
@@ -156,9 +169,10 @@ function App() {
       // Merge with existing
       const newTags = Array.from(new Set([...currentTags, ...suggested])).join(', ');
       setCurrentNote(prev => ({ ...prev, tags: newTags }));
+      addToast("AI Tagging complete", "success");
     } catch (e) {
       console.error(e);
-      alert("AI Tagging failed. Check console.");
+      addToast("AI Tagging failed", "error");
     } finally {
       setIsAiLoading(false);
       setAiStatus('');
@@ -166,7 +180,7 @@ function App() {
   };
 
   const handleSummarize = async () => {
-    if (!currentNote.content.trim()) return alert("Write some content first!");
+    if (!currentNote.content.trim()) return addToast("Write some content first!", "info");
 
     setIsAiLoading(true);
     setAiStatus('Initializing AI...');
@@ -175,9 +189,10 @@ function App() {
       // Append summary to content
       const newContent = currentNote.content + '\n\n> **Summary:** ' + summary;
       setCurrentNote(prev => ({ ...prev, content: newContent }));
+      addToast("Summary generated", "success");
     } catch (e) {
       console.error(e);
-      alert("AI Summarization failed. Check console.");
+      addToast("AI Summarization failed", "error");
     } finally {
       setIsAiLoading(false);
       setAiStatus('');
@@ -233,7 +248,7 @@ function App() {
       section: 'Actions',
       perform: () => {
         const key = EncryptionService.getOrInitPassword();
-        navigator.clipboard.writeText(key).then(() => alert("Encryption Key copied to clipboard!"));
+        navigator.clipboard.writeText(key).then(() => addToast("Encryption Key copied to clipboard!", "success"));
       }
     },
     {
@@ -245,8 +260,8 @@ function App() {
         const newKey = prompt("Enter Encryption Key (Warning: Changing this will make existing encrypted notes unreadable unless you know the old key):", current);
         if (newKey && newKey !== current) {
           EncryptionService.setPassword(newKey);
-          alert("Key updated. Reload to apply.");
-          window.location.reload();
+          addToast("Key updated. Reload to apply.", "success");
+          setTimeout(() => window.location.reload(), 1500);
         }
       }
     },
@@ -393,6 +408,7 @@ function App() {
               {editorMode === 'graph' ? (
                 <GraphView
                   notes={notes}
+                  currentId={selectedId}
                   onNodeClick={(id) => {
                     handleSelectNote(id);
                     setEditorMode('rich');
@@ -492,4 +508,4 @@ function App() {
   )
 }
 
-export default App
+export default AppWrapper

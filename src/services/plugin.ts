@@ -1,12 +1,13 @@
 import type { CommandItem } from '../components/editor/slash-command';
 import type { ActionItem } from '../components/CommandPalette';
-import type { Note } from './api';
+import type { Note, CloudItemMeta } from './api';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 
 export interface PluginContext {
   registerCommand: (command: CommandItem) => void;
   registerAction: (action: ActionItem) => void;
   getCurrentNote: () => Note | null;
+  getAllNotes: () => CloudItemMeta[];
   updateNote: (updates: Partial<Note>) => void;
   getCanvasAPI: () => ExcalidrawImperativeAPI | null;
 }
@@ -24,11 +25,16 @@ class PluginRegistryService {
 
   // Callbacks provided by App
   private noteGetter: () => Note | null = () => null;
+  private allNotesGetter: () => CloudItemMeta[] = () => [];
   private noteUpdater: (updates: Partial<Note>) => void = () => {};
   private canvasAPI: ExcalidrawImperativeAPI | null = null;
 
   setNoteGetter(getter: () => Note | null) {
     this.noteGetter = getter;
+  }
+
+  setAllNotesGetter(getter: () => CloudItemMeta[]) {
+    this.allNotesGetter = getter;
   }
 
   setNoteUpdater(updater: (updates: Partial<Note>) => void) {
@@ -61,6 +67,7 @@ class PluginRegistryService {
         this.actions.push(action);
       },
       getCurrentNote: () => this.noteGetter(),
+      getAllNotes: () => this.allNotesGetter(),
       updateNote: (updates) => this.noteUpdater(updates),
       getCanvasAPI: () => this.canvasAPI
     };
