@@ -42,7 +42,7 @@ export const EncryptionService = {
     const keyMaterial = await crypto.subtle.importKey(
       "raw",
       enc.encode(password),
-      "PBKDF2",
+      { name: "PBKDF2" },
       false,
       ["deriveKey"]
     );
@@ -50,7 +50,7 @@ export const EncryptionService = {
     return crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
-        salt,
+        salt: salt as any,
         iterations: PBKDF2_ITERATIONS,
         hash: "SHA-256"
       },

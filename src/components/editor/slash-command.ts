@@ -15,6 +15,8 @@ interface CommandProps {
 
 export interface CommandItem {
   title: string;
+  description?: string;
+  searchTerms?: string[];
   icon: React.ReactNode;
   command: (props: CommandProps) => void;
 }

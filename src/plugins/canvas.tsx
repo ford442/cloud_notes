@@ -1,4 +1,3 @@
-import React from 'react';
 import type { Plugin } from '../services/plugin';
 
 export const CanvasToolsPlugin: Plugin = {
@@ -22,6 +21,7 @@ export const CanvasToolsPlugin: Plugin = {
 
         const color = isDark ? '#ffffff' : '#1e1e1e';
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const element: any = {
             id: `text-${Date.now()}`,
             type: 'text',
@@ -60,7 +60,8 @@ export const CanvasToolsPlugin: Plugin = {
         api.updateScene({
             elements: [...api.getSceneElements(), element],
             commitToHistory: true,
-        });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
       }
     });
 

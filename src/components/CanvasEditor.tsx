@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Excalidraw } from '@excalidraw/excalidraw';
-import type { AppState, BinaryFiles, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
+import type { AppState, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import type { ExcalidrawElement } from '@excalidraw/excalidraw/element/types';
 import { PluginRegistry } from '../services/plugin';
 
@@ -60,7 +60,7 @@ export const CanvasEditor = ({ initialData, onChange, theme }: CanvasEditorProps
     return () => PluginRegistry.setCanvasAPI(null);
   }, [excalidrawAPI]);
 
-  const handleChange = useCallback((elements: readonly ExcalidrawElement[], appState: AppState, _files: BinaryFiles) => {
+  const handleChange = useCallback((elements: readonly ExcalidrawElement[], appState: AppState) => {
       if (init.error) return;
 
       const payload = {
