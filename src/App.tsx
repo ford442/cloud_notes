@@ -58,6 +58,14 @@ function App() {
     PluginRegistry.setNoteGetter(() => currentNote);
     PluginRegistry.setAllNotesGetter(() => notes);
     PluginRegistry.setNoteUpdater((updates) => setCurrentNote(prev => ({ ...prev, ...updates })));
+    PluginRegistry.setNavigator((id) => handleSelectNote(id));
+    PluginRegistry.setNoteCreator((updates) => {
+      setSelectedId(null);
+      setCurrentNote({
+        title: '', content: '', tags: '', subject: 'General', section: 'Inbox',
+        ...updates
+      });
+    });
   }, [currentNote, notes]);
 
   // Global Command Palette Listener

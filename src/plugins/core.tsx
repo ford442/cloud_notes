@@ -1,6 +1,7 @@
 import type { Plugin } from '../services/plugin';
 import { CanvasToolsPlugin } from './canvas';
 import { AIPlugin } from './ai';
+import { DailyNotesPlugin } from './daily';
 
 // --- Templates Plugin ---
 
@@ -181,4 +182,4 @@ export const TextToolsPlugin: Plugin = {
   }
 };
 
-export const CorePlugins = [TemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin];
+export const CorePlugins = [TemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin];

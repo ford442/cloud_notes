@@ -9,6 +9,8 @@ export interface PluginContext {
   getCurrentNote: () => Note | null;
   getAllNotes: () => CloudItemMeta[];
   updateNote: (updates: Partial<Note>) => void;
+  createNote: (note: Partial<Note>) => void;
+  navigateTo: (id: string) => void;
   getCanvasAPI: () => ExcalidrawImperativeAPI | null;
 }
 
@@ -27,6 +29,8 @@ class PluginRegistryService {
   private noteGetter: () => Note | null = () => null;
   private allNotesGetter: () => CloudItemMeta[] = () => [];
   private noteUpdater: (updates: Partial<Note>) => void = () => {};
+  private noteCreator: (note: Partial<Note>) => void = () => {};
+  private navigator: (id: string) => void = () => {};
   private canvasAPI: ExcalidrawImperativeAPI | null = null;
 
   setNoteGetter(getter: () => Note | null) {
@@ -39,6 +43,14 @@ class PluginRegistryService {
 
   setNoteUpdater(updater: (updates: Partial<Note>) => void) {
     this.noteUpdater = updater;
+  }
+
+  setNoteCreator(creator: (note: Partial<Note>) => void) {
+    this.noteCreator = creator;
+  }
+
+  setNavigator(navigator: (id: string) => void) {
+    this.navigator = navigator;
   }
 
   setCanvasAPI(api: ExcalidrawImperativeAPI | null) {
@@ -69,6 +81,8 @@ class PluginRegistryService {
       getCurrentNote: () => this.noteGetter(),
       getAllNotes: () => this.allNotesGetter(),
       updateNote: (updates) => this.noteUpdater(updates),
+      createNote: (note) => this.noteCreator(note),
+      navigateTo: (id) => this.navigator(id),
       getCanvasAPI: () => this.canvasAPI
     };
 
