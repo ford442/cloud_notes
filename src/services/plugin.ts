@@ -12,6 +12,7 @@ export interface PluginContext {
   createNote: (note: Partial<Note>) => void;
   navigateTo: (id: string) => void;
   getCanvasAPI: () => ExcalidrawImperativeAPI | null;
+  setMode: (mode: string) => void;
 }
 
 export interface Plugin {
@@ -31,6 +32,7 @@ class PluginRegistryService {
   private noteUpdater: (updates: Partial<Note>) => void = () => {};
   private noteCreator: (note: Partial<Note>) => void = () => {};
   private navigator: (id: string) => void = () => {};
+  private modeSetter: (mode: string) => void = () => {};
   private canvasAPI: ExcalidrawImperativeAPI | null = null;
 
   setNoteGetter(getter: () => Note | null) {
@@ -51,6 +53,10 @@ class PluginRegistryService {
 
   setNavigator(navigator: (id: string) => void) {
     this.navigator = navigator;
+  }
+
+  setModeSetter(setter: (mode: string) => void) {
+    this.modeSetter = setter;
   }
 
   setCanvasAPI(api: ExcalidrawImperativeAPI | null) {
@@ -80,10 +86,11 @@ class PluginRegistryService {
       },
       getCurrentNote: () => this.noteGetter(),
       getAllNotes: () => this.allNotesGetter(),
-      updateNote: (updates) => this.noteUpdater(updates),
+      updateNote: (updates: Partial<Note>) => this.noteUpdater(updates),
       createNote: (note) => this.noteCreator(note),
       navigateTo: (id) => this.navigator(id),
-      getCanvasAPI: () => this.canvasAPI
+      getCanvasAPI: () => this.canvasAPI,
+      setMode: (mode) => this.modeSetter(mode)
     };
 
     try {
