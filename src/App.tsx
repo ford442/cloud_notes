@@ -9,6 +9,7 @@ import { BlockEditor } from './components/BlockEditor'
 import { CanvasEditor } from './components/CanvasEditor'
 import { Backlinks } from './components/Backlinks'
 import { GraphView } from './components/GraphView'
+import { FlashcardView } from './components/FlashcardView'
 import { CommandPalette } from './components/CommandPalette'
 import type { ActionItem } from './components/CommandPalette'
 import { PluginRegistry } from './services/plugin'
@@ -37,7 +38,7 @@ function App() {
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false)
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas'>('rich')
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards'>('rich')
 
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
@@ -65,6 +66,14 @@ function App() {
         title: '', content: '', tags: '', subject: 'General', section: 'Inbox',
         ...updates
       });
+    });
+    PluginRegistry.setModeSetter((mode) => {
+       if (['simple', 'rich', 'graph', 'canvas', 'flashcards'].includes(mode)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          setEditorMode(mode as any);
+       } else {
+         console.warn(`Plugin attempted to set invalid mode: ${mode}`);
+       }
     });
   }, [currentNote, notes]);
 
@@ -429,6 +438,11 @@ function App() {
                   initialData={currentNote.content}
                   onChange={val => setCurrentNote({...currentNote, content: val})}
                   theme={theme}
+                />
+              ) : editorMode === 'flashcards' ? (
+                <FlashcardView
+                  notes={notes}
+                  onClose={() => setEditorMode('rich')}
                 />
               ) : editorMode === 'simple' ? (
                 <Editor
