@@ -12,6 +12,9 @@ const turndownService = new TurndownService({
 // Use the GFM plugin to handle tables, strikethrough, and task lists
 turndownService.use(gfm);
 
+// Keep iframe and div tags to support YouTube embeds and other rich content
+turndownService.keep(['iframe', 'div']);
+
 /**
  * Converts Markdown string to HTML string
  */

@@ -5,6 +5,11 @@ import TaskItem from '@tiptap/extension-task-item'
 import Placeholder from '@tiptap/extension-placeholder'
 import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
+import Youtube from '@tiptap/extension-youtube'
+import { Table } from '@tiptap/extension-table'
+import TableCell from '@tiptap/extension-table-cell'
+import TableHeader from '@tiptap/extension-table-header'
+import TableRow from '@tiptap/extension-table-row'
 import Collaboration from '@tiptap/extension-collaboration'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
@@ -99,6 +104,25 @@ const defaultCommands: CommandItem[] = [
       } else {
         editor.chain().focus().deleteRange(range).run()
       }
+    },
+  },
+  {
+    title: 'YouTube',
+    icon: <strong>📺</strong>,
+    command: ({ editor, range }) => {
+      const url = window.prompt('Enter YouTube URL:')
+      if (url) {
+        editor.chain().focus().deleteRange(range).setYoutubeVideo({ src: url }).run()
+      } else {
+        editor.chain().focus().deleteRange(range).run()
+      }
+    },
+  },
+  {
+    title: 'Table',
+    icon: <strong>📊</strong>,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
     },
   },
   {
@@ -198,6 +222,15 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         placeholder: 'Type / for commands or @ to link notes...',
       }),
       Image,
+      Youtube.configure({
+        controls: true,
+      }),
+      Table.configure({
+        resizable: true,
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
       Link.configure({
         openOnClick: false, // We handle navigation manually
         HTMLAttributes: {
