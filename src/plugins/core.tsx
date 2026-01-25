@@ -3,85 +3,7 @@ import { CanvasToolsPlugin } from './canvas';
 import { AIPlugin } from './ai';
 import { DailyNotesPlugin } from './daily';
 import { FlashcardsPlugin } from './flashcards';
-
-// --- Templates Plugin ---
-
-const MEETING_TEMPLATE = `
-## Meeting: [Topic]
-**Date:** ${new Date().toLocaleDateString()}
-
-### Attendees
--
-
-### Agenda
-1.
-
-### Notes
--
-
-### Action Items
-- [ ]
-`;
-
-const JOURNAL_TEMPLATE = `
-## Journal: ${new Date().toLocaleDateString()}
-
-### Gratitude
-1.
-2.
-3.
-
-### Thoughts
-...
-`;
-
-const PROJECT_TEMPLATE = `
-## Project: [Name]
-
-### Goal
-Define the goal here.
-
-### Milestones
-- [ ] Phase 1
-- [ ] Phase 2
-`;
-
-export const TemplatesPlugin: Plugin = {
-  id: 'core-templates',
-  name: 'Core Templates',
-  init: (ctx) => {
-    // Slash Commands
-    ctx.registerCommand({
-      title: 'Meeting Notes',
-      description: 'Insert a meeting template',
-      searchTerms: ['meeting', 'template', 'agenda'],
-      icon: <span className="text-lg">📅</span>,
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).insertContent(MEETING_TEMPLATE).run();
-      },
-    });
-
-    ctx.registerCommand({
-      title: 'Daily Journal',
-      description: 'Insert a daily journal template',
-      searchTerms: ['journal', 'diary', 'daily'],
-      icon: <span className="text-lg">📔</span>,
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).insertContent(JOURNAL_TEMPLATE).run();
-      },
-    });
-
-    ctx.registerCommand({
-      title: 'Project Plan',
-      description: 'Insert a project planning template',
-      searchTerms: ['project', 'plan', 'roadmap'],
-      icon: <span className="text-lg">🚀</span>,
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).insertContent(PROJECT_TEMPLATE).run();
-      },
-    });
-  }
-};
+import { InteractiveTemplatesPlugin } from './templates';
 
 // --- Stats Plugin ---
 
@@ -183,4 +105,4 @@ export const TextToolsPlugin: Plugin = {
   }
 };
 
-export const CorePlugins = [TemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin];
+export const CorePlugins = [InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin];
