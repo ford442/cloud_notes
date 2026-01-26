@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { StorageService } from './services/api'
 import { AIService } from './services/ai'
 import { EncryptionService } from './utils/encryption'
@@ -31,6 +31,9 @@ function AppWrapper() {
 function App() {
   const { addToast } = useToast()
   const [notes, setNotes] = useState<CloudItemMeta[]>([])
+  const notesRef = useRef(notes)
+  notesRef.current = notes
+
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   
@@ -44,6 +47,8 @@ function App() {
   const [currentNote, setCurrentNote] = useState<Note>({ 
     title: '', content: '', tags: '', subject: 'General', section: 'Inbox' 
   })
+  const currentNoteRef = useRef(currentNote)
+  currentNoteRef.current = currentNote
   
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -56,8 +61,8 @@ function App() {
 
   // Update Plugin Context
   useEffect(() => {
-    PluginRegistry.setNoteGetter(() => currentNote);
-    PluginRegistry.setAllNotesGetter(() => notes);
+    PluginRegistry.setNoteGetter(() => currentNoteRef.current);
+    PluginRegistry.setAllNotesGetter(() => notesRef.current);
     PluginRegistry.setNoteUpdater((updates) => setCurrentNote(prev => ({ ...prev, ...updates })));
     PluginRegistry.setNavigator((id) => handleSelectNote(id));
     PluginRegistry.setNoteCreator((updates) => {
@@ -75,7 +80,7 @@ function App() {
          console.warn(`Plugin attempted to set invalid mode: ${mode}`);
        }
     });
-  }, [currentNote, notes]);
+  }, []);
 
   // Global Command Palette Listener
   useEffect(() => {
@@ -156,7 +161,33 @@ function App() {
     const res = await StorageService.saveNote(currentNote, authorName)
     
     if (res.success) {
-      await refreshList()
+      // Optimistic Update: Update list state immediately
+      const savedId = currentNote.id || res.id;
+      if (savedId) {
+          const packedDesc = `${currentNote.subject || 'General'} ::: ${currentNote.section || 'Inbox'} ::: ${currentNote.tags || ''}`;
+
+          const newItem: CloudItemMeta = {
+             id: savedId,
+             name: currentNote.title,
+             type: 'note',
+             author: authorName,
+             date: new Date().toISOString(),
+             description: packedDesc
+          };
+
+          setNotes(prev => {
+              const index = prev.findIndex(n => n.id === savedId);
+              if (index >= 0) {
+                  const copy = [...prev];
+                  copy[index] = { ...copy[index], ...newItem };
+                  return copy;
+              } else {
+                  return [newItem, ...prev];
+              }
+          });
+      }
+
+      // await refreshList() // Removed to prevent overwriting optimistic update with stale API data
       if (!selectedId && res.id) setSelectedId(res.id)
       addToast("Note saved successfully", "success")
     } else {
