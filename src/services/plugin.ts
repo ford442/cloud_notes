@@ -5,6 +5,7 @@ import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 
 export interface PluginContext {
   registerCommand: (command: CommandItem) => void;
+  registerCommandProvider: (provider: () => CommandItem[]) => void;
   registerAction: (action: ActionItem) => void;
   getCurrentNote: () => Note | null;
   getAllNotes: () => CloudItemMeta[];
@@ -24,6 +25,7 @@ export interface Plugin {
 class PluginRegistryService {
   private plugins: Map<string, Plugin> = new Map();
   private commands: CommandItem[] = [];
+  private commandProviders: (() => CommandItem[])[] = [];
   private actions: ActionItem[] = [];
 
   // Callbacks provided by App
@@ -81,6 +83,9 @@ class PluginRegistryService {
       registerCommand: (cmd) => {
         this.commands.push(cmd);
       },
+      registerCommandProvider: (provider) => {
+        this.commandProviders.push(provider);
+      },
       registerAction: (action) => {
         this.actions.push(action);
       },
@@ -102,7 +107,8 @@ class PluginRegistryService {
   }
 
   getSlashCommands(): CommandItem[] {
-    return this.commands;
+    const dynamicCommands = this.commandProviders.flatMap(provider => provider());
+    return [...this.commands, ...dynamicCommands];
   }
 
   getActions(): ActionItem[] {

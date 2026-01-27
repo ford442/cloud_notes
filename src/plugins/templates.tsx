@@ -68,37 +68,37 @@ export const InteractiveTemplatesPlugin: Plugin = {
       });
     });
 
-    // 2. User Templates
-    // Filter notes where Section is 'Templates'
-    const notes = ctx.getAllNotes();
-    const templateNotes = notes.filter(n => {
-       const parts = (n.description || '').split(' ::: ');
-       // parts[1] is Section
-       return parts[1] === 'Templates';
-    });
+    // 2. User Templates (Dynamic)
+    ctx.registerCommandProvider(() => {
+      const notes = ctx.getAllNotes();
+      console.log('InteractiveTemplates: notes count', notes.length);
+      const templateNotes = notes.filter(n => {
+         const parts = (n.description || '').split(' ::: ');
+         // parts[1] is Section. We handle cases where description might be missing or malformed.
+         return parts.length > 1 && parts[1].trim() === 'Templates';
+      });
 
-    templateNotes.forEach(n => {
-        ctx.registerCommand({
-            title: `Template: ${n.name}`,
-            description: 'Insert user template',
-            searchTerms: ['template', n.name.toLowerCase()],
-            icon: <span className="text-lg">📄</span>,
-            command: async ({ editor, range }) => {
-                // Fetch full content
-                try {
-                    const note = await StorageService.getNoteContent(n.id);
-                    if (note && note.content) {
-                        const filled = processTemplate(note.content);
-                        if (filled) {
-                             editor.chain().focus().deleteRange(range).insertContent(filled).run();
-                        }
-                    }
-                } catch (e) {
-                    console.error('Failed to load template', e);
-                    alert('Failed to load template content.');
-                }
-            }
-        });
+      return templateNotes.map(n => ({
+          title: `Template: ${n.name}`,
+          description: 'Insert user template',
+          searchTerms: ['template', n.name.toLowerCase()],
+          icon: <span className="text-lg">📄</span>,
+          command: async ({ editor, range }) => {
+              // Fetch full content
+              try {
+                  const note = await StorageService.getNoteContent(n.id);
+                  if (note && note.content) {
+                      const filled = processTemplate(note.content);
+                      if (filled) {
+                           editor.chain().focus().deleteRange(range).insertContent(filled).run();
+                      }
+                  }
+              } catch (e) {
+                  console.error('Failed to load template', e);
+                  alert('Failed to load template content.');
+              }
+          }
+      }));
     });
   }
 };
