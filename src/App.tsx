@@ -8,6 +8,7 @@ import { Editor } from './components/Editor'
 import { BlockEditor } from './components/BlockEditor'
 import { CanvasEditor } from './components/CanvasEditor'
 import { Backlinks } from './components/Backlinks'
+import { RelatedNotes } from './components/RelatedNotes'
 import { GraphView } from './components/GraphView'
 import { FlashcardView } from './components/FlashcardView'
 import { CommandPalette } from './components/CommandPalette'
@@ -15,6 +16,7 @@ import type { ActionItem } from './components/CommandPalette'
 import { PluginRegistry } from './services/plugin'
 import { CorePlugins } from './plugins/core'
 import { ToastProvider, useToast } from './components/Toast'
+import { SemanticService } from './services/semantic'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
@@ -189,6 +191,12 @@ function App() {
 
       // await refreshList() // Removed to prevent overwriting optimistic update with stale API data
       if (!selectedId && res.id) setSelectedId(res.id)
+
+      // Index for Semantic Search (Fire and Forget)
+      if (savedId && currentNote.content.length > 30) {
+         SemanticService.indexNote(savedId, currentNote.content);
+      }
+
       addToast("Note saved successfully", "success")
     } else {
       addToast("Save failed", "error")
@@ -504,11 +512,19 @@ function App() {
             </div>
 
             {(editorMode !== 'graph' && editorMode !== 'canvas') && (
-              <Backlinks
-                notes={notes}
-                currentId={selectedId}
-                onNavigate={handleSelectNote}
-              />
+              <>
+                <RelatedNotes
+                  notes={notes}
+                  currentId={selectedId}
+                  content={currentNote.content}
+                  onNavigate={handleSelectNote}
+                />
+                <Backlinks
+                  notes={notes}
+                  currentId={selectedId}
+                  onNavigate={handleSelectNote}
+                />
+              </>
             )}
           </div>
 
