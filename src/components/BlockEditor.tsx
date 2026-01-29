@@ -17,6 +17,7 @@ import { useEffect, useRef, useState } from 'react'
 import { markdownToHtml, htmlToMarkdown } from '../utils/serialization'
 import { SlashCommand, getSlashSuggestionOptions } from './editor/slash-command'
 import { NoteLink, getNoteLinkSuggestionOptions } from './editor/note-link'
+import { WikiLink, getWikiLinkSuggestionOptions } from './editor/wiki-link'
 import type { CloudItemMeta } from '../services/api'
 import { PluginRegistry } from '../services/plugin'
 import { defaultCommands } from './editor/commands'
@@ -105,6 +106,23 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
            ...getNoteLinkSuggestionOptions([]),
            items: ({ query }) => {
               // Override items to use the ref
+              const items = notesRef.current;
+              return items.filter((item) => {
+                const parts = (item.description || '').split(' ::: ');
+                const subject = parts[0] || '';
+                const tags = parts[2] || '';
+                return (item.name || '').toLowerCase().includes(query.toLowerCase()) ||
+                       subject.toLowerCase().includes(query.toLowerCase()) ||
+                       tags.toLowerCase().includes(query.toLowerCase());
+              }).slice(0, 10);
+           }
+        },
+      }),
+      // eslint-disable-next-line react-hooks/refs
+      WikiLink.configure({
+        suggestion: {
+           ...getWikiLinkSuggestionOptions([]),
+           items: ({ query }) => {
               const items = notesRef.current;
               return items.filter((item) => {
                 const parts = (item.description || '').split(' ::: ');
