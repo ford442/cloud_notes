@@ -1,10 +1,12 @@
 const DB_NAME = 'cloud_notes_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NOTES_LIST = 'notes_list'; // Stores the full list of metadata
 const STORE_NOTES_CONTENT = 'notes_content'; // Stores individual note content
+const STORE_EMBEDDINGS = 'notes_embeddings'; // Stores vector embeddings for semantic search
 
 interface DBWrapper {
   get: <T>(storeName: string, key: string) => Promise<T | undefined>;
+  getAll: <T>(storeName: string) => Promise<{ key: string; value: T }[]>;
   set: <T>(storeName: string, key: string, value: T) => Promise<void>;
   del: (storeName: string, key: string) => Promise<void>;
 }
@@ -27,6 +29,9 @@ const openDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORE_NOTES_CONTENT)) {
         db.createObjectStore(STORE_NOTES_CONTENT);
+      }
+      if (!db.objectStoreNames.contains(STORE_EMBEDDINGS)) {
+        db.createObjectStore(STORE_EMBEDDINGS);
       }
     };
   });
@@ -69,6 +74,27 @@ export const db: DBWrapper = {
       request.onsuccess = () => resolve();
       request.onerror = () => reject(request.error);
     });
+  },
+
+  getAll: async <T>(storeName: string): Promise<{ key: string; value: T }[]> => {
+    const database = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.openCursor();
+      const results: { key: string; value: T }[] = [];
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest).result as IDBCursorWithValue;
+        if (cursor) {
+          results.push({ key: cursor.key as string, value: cursor.value });
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
   }
 };
 
@@ -76,4 +102,4 @@ export const CACHE_KEYS = {
   ALL_NOTES: 'all_notes_meta',
 };
 
-export { STORE_NOTES_LIST, STORE_NOTES_CONTENT };
+export { STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_EMBEDDINGS };

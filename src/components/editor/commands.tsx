@@ -1,6 +1,5 @@
 import type { CommandItem } from './slash-command'
 import { AIService } from '../../services/ai'
-import React from 'react'
 
 export const defaultCommands: CommandItem[] = [
   {

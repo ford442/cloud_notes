@@ -10,15 +10,25 @@ interface AIServiceState {
   summarizer: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   classifier: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  extractor: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  generator: any;
   isSummarizerLoading: boolean;
   isClassifierLoading: boolean;
+  isExtractorLoading: boolean;
+  isGeneratorLoading: boolean;
 }
 
 const state: AIServiceState = {
   summarizer: null,
   classifier: null,
+  extractor: null,
+  generator: null,
   isSummarizerLoading: false,
   isClassifierLoading: false,
+  isExtractorLoading: false,
+  isGeneratorLoading: false,
 };
 
 // Available candidate labels for zero-shot classification if no existing tags are provided
@@ -69,6 +79,43 @@ export const AIService = {
     }
   },
 
+  async getExtractor() {
+    if (state.extractor) return state.extractor;
+    if (state.isExtractorLoading) {
+      while (state.isExtractorLoading) {
+        await new Promise(r => setTimeout(r, 100));
+      }
+      return state.extractor;
+    }
+
+    try {
+      state.isExtractorLoading = true;
+      // Standard model for embeddings
+      state.extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+      return state.extractor;
+    } finally {
+      state.isExtractorLoading = false;
+    }
+  },
+
+  async getGenerator() {
+    if (state.generator) return state.generator;
+    if (state.isGeneratorLoading) {
+      while (state.isGeneratorLoading) {
+        await new Promise(r => setTimeout(r, 100));
+      }
+      return state.generator;
+    }
+
+    try {
+      state.isGeneratorLoading = true;
+      state.generator = await pipeline('text-generation', 'Xenova/distilgpt2');
+      return state.generator;
+    } finally {
+      state.isGeneratorLoading = false;
+    }
+  },
+
   async summarize(text: string, onProgress?: (msg: string) => void): Promise<string> {
     if (!text.trim()) return '';
 
@@ -106,5 +153,34 @@ export const AIService = {
     const suggestedTags = output.labels.filter((_: string, index: number) => output.scores[index] > threshold);
 
     return suggestedTags.slice(0, 5); // Return top 5
+  },
+
+  async getEmbedding(text: string): Promise<number[]> {
+    if (!text.trim()) return [];
+
+    const extractor = await this.getExtractor();
+    const output = await extractor(text, { pooling: 'mean', normalize: true });
+
+    // Output is a Tensor, we need to convert it to array
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return Array.from((output as any).data);
+  },
+
+  async generateText(text: string): Promise<string> {
+    if (!text.trim()) return '';
+
+    const generator = await this.getGenerator();
+    const output = await generator(text, {
+      max_new_tokens: 50,
+      do_sample: true,
+      temperature: 0.7,
+    });
+
+    // Output is array of [{ generated_text: string }]
+    // We only want the new part, but the model usually returns full text
+    // Let's return the full text for the editor to handle, or try to strip prompt?
+    // The editor command replaces the prompt context, so returning full text or suffix is tricky.
+    // Transformers.js 'text-generation' usually returns the full string.
+    return output[0]?.generated_text || '';
   }
 };
