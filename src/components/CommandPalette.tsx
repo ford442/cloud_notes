@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Fuse from 'fuse.js';
 import type { CloudItemMeta } from '../services/api';
+import { SemanticService } from '../services/semantic';
 
 export interface ActionItem {
   id: string;
   title: string;
-  section: string; // "Actions" or "Notes"
+  section: string; // "Actions" or "Notes" or "Semantic"
   icon?: React.ReactNode;
   perform: () => void;
   keywords?: string[]; // Extra keywords for Fuse
@@ -30,6 +31,7 @@ const ActionIcon = () => (
 export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: CommandPaletteProps) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [results, setResults] = useState<ActionItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when opened
@@ -69,10 +71,64 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
     ignoreLocation: true,
   }), [allItems]);
 
-  const results = useMemo(() => {
-    if (!query.trim()) return allItems.slice(0, 50); // Show recent/all if empty
-    return fuse.search(query).map(r => r.item).slice(0, 50);
-  }, [query, allItems, fuse]);
+  // Hybrid Search Effect
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults(allItems.slice(0, 50));
+      return;
+    }
+
+    // 1. Instant Fuse Search (Sync)
+    const fuseResults = fuse.search(query).map(r => r.item).slice(0, 50);
+    setResults(fuseResults);
+
+    // 2. Async Semantic Search (Debounced)
+    let isCancelled = false;
+    const timeoutId = setTimeout(async () => {
+      try {
+        const semanticMatches = await SemanticService.findSimilar(query, undefined, 5);
+
+        if (isCancelled) return;
+
+        if (semanticMatches.length > 0) {
+           // Map IDs to notes
+           const newItems: ActionItem[] = [];
+           const existingIds = new Set(fuseResults.map(i => i.id));
+
+           for (const match of semanticMatches) {
+             if (existingIds.has(match.id)) continue;
+
+             const note = notes.find(n => n.id === match.id);
+             if (note) {
+               newItems.push({
+                 id: note.id,
+                 title: note.name,
+                 section: 'Semantic',
+                 icon: <span className="text-lg">✨</span>,
+                 perform: () => onNavigate(note.id),
+                 keywords: [note.description]
+               });
+             }
+           }
+
+           if (newItems.length > 0) {
+             setResults(prev => {
+                const currentIds = new Set(prev.map(p => p.id));
+                const filteredNew = newItems.filter(i => !currentIds.has(i.id));
+                return [...prev, ...filteredNew];
+             });
+           }
+        }
+      } catch (e) {
+        console.warn('Semantic search failed', e);
+      }
+    }, 300);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [query, allItems, fuse, notes, onNavigate]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -160,8 +216,11 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
 
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{item.title}</div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                    {item.section === 'Notes' ? 'Jump to Note' : 'Command'}
+                  <div className="text-xs text-slate-400 dark:text-slate-500 truncate flex items-center gap-2">
+                    {item.section === 'Semantic' && (
+                        <span className="text-amber-500 font-medium text-[10px] uppercase tracking-wider border border-amber-500/30 px-1 rounded">Related</span>
+                    )}
+                    <span>{item.section === 'Notes' || item.section === 'Semantic' ? 'Jump to Note' : 'Command'}</span>
                   </div>
                 </div>
 
