@@ -1,4 +1,4 @@
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, Extension } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
@@ -47,22 +47,47 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
   // Yjs document setup
   const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
   const [provider, setProvider] = useState<IndexeddbPersistence | null>(null);
+  const undoManagerRef = useRef<Y.UndoManager | null>(null);
 
   useEffect(() => {
     const doc = new Y.Doc();
     const persistence = new IndexeddbPersistence(noteId, doc);
+    const um = new Y.UndoManager(doc.getXmlFragment('default'));
 
     setYdoc(doc);
     setProvider(persistence);
+    undoManagerRef.current = um;
 
     return () => {
       persistence.destroy();
       doc.destroy();
+      um.destroy();
+      undoManagerRef.current = null;
     }
   }, [noteId]);
 
   const editor = useEditor({
     extensions: [
+      // Custom extension to bind Yjs UndoManager to keyboard shortcuts
+      Extension.create({
+        name: 'yjs-undo',
+        addKeyboardShortcuts() {
+          return {
+            'Mod-z': () => {
+              undoManagerRef.current?.undo();
+              return true;
+            },
+            'Mod-y': () => {
+              undoManagerRef.current?.redo();
+              return true;
+            },
+            'Shift-Mod-z': () => {
+              undoManagerRef.current?.redo();
+              return true;
+            },
+          }
+        }
+      }),
       StarterKit.configure({
         // Disable extensions that clash with our custom ones if needed
         // @ts-expect-error - history is not in the type definition but might be needed for older versions or use undoRedo

@@ -166,12 +166,12 @@ export const AIService = {
     return Array.from((output as any).data);
   },
 
-  async generateText(text: string): Promise<string> {
+  async generateText(text: string, maxNewTokens = 200): Promise<string> {
     if (!text.trim()) return '';
 
     const generator = await this.getGenerator();
     const output = await generator(text, {
-      max_new_tokens: 50,
+      max_new_tokens: maxNewTokens,
       do_sample: true,
       temperature: 0.7,
     });
