@@ -6,11 +6,10 @@ import { SemanticService } from '../services/semantic';
 export interface ActionItem {
   id: string;
   title: string;
-  section: string; // "Actions" or "Notes"
+  section: string; // "Actions" or "Notes" or "Semantic"
   icon?: React.ReactNode;
   perform: () => void;
   keywords?: string[]; // Extra keywords for Fuse
-  isSemantic?: boolean;
 }
 
 interface CommandPaletteProps {
@@ -92,7 +91,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
       let semanticItems: ActionItem[] = [];
       try {
         if (!isActive) return;
-        const similar = await SemanticService.findSimilar(query);
+        const similar = await SemanticService.findSimilar(query, undefined, 5);
         if (!isActive) return;
 
         semanticItems = similar.map(s => {
@@ -101,10 +100,10 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
            return {
             id: note.id,
             title: note.name,
-            section: 'Notes',
-            icon: <NoteIcon />,
+            section: 'Semantic',
+            icon: <span className="text-lg">✨</span>,
             perform: () => onNavigate(note.id),
-            isSemantic: true
+            keywords: [note.description]
           };
         }).filter(Boolean) as ActionItem[];
       } catch (e) {
@@ -219,16 +218,12 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <div className="font-medium truncate">{item.title}</div>
-                    {item.isSemantic && (
-                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-700 flex items-center gap-1">
-                        ✨ Semantic
-                      </span>
+                  <div className="font-medium truncate">{item.title}</div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500 truncate flex items-center gap-2">
+                    {item.section === 'Semantic' && (
+                        <span className="text-amber-500 font-medium text-[10px] uppercase tracking-wider border border-amber-500/30 px-1 rounded">Related</span>
                     )}
-                  </div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500 truncate">
-                    {item.section === 'Notes' ? 'Jump to Note' : 'Command'}
+                    <span>{item.section === 'Notes' || item.section === 'Semantic' ? 'Jump to Note' : 'Command'}</span>
                   </div>
                 </div>
 
