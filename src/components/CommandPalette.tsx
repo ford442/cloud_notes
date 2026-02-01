@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Fuse from 'fuse.js';
 import type { CloudItemMeta } from '../services/api';
+import { SemanticService } from '../services/semantic';
 
 export interface ActionItem {
   id: string;
@@ -9,6 +10,7 @@ export interface ActionItem {
   icon?: React.ReactNode;
   perform: () => void;
   keywords?: string[]; // Extra keywords for Fuse
+  isSemantic?: boolean;
 }
 
 interface CommandPaletteProps {
@@ -30,19 +32,17 @@ const ActionIcon = () => (
 export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: CommandPaletteProps) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [results, setResults] = useState<ActionItem[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when opened
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-      // Use setTimeout to push state updates to next tick to avoid "cascading render" warning?
-      // Actually, standard practice for "reset on open" is to use a key or just accept the cascade.
-      // But linter complains.
       setTimeout(() => {
+        inputRef.current?.focus();
         setQuery('');
         setSelectedIndex(0);
-      }, 0);
+      }, 50);
     }
   }, [isOpen]);
 
@@ -69,10 +69,70 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
     ignoreLocation: true,
   }), [allItems]);
 
-  const results = useMemo(() => {
-    if (!query.trim()) return allItems.slice(0, 50); // Show recent/all if empty
-    return fuse.search(query).map(r => r.item).slice(0, 50);
-  }, [query, allItems, fuse]);
+  // Hybrid Search Effect
+  useEffect(() => {
+    let isActive = true;
+
+    if (!query.trim()) {
+      // Wrap in timeout to avoid "setState during render" warning
+      const t = setTimeout(() => {
+        if (isActive) setResults(allItems.slice(0, 50));
+      }, 0);
+      return () => {
+        isActive = false;
+        clearTimeout(t);
+      };
+    }
+
+    const timer = setTimeout(async () => {
+      // 1. Fuzzy Search (Fast, Local)
+      const fuzzyResults = fuse.search(query).map(r => r.item).slice(0, 50);
+
+      // 2. Semantic Search (Async, Smart)
+      let semanticItems: ActionItem[] = [];
+      try {
+        if (!isActive) return;
+        const similar = await SemanticService.findSimilar(query);
+        if (!isActive) return;
+
+        semanticItems = similar.map(s => {
+          const note = notes.find(n => n.id === s.id);
+          if (!note) return null;
+           return {
+            id: note.id,
+            title: note.name,
+            section: 'Notes',
+            icon: <NoteIcon />,
+            perform: () => onNavigate(note.id),
+            isSemantic: true
+          };
+        }).filter(Boolean) as ActionItem[];
+      } catch (e) {
+        console.warn('Semantic search failed', e);
+      }
+
+      if (!isActive) return;
+
+      // 3. Merge Results
+      const seen = new Set(fuzzyResults.map(i => i.id));
+      const merged = [...fuzzyResults];
+
+      for (const item of semanticItems) {
+        if (!seen.has(item.id)) {
+          merged.push(item);
+          seen.add(item.id);
+        }
+      }
+
+      setResults(merged.slice(0, 50));
+      setSelectedIndex(0); // Reset selection on new results
+    }, 300); // 300ms Debounce
+
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [query, fuse, allItems, notes, onNavigate]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -124,7 +184,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
             value={query}
             onChange={e => {
               setQuery(e.target.value);
-              setSelectedIndex(0);
+              // Selection reset handled in effect
             }}
           />
           <div className="text-xs font-medium text-slate-400 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</div>
@@ -159,7 +219,14 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{item.title}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium truncate">{item.title}</div>
+                    {item.isSemantic && (
+                      <span className="text-xs px-1.5 py-0.5 rounded-full bg-purple-100 dark:bg-purple-900 text-purple-600 dark:text-purple-300 border border-purple-200 dark:border-purple-700 flex items-center gap-1">
+                        ✨ Semantic
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-slate-400 dark:text-slate-500 truncate">
                     {item.section === 'Notes' ? 'Jump to Note' : 'Command'}
                   </div>
