@@ -37,14 +37,11 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
   // Focus input when opened
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
-      // Use setTimeout to push state updates to next tick to avoid "cascading render" warning?
-      // Actually, standard practice for "reset on open" is to use a key or just accept the cascade.
-      // But linter complains.
       setTimeout(() => {
+        inputRef.current?.focus();
         setQuery('');
         setSelectedIndex(0);
-      }, 0);
+      }, 50);
     }
   }, [isOpen]);
 
@@ -73,62 +70,68 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
 
   // Hybrid Search Effect
   useEffect(() => {
+    let isActive = true;
+
     if (!query.trim()) {
-      setResults(allItems.slice(0, 50));
-      return;
+      // Wrap in timeout to avoid "setState during render" warning
+      const t = setTimeout(() => {
+        if (isActive) setResults(allItems.slice(0, 50));
+      }, 0);
+      return () => {
+        isActive = false;
+        clearTimeout(t);
+      };
     }
 
-    // 1. Instant Fuse Search (Sync)
-    const fuseResults = fuse.search(query).map(r => r.item).slice(0, 50);
-    setResults(fuseResults);
+    const timer = setTimeout(async () => {
+      // 1. Fuzzy Search (Fast, Local)
+      const fuzzyResults = fuse.search(query).map(r => r.item).slice(0, 50);
 
-    // 2. Async Semantic Search (Debounced)
-    let isCancelled = false;
-    const timeoutId = setTimeout(async () => {
+      // 2. Semantic Search (Async, Smart)
+      let semanticItems: ActionItem[] = [];
       try {
-        const semanticMatches = await SemanticService.findSimilar(query, undefined, 5);
+        if (!isActive) return;
+        const similar = await SemanticService.findSimilar(query, undefined, 5);
+        if (!isActive) return;
 
-        if (isCancelled) return;
-
-        if (semanticMatches.length > 0) {
-           // Map IDs to notes
-           const newItems: ActionItem[] = [];
-           const existingIds = new Set(fuseResults.map(i => i.id));
-
-           for (const match of semanticMatches) {
-             if (existingIds.has(match.id)) continue;
-
-             const note = notes.find(n => n.id === match.id);
-             if (note) {
-               newItems.push({
-                 id: note.id,
-                 title: note.name,
-                 section: 'Semantic',
-                 icon: <span className="text-lg">✨</span>,
-                 perform: () => onNavigate(note.id),
-                 keywords: [note.description]
-               });
-             }
-           }
-
-           if (newItems.length > 0) {
-             setResults(prev => {
-                const currentIds = new Set(prev.map(p => p.id));
-                const filteredNew = newItems.filter(i => !currentIds.has(i.id));
-                return [...prev, ...filteredNew];
-             });
-           }
-        }
+        semanticItems = similar.map(s => {
+          const note = notes.find(n => n.id === s.id);
+          if (!note) return null;
+           return {
+            id: note.id,
+            title: note.name,
+            section: 'Semantic',
+            icon: <span className="text-lg">✨</span>,
+            perform: () => onNavigate(note.id),
+            keywords: [note.description]
+          };
+        }).filter(Boolean) as ActionItem[];
       } catch (e) {
         console.warn('Semantic search failed', e);
       }
-    }, 300);
+
+      if (!isActive) return;
+
+      // 3. Merge Results
+      const seen = new Set(fuzzyResults.map(i => i.id));
+      const merged = [...fuzzyResults];
+
+      for (const item of semanticItems) {
+        if (!seen.has(item.id)) {
+          merged.push(item);
+          seen.add(item.id);
+        }
+      }
+
+      setResults(merged.slice(0, 50));
+      setSelectedIndex(0); // Reset selection on new results
+    }, 300); // 300ms Debounce
 
     return () => {
-      isCancelled = true;
-      clearTimeout(timeoutId);
+      isActive = false;
+      clearTimeout(timer);
     };
-  }, [query, allItems, fuse, notes, onNavigate]);
+  }, [query, fuse, allItems, notes, onNavigate]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -180,7 +183,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
             value={query}
             onChange={e => {
               setQuery(e.target.value);
-              setSelectedIndex(0);
+              // Selection reset handled in effect
             }}
           />
           <div className="text-xs font-medium text-slate-400 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</div>
