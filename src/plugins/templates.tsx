@@ -1,5 +1,6 @@
 import type { Plugin } from '../services/plugin';
 import { StorageService } from '../services/api';
+import { AIService } from '../services/ai';
 
 // Helper to handle variables in templates
 const processTemplate = (content: string): string | null => {
@@ -68,7 +69,65 @@ export const InteractiveTemplatesPlugin: Plugin = {
       });
     });
 
-    // 2. User Templates (Dynamic)
+    // 2. AI Draft Command
+    ctx.registerCommand({
+      title: 'Draft with AI',
+      description: 'Generate text from a prompt',
+      searchTerms: ['ai', 'generate', 'draft', 'gpt'],
+      icon: <span className="text-lg">✨</span>,
+      command: async ({ editor, range }) => {
+        const prompt = window.prompt('What should I write?');
+        if (!prompt) return;
+
+        const uniqueId = Date.now().toString().slice(-4);
+        const placeholder = `[AI DRAFTING ${uniqueId}]...`;
+
+        editor.chain().focus().deleteRange(range).insertContent(placeholder).run();
+
+        try {
+          const text = await AIService.generateText(prompt, 200);
+
+          // Find placeholder position
+          const doc = editor.state.doc;
+          let from = -1;
+          let to = -1;
+
+          doc.descendants((node, pos) => {
+             if (node.isText && node.text && node.text.includes(placeholder)) {
+                 from = pos + node.text.indexOf(placeholder);
+                 to = from + placeholder.length;
+                 return false;
+             }
+          });
+
+          if (from !== -1) {
+            editor.chain().focus().deleteRange({ from, to }).run();
+            if (text) editor.chain().insertContent(text).run();
+          } else {
+             // Placeholder not found (deleted by user?), just insert result at cursor
+             if (text) editor.chain().focus().insertContent(text).run();
+          }
+        } catch (e) {
+          console.error(e);
+          // Cleanup placeholder if exists
+          const doc = editor.state.doc;
+          let from = -1;
+          let to = -1;
+          doc.descendants((node, pos) => {
+             if (node.isText && node.text && node.text.includes(placeholder)) {
+                 from = pos + node.text.indexOf(placeholder);
+                 to = from + placeholder.length;
+                 return false;
+             }
+          });
+          if (from !== -1) editor.chain().focus().deleteRange({ from, to }).run();
+
+          alert('AI Draft failed.');
+        }
+      }
+    });
+
+    // 3. User Templates (Dynamic)
     ctx.registerCommandProvider(() => {
       const notes = ctx.getAllNotes();
       console.log('InteractiveTemplates: notes count', notes.length);
