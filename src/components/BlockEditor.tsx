@@ -21,6 +21,7 @@ import { WikiLink, getWikiLinkSuggestionOptions } from './editor/wiki-link'
 import type { CloudItemMeta } from '../services/api'
 import { PluginRegistry } from '../services/plugin'
 import { defaultCommands } from './editor/commands'
+import { BlockHandle } from './editor/BlockHandle'
 
 interface BlockEditorProps {
   noteId: string;
@@ -212,7 +213,8 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
   }, [editor, ydoc, provider, value]);
 
   return (
-    <div className="w-full h-full overflow-auto" onClick={() => editor?.commands.focus()}>
+    <div className="w-full h-full overflow-auto relative" onClick={() => editor?.commands.focus()}>
+      <BlockHandle editor={editor} />
       <EditorContent editor={editor} />
     </div>
   )
