@@ -52,6 +52,13 @@ export const defaultCommands: CommandItem[] = [
     },
   },
   {
+    title: 'Callout',
+    icon: <strong>ℹ️</strong>,
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).toggleBlockquote().insertContent('**Note:** ').run()
+    },
+  },
+  {
     title: 'Code Block',
     icon: <strong>{'<>'}</strong>,
     command: ({ editor, range }) => {

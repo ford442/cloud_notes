@@ -29,6 +29,23 @@ export const StatsPlugin: Plugin = {
         alert(`Statistics for "${note.title}"\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
       }
     });
+
+    ctx.registerCommand({
+      title: 'Note Statistics',
+      description: 'Show word count and stats',
+      searchTerms: ['stats', 'count', 'word'],
+      icon: <span className="text-lg">📊</span>,
+      command: ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).run();
+
+        const content = editor.getText();
+        const words = content.trim().split(/\s+/).filter(Boolean).length;
+        const chars = content.length;
+        const lines = content.split('\n').length;
+
+        alert(`Statistics\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
+      }
+    });
   }
 };
 
