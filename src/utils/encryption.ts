@@ -50,7 +50,7 @@ export const EncryptionService = {
     return crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
-        salt: salt as any,
+        salt: salt,
         iterations: PBKDF2_ITERATIONS,
         hash: "SHA-256"
       },
