@@ -86,6 +86,20 @@ function App() {
     });
   }, []);
 
+  // Sync Pending Ops on Mount & Online
+  useEffect(() => {
+    StorageService.syncPending();
+
+    const handleOnline = async () => {
+      console.log('App is online, syncing pending ops...');
+      await StorageService.syncPending();
+      refreshList();
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
   // Global Command Palette Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

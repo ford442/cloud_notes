@@ -1,10 +1,19 @@
 // src/services/api.ts
 
 import { extractKeywords } from '../utils/keywords';
-import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT } from '../utils/db';
+import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OPS } from '../utils/db';
 import { EncryptionService } from '../utils/encryption';
 
 const API_BASE_URL = "https://ford442-storage-manager.hf.space";
+
+interface PendingOp {
+  id: string;
+  type: 'update'; // limiting to update for safety
+  noteId: string;
+  note: Note;
+  author: string;
+  timestamp: number;
+}
 
 export interface Note {
   id?: string;
@@ -35,6 +44,40 @@ export const StorageService = {
     } catch (e) {
       console.warn('[Cache] Failed to load cached notes', e);
       return [];
+    }
+  },
+
+  async syncPending() {
+    if (!navigator.onLine) return;
+
+    try {
+      const ops = await db.getAll<PendingOp>(STORE_PENDING_OPS);
+      if (ops.length === 0) return;
+
+      console.log(`[Sync] Processing ${ops.length} pending operations...`);
+
+      // Sort by timestamp to ensure correct order
+      ops.sort((a, b) => a.value.timestamp - b.value.timestamp);
+
+      for (const { key, value: op } of ops) {
+        try {
+          let success = false;
+          if (op.type === 'update') {
+            const res = await this.updateNote(op.noteId, op.note, op.author, true);
+            success = res.success;
+          }
+
+          if (success) {
+            await db.del(STORE_PENDING_OPS, key);
+          } else {
+            console.warn(`[Sync] Op ${key} failed, keeping in queue.`);
+          }
+        } catch (e) {
+          console.error(`[Sync] Failed to process op ${key}`, e);
+        }
+      }
+    } catch (e) {
+      console.error('[Sync] Failed to sync pending ops', e);
     }
   },
 
@@ -158,12 +201,16 @@ export const StorageService = {
   },
 
   // Update existing note (PUT)
-  async updateNote(id: string, note: Note, author: string = "User"): Promise<{ success: boolean; id?: string }> {
+  async updateNote(id: string, note: Note, author: string = "User", skipQueue = false): Promise<{ success: boolean; id?: string }> {
       try {
         if (!id) throw new Error("ID required for update");
 
         // Optimistic Cache Update
         db.set(STORE_NOTES_CONTENT, id, note).catch(console.warn);
+
+        if (!navigator.onLine && !skipQueue) {
+           throw new Error("Offline");
+        }
 
         const payload = await this._preparePayload(note, author);
 
@@ -182,6 +229,20 @@ export const StorageService = {
         return { success: true, id: id };
       } catch (e) {
           console.error(e);
+          if (!skipQueue && id) {
+             console.log('[API] Queueing offline update for', id);
+             const op: PendingOp = {
+                id: crypto.randomUUID(),
+                type: 'update',
+                noteId: id,
+                note,
+                author,
+                timestamp: Date.now()
+             };
+             // Use timestamp as key prefix for order
+             await db.set(STORE_PENDING_OPS, `${op.timestamp}-${op.id}`, op);
+             return { success: true, id: id }; // Mock success
+          }
           return { success: false };
       }
   },
