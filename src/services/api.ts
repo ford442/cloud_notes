@@ -42,7 +42,7 @@ export const StorageService = {
     try {
       return await db.get<Note>(STORE_NOTES_CONTENT, id);
     } catch (e) {
-      console.warn(`[Cache] Failed to load note ${id}`, e);
+      console.warn('[Cache] Failed to load note ' + id, e);
       return undefined;
     }
   },
@@ -106,14 +106,8 @@ export const StorageService = {
     }
   },
 
-  // Save a note (Create or Update)
-  async saveNote(note: Note, author: string = "User"): Promise<{ success: boolean; id?: string }> {
-    try {
-      // Optimistic Cache Update (if we have an ID)
-      if (note.id) {
-        db.set(STORE_NOTES_CONTENT, note.id, note).catch(console.warn);
-      }
-
+  // Prepare payload for saving/updating
+  async _preparePayload(note: Note, author: string): Promise<any> {
       // PACKING METADATA:
       // We format the description as: "Subject ::: Section ::: Tags"
       // This allows the Sidebar to parse the tree structure instantly.
@@ -146,7 +140,7 @@ export const StorageService = {
       packedDesc += ` ::: ${linksStr}`; // Index 3
       packedDesc += ` ::: ${keywordsStr}`; // Index 4
 
-      console.log('[API] Saving note:', { title: note.title, packedDesc });
+      console.log('[API] Saving/Updating note:', { title: note.title, packedDesc });
 
       // ENCRYPT CONTENT BEFORE SENDING
       const encryptedContent = await EncryptionService.encrypt(note.content);
@@ -154,13 +148,48 @@ export const StorageService = {
       // We clone the note to avoid modifying the UI state object
       const secureNote = { ...note, content: encryptedContent };
 
-      const payload = {
+      return {
         name: note.title,
         author: author,
         description: packedDesc, 
         type: 'note',
         data: secureNote
       };
+  },
+
+  // Update existing note (PUT)
+  async updateNote(id: string, note: Note, author: string = "User"): Promise<{ success: boolean; id?: string }> {
+      try {
+        if (!id) throw new Error("ID required for update");
+
+        // Optimistic Cache Update
+        db.set(STORE_NOTES_CONTENT, id, note).catch(console.warn);
+
+        const payload = await this._preparePayload(note, author);
+
+        const res = await fetch(`${API_BASE_URL}/api/songs/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+
+        // Cache Update (Confirmation)
+        db.set(STORE_NOTES_CONTENT, id, { ...note, id: id }).catch(console.warn);
+
+        return { success: true, id: id };
+      } catch (e) {
+          console.error(e);
+          return { success: false };
+      }
+  },
+
+  // Create new note (POST)
+  async saveNote(note: Note, author: string = "User"): Promise<{ success: boolean; id?: string }> {
+    try {
+      const payload = await this._preparePayload(note, author);
 
       const res = await fetch(`${API_BASE_URL}/api/songs`, {
         method: 'POST',

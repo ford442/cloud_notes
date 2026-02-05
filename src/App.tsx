@@ -162,11 +162,44 @@ function App() {
     if (!currentNote.title.trim()) return addToast("Title required", "error")
     
     setIsSaving(true)
-    const res = await StorageService.saveNote(currentNote, authorName)
     
-    if (res.success) {
+    // Check if we are updating an existing note or creating a new one
+    // Logic:
+    // 1. If we have a selectedId AND the title matches the original title -> Update (PUT)
+    // 2. Otherwise (No ID, or Title Changed) -> Create New (POST)
+
+    let isUpdate = false;
+    let savedId = '';
+    let success = false;
+
+    if (selectedId) {
+       const originalNote = notes.find(n => n.id === selectedId);
+       // If title matches original name, we update
+       if (originalNote && originalNote.name === currentNote.title) {
+           isUpdate = true;
+       }
+    }
+
+    if (isUpdate && selectedId) {
+        // UPDATE EXISTING
+        const res = await StorageService.updateNote(selectedId, currentNote, authorName);
+        if (res.success) {
+            savedId = selectedId;
+            success = true;
+            addToast("Note updated successfully", "success")
+        }
+    } else {
+        // CREATE NEW
+        const res = await StorageService.saveNote(currentNote, authorName);
+        if (res.success && res.id) {
+            savedId = res.id;
+            success = true;
+            addToast(isUpdate ? "Note saved as copy (title changed)" : "Note created successfully", "success")
+        }
+    }
+
+    if (success) {
       // Optimistic Update: Update list state immediately
-      const savedId = currentNote.id || res.id;
       if (savedId) {
           const packedDesc = `${currentNote.subject || 'General'} ::: ${currentNote.section || 'Inbox'} ::: ${currentNote.tags || ''}`;
 
@@ -180,11 +213,19 @@ function App() {
           };
 
           setNotes(prev => {
-              const index = prev.findIndex(n => n.id === savedId);
-              if (index >= 0) {
-                  const copy = [...prev];
-                  copy[index] = { ...copy[index], ...newItem };
-                  return copy;
+              // If updating, replace. If new, add to top.
+              // Note: If title changed (Save As), we might want to keep the old one too?
+              // Yes, Save As implies a new copy. The old note remains.
+              // But 'isUpdate' logic handles this.
+
+              if (isUpdate) {
+                  const index = prev.findIndex(n => n.id === savedId);
+                  if (index >= 0) {
+                      const copy = [...prev];
+                      copy[index] = { ...copy[index], ...newItem };
+                      return copy;
+                  }
+                  return prev;
               } else {
                   return [newItem, ...prev];
               }
@@ -192,14 +233,12 @@ function App() {
       }
 
       // await refreshList() // Removed to prevent overwriting optimistic update with stale API data
-      if (!selectedId && res.id) setSelectedId(res.id)
+      if (savedId) setSelectedId(savedId)
 
       // Index for Semantic Search (Fire and Forget)
       if (savedId && currentNote.content.length > 30) {
          SemanticService.indexNote(savedId, currentNote.content);
       }
-
-      addToast("Note saved successfully", "success")
     } else {
       addToast("Save failed", "error")
     }
@@ -250,143 +289,80 @@ function App() {
       addToast("Summary generated", "success");
     } catch (e) {
       console.error(e);
-      addToast("AI Summarization failed", "error");
+      addToast("AI Summary failed", "error");
     } finally {
       setIsAiLoading(false);
       setAiStatus('');
     }
   };
 
-  const actions: ActionItem[] = [
-    {
-      id: 'new-note',
-      title: 'Create New Note',
-      section: 'Actions',
-      perform: handleNew
-    },
-    {
-      id: 'toggle-theme',
-      title: 'Toggle Theme',
-      section: 'Actions',
-      perform: () => setTheme(prev => prev === 'light' ? 'dark' : 'light')
-    },
-    {
-      id: 'mode-simple',
-      title: 'Switch to Simple Editor',
-      section: 'Actions',
-      perform: () => setEditorMode('simple')
-    },
-    {
-      id: 'mode-rich',
-      title: 'Switch to Rich Editor',
-      section: 'Actions',
-      perform: () => setEditorMode('rich')
-    },
-    {
-      id: 'mode-graph',
-      title: 'Switch to Graph View',
-      section: 'Actions',
-      perform: () => setEditorMode('graph')
-    },
-    {
-      id: 'mode-canvas',
-      title: 'Switch to Canvas Mode',
-      section: 'Actions',
-      perform: () => setEditorMode('canvas')
-    },
-    {
-      id: 'save-note',
-      title: 'Save Current Note',
-      section: 'Actions',
-      perform: handleSave
-    },
-    {
-      id: 'open-settings',
-      title: 'Open Settings',
-      section: 'Actions',
-      perform: () => setIsSettingsOpen(true)
-    },
-    ...PluginRegistry.getActions()
-  ];
-
   return (
-    <div className={theme === 'dark' ? 'dark' : ''}>
-      <SettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        authorName={authorName}
-        setAuthorName={setAuthorName}
-        theme={theme}
-        setTheme={setTheme}
-      />
-      <CommandPalette
-        isOpen={isCmdPaletteOpen}
-        onClose={() => setIsCmdPaletteOpen(false)}
-        notes={notes}
-        actions={actions}
-        onNavigate={(id) => {
-          handleSelectNote(id)
-          // If we are in graph mode, switch back to rich?
-          // Actually, let's respect the current mode unless it's graph,
-          // because graph view doesn't allow editing easily.
-          if (editorMode === 'graph') setEditorMode('rich')
-        }}
-      />
-      <div className="flex h-screen w-screen bg-gradient-to-br from-slate-100 via-white to-slate-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 text-gray-900 dark:text-gray-100 font-sans overflow-hidden transition-colors duration-200">
+    <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
+      <div className="h-full w-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
         
+        {/* Settings Modal */}
+        {isSettingsOpen && (
+           <SettingsModal
+             isOpen={isSettingsOpen}
+             onClose={() => setIsSettingsOpen(false)}
+             authorName={authorName}
+             setAuthorName={setAuthorName}
+           />
+        )}
+
+        {/* Command Palette */}
+        <CommandPalette
+          isOpen={isCmdPaletteOpen}
+          onClose={() => setIsCmdPaletteOpen(false)}
+          notes={notes}
+          onSelectNote={handleSelectNote}
+          actions={PluginRegistry.getActions()}
+        />
+
+        {/* Sidebar */}
         <Sidebar
           notes={notes}
           selectedId={selectedId}
           onSelect={handleSelectNote}
           onNew={handleNew}
-          isLoading={isLoading}
         />
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col h-full relative p-6 gap-6">
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col h-full min-w-0 p-4 gap-4">
 
           {/* Header Card */}
-          <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-6 shadow-2xl transition-colors duration-200">
-            <div className="flex items-center gap-6">
-
-              {/* Breadcrumb Navigation */}
-              <div className="flex items-center bg-slate-100/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-600/30 rounded-xl overflow-hidden">
-                <input
-                  type="text"
-                  value={currentNote.subject}
-                  onChange={e => setCurrentNote({...currentNote, subject: e.target.value})}
-                  className="bg-transparent px-4 py-3 text-sm font-semibold text-blue-600 dark:text-blue-400 w-32 outline-none text-center border-r border-slate-200/50 dark:border-slate-600/30 focus:bg-slate-200/30 dark:focus:bg-slate-700/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                  placeholder="Subject"
-                />
-                <div className="px-3 text-slate-400 dark:text-slate-500 text-sm">›</div>
-                <input
-                  type="text"
-                  value={currentNote.section}
-                  onChange={e => setCurrentNote({...currentNote, section: e.target.value})}
-                  className="bg-transparent px-4 py-3 text-sm text-purple-600 dark:text-purple-400 w-36 outline-none text-center focus:bg-slate-200/30 dark:focus:bg-slate-700/30 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500"
-                  placeholder="Section"
-                />
+          <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 flex items-center gap-4">
+                 <input
+                   value={currentNote.title}
+                   onChange={e => setCurrentNote({...currentNote, title: e.target.value})}
+                   placeholder="Note Title..."
+                   className="text-2xl font-bold bg-transparent outline-none w-full placeholder:text-slate-300 dark:placeholder:text-slate-600 transition-colors"
+                 />
+                 <div className="flex gap-2">
+                   <input
+                     value={currentNote.subject}
+                     onChange={e => setCurrentNote({...currentNote, subject: e.target.value})}
+                     placeholder="Subject"
+                     className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-lg text-xs font-medium w-24 outline-none transition-colors text-center"
+                   />
+                   <input
+                     value={currentNote.section}
+                     onChange={e => setCurrentNote({...currentNote, section: e.target.value})}
+                     placeholder="Section"
+                     className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-lg text-xs font-medium w-24 outline-none transition-colors text-center"
+                   />
+                 </div>
               </div>
 
-              <div className="h-8 w-px bg-slate-300/50 dark:bg-slate-600/50"></div>
-
-              {/* Title Input */}
-              <input 
-                type="text"
-                value={currentNote.title}
-                onChange={e => setCurrentNote({...currentNote, title: e.target.value})}
-                placeholder="Untitled Note..."
-                className="flex-1 bg-transparent text-2xl font-bold text-gray-800 dark:text-white placeholder:text-slate-400 outline-none"
-              />
-
-              {/* Action Buttons */}
               <div className="flex items-center gap-3">
-                 {/* AI Summarize Button */}
+                 {/* AI Actions */}
                  <button
-                    onClick={handleSummarize}
-                    disabled={isAiLoading || !currentNote.content}
-                    title="Summarize Note"
-                    className="p-3 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 hover:text-purple-600 dark:hover:text-purple-400 disabled:opacity-50 transition-all"
+                   onClick={handleSummarize}
+                   disabled={isAiLoading || !currentNote.content}
+                   className="p-2 text-slate-400 hover:text-blue-500 transition-colors disabled:opacity-30"
+                   title="Summarize Note"
                  >
                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
