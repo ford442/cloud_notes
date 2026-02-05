@@ -166,6 +166,38 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       attributes: {
         class: 'prose prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px] p-8',
       },
+      handleDrop: (view, event, _slice, moved) => {
+        const isBlockMove = event.dataTransfer?.getData('text/plain') === 'Block Move';
+
+        if (isBlockMove) {
+            const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+            if (!coordinates) return false;
+
+            const { from, to } = view.state.selection;
+            const dropPos = coordinates.pos;
+
+            // Check if dropping on itself
+            if (dropPos >= from && dropPos <= to) return false;
+
+            const tr = view.state.tr;
+            const slice = view.state.doc.slice(from, to);
+
+            // Determine target position (Start of the block at drop coordinates)
+            const $pos = view.state.doc.resolve(dropPos);
+            // Default to inserting before the block at depth 1
+            const targetPos = $pos.depth >= 1 ? $pos.before(1) : dropPos;
+
+            tr.delete(from, to);
+
+            // Map the target position because of the deletion
+            const newPos = tr.mapping.map(targetPos);
+
+            tr.insert(newPos, slice.content);
+            view.dispatch(tr);
+            return true;
+        }
+        return false;
+      },
       handleClick: (_view, _pos, event) => {
         const link = (event.target as HTMLElement).closest('a');
         if (link && link.getAttribute('href')) {

@@ -112,6 +112,14 @@ export const defaultCommands: CommandItem[] = [
     },
   },
   {
+    title: 'Time',
+    icon: <strong>⌚</strong>,
+    command: ({ editor, range }) => {
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      editor.chain().focus().deleteRange(range).insertContent(time).run()
+    },
+  },
+  {
     title: 'Summarize Note',
     icon: <strong>✨</strong>,
     command: async ({ editor, range }) => {

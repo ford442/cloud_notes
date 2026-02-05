@@ -1,8 +1,9 @@
 const DB_NAME = 'cloud_notes_db';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NOTES_LIST = 'notes_list'; // Stores the full list of metadata
 const STORE_NOTES_CONTENT = 'notes_content'; // Stores individual note content
 const STORE_EMBEDDINGS = 'notes_embeddings'; // Stores vector embeddings for semantic search
+const STORE_PENDING_OPS = 'pending_ops'; // Stores offline operations
 
 interface DBWrapper {
   get: <T>(storeName: string, key: string) => Promise<T | undefined>;
@@ -32,6 +33,9 @@ const openDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORE_EMBEDDINGS)) {
         db.createObjectStore(STORE_EMBEDDINGS);
+      }
+      if (!db.objectStoreNames.contains(STORE_PENDING_OPS)) {
+        db.createObjectStore(STORE_PENDING_OPS);
       }
     };
   });
@@ -102,4 +106,4 @@ export const CACHE_KEYS = {
   ALL_NOTES: 'all_notes_meta',
 };
 
-export { STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_EMBEDDINGS };
+export { STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_EMBEDDINGS, STORE_PENDING_OPS };
