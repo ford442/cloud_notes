@@ -22,6 +22,7 @@ import type { CloudItemMeta } from '../services/api'
 import { PluginRegistry } from '../services/plugin'
 import { defaultCommands } from './editor/commands'
 import { BlockHandle } from './editor/BlockHandle'
+import { processImage } from '../utils/media'
 
 interface BlockEditorProps {
   noteId: string;
@@ -167,6 +168,26 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         class: 'prose prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px] p-8',
       },
       handleDrop: (view, event, _slice, moved) => {
+        // 1. Handle Image Drop
+        if (event.dataTransfer?.files?.length) {
+           const file = event.dataTransfer.files[0];
+           if (file.type.startsWith('image/')) {
+               event.preventDefault(); // Stop browser from opening file
+
+               const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+
+               processImage(file).then(src => {
+                   if (coordinates) {
+                       const node = view.state.schema.nodes.image.create({ src });
+                       const tr = view.state.tr.insert(coordinates.pos, node);
+                       view.dispatch(tr);
+                   }
+               }).catch(e => console.error("Image drop failed", e));
+
+               return true;
+           }
+        }
+
         const isBlockMove = event.dataTransfer?.getData('text/plain') === 'Block Move';
 
         if (isBlockMove) {
@@ -195,6 +216,24 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
             tr.insert(newPos, slice.content);
             view.dispatch(tr);
             return true;
+        }
+        return false;
+      },
+      handlePaste: (view, event, _slice) => {
+        const items = Array.from(event.clipboardData?.items || []);
+        const imageItem = items.find(item => item.type.startsWith('image/'));
+
+        if (imageItem) {
+            const file = imageItem.getAsFile();
+            if (file) {
+                 event.preventDefault();
+                 processImage(file).then(src => {
+                     const node = view.state.schema.nodes.image.create({ src });
+                     const tr = view.state.tr.replaceSelectionWith(node);
+                     view.dispatch(tr);
+                 }).catch(e => console.error("Image paste failed", e));
+                 return true;
+            }
         }
         return false;
       },
