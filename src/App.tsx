@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { StorageService } from './services/api'
 import { AIService } from './services/ai'
-import { EncryptionService } from './utils/encryption'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
@@ -12,12 +11,12 @@ import { RelatedNotes } from './components/RelatedNotes'
 import { GraphView } from './components/GraphView'
 import { FlashcardView } from './components/FlashcardView'
 import { CommandPalette } from './components/CommandPalette'
-import type { ActionItem } from './components/CommandPalette'
 import { PluginRegistry } from './services/plugin'
 import { CorePlugins } from './plugins/core'
 import { ToastProvider, useToast } from './components/Toast'
 import { SemanticService } from './services/semantic'
 import { SettingsModal } from './components/SettingsModal'
+import { createPackedDescription } from './utils/metadata'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
@@ -215,7 +214,7 @@ function App() {
     if (success) {
       // Optimistic Update: Update list state immediately
       if (savedId) {
-          const packedDesc = `${currentNote.subject || 'General'} ::: ${currentNote.section || 'Inbox'} ::: ${currentNote.tags || ''}`;
+          const packedDesc = createPackedDescription(currentNote);
 
           const newItem: CloudItemMeta = {
              id: savedId,
@@ -321,6 +320,8 @@ function App() {
              onClose={() => setIsSettingsOpen(false)}
              authorName={authorName}
              setAuthorName={setAuthorName}
+             theme={theme}
+             setTheme={(t) => setTheme(t as 'light' | 'dark')}
            />
         )}
 
@@ -329,7 +330,7 @@ function App() {
           isOpen={isCmdPaletteOpen}
           onClose={() => setIsCmdPaletteOpen(false)}
           notes={notes}
-          onSelectNote={handleSelectNote}
+          onNavigate={handleSelectNote}
           actions={PluginRegistry.getActions()}
         />
 
@@ -339,6 +340,7 @@ function App() {
           selectedId={selectedId}
           onSelect={handleSelectNote}
           onNew={handleNew}
+          isLoading={isLoading}
         />
 
         {/* Main Content */}
