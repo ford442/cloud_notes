@@ -1,8 +1,8 @@
 // src/services/api.ts
 
-import { extractKeywords } from '../utils/keywords';
 import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OPS } from '../utils/db';
 import { EncryptionService } from '../utils/encryption';
+import { createPackedDescription } from '../utils/metadata';
 
 const API_BASE_URL = "https://ford442-storage-manager.hf.space";
 
@@ -152,36 +152,9 @@ export const StorageService = {
   // Prepare payload for saving/updating
   async _preparePayload(note: Note, author: string): Promise<any> {
       // PACKING METADATA:
-      // We format the description as: "Subject ::: Section ::: Tags"
-      // This allows the Sidebar to parse the tree structure instantly.
-
-      // Extract backlinks from content (Inline regex to avoid circular dependencies)
-      const extractLinks = (text: string): string[] => {
-        if (!text) return [];
-        const regex = /\[([^\]]+)\]\(([^)]+)\)/g;
-        const ids: string[] = [];
-        let match;
-        while ((match = regex.exec(text)) !== null) {
-          const href = match[2];
-          if (!href.startsWith('http://') && !href.startsWith('https://')) {
-            ids.push(href);
-          }
-        }
-        return [...new Set(ids)];
-      };
-
-      const links = extractLinks(note.content);
-      const linksStr = links.join('|');
-
-      // Extract keywords
-      const keywords = extractKeywords(note.content);
-      const keywordsStr = keywords.join(' ');
-
-      // Format: Subject ::: Section ::: Tags ::: Links ::: Keywords
-      let packedDesc = `${note.subject || 'General'} ::: ${note.section || 'Inbox'} ::: ${note.tags || ''}`;
-
-      packedDesc += ` ::: ${linksStr}`; // Index 3
-      packedDesc += ` ::: ${keywordsStr}`; // Index 4
+      // We format the description as: "Subject ::: Section ::: Tags ::: Links ::: Keywords"
+      // This allows the Sidebar and Graph to parse the tree structure instantly.
+      const packedDesc = createPackedDescription(note);
 
       console.log('[API] Saving/Updating note:', { title: note.title, packedDesc });
 
