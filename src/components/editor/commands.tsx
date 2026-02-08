@@ -130,23 +130,44 @@ export const defaultCommands: CommandItem[] = [
       const content = editor.getText();
       if (!content.trim()) return;
 
-      // 3. Insert placeholder
-      const placeholderId = `summary-placeholder-${Date.now()}`;
-      editor.chain().focus().insertContent(`<p id="${placeholderId}"><em>Summarizing...</em></p>`).run();
+      // 3. Insert unique placeholder
+      const placeholderId = Math.random().toString(36).substring(7);
+      const placeholderText = `[AI SUMMARIZING ${placeholderId}]`;
+      editor.chain().focus().insertContent(`\n${placeholderText}\n`).run();
 
       try {
         // 4. Call AI
         const summary = await AIService.summarize(content);
+        const formattedSummary = `\n> **Summary:** ${summary}\n`;
 
-        // 5. Replace placeholder with summary
-        editor.chain().focus().undo().run();
+        // 5. Find and replace placeholder
+        let pos = -1;
+        editor.state.doc.descendants((node, position) => {
+          if (node.isText && node.text?.includes(placeholderText)) {
+            pos = position + node.text.indexOf(placeholderText);
+            return false;
+          }
+        });
 
-        // Let's just append.
-        editor.chain().focus().insertContent(`\n> **Summary:** ${summary}\n`).run();
+        if (pos >= 0) {
+          editor.chain().focus().deleteRange({ from: pos, to: pos + placeholderText.length }).insertContent(formattedSummary).run();
+        } else {
+          // Fallback: just append if placeholder lost
+          editor.chain().focus().insertContent(formattedSummary).run();
+        }
 
       } catch (e) {
         console.error(e);
-        editor.chain().focus().insertContent(`\n*AI Summarization failed.*\n`).run();
+        let pos = -1;
+        editor.state.doc.descendants((node, position) => {
+          if (node.isText && node.text?.includes(placeholderText)) {
+            pos = position + node.text.indexOf(placeholderText);
+            return false;
+          }
+        });
+        if (pos >= 0) {
+          editor.chain().focus().deleteRange({ from: pos, to: pos + placeholderText.length }).insertContent(`\n*AI Summarization failed.*\n`).run();
+        }
       }
     },
   },
@@ -162,15 +183,41 @@ export const defaultCommands: CommandItem[] = [
 
       if (!context.trim()) return;
 
-      editor.chain().focus().insertContent('<em>...writing...</em>').run();
+      const placeholderId = Math.random().toString(36).substring(7);
+      const placeholderText = `[AI WRITING ${placeholderId}]`;
+      editor.chain().focus().insertContent(` ${placeholderText} `).run();
 
       try {
         const result = await AIService.generateText(context);
-        editor.chain().focus().undo().run(); // Undo placeholder
-        if (result) editor.chain().focus().insertContent(result).run();
+
+        let pos = -1;
+        editor.state.doc.descendants((node, position) => {
+          if (node.isText && node.text?.includes(placeholderText)) {
+            pos = position + node.text.indexOf(placeholderText);
+            return false;
+          }
+        });
+
+        if (pos >= 0) {
+          const tr = editor.chain().focus().deleteRange({ from: pos, to: pos + placeholderText.length });
+          if (result) {
+            tr.insertContent(result);
+          }
+          tr.run();
+        }
+
       } catch (e) {
         console.error(e);
-        editor.chain().focus().undo().run();
+        let pos = -1;
+        editor.state.doc.descendants((node, position) => {
+          if (node.isText && node.text?.includes(placeholderText)) {
+            pos = position + node.text.indexOf(placeholderText);
+            return false;
+          }
+        });
+        if (pos >= 0) {
+          editor.chain().focus().deleteRange({ from: pos, to: pos + placeholderText.length }).run();
+        }
       }
     },
   },
