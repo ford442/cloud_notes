@@ -177,10 +177,12 @@ export const AIService = {
     });
 
     // Output is array of [{ generated_text: string }]
-    // We only want the new part, but the model usually returns full text
-    // Let's return the full text for the editor to handle, or try to strip prompt?
-    // The editor command replaces the prompt context, so returning full text or suffix is tricky.
-    // Transformers.js 'text-generation' usually returns the full string.
-    return output[0]?.generated_text || '';
+    // We only want the new part, but the model usually returns full text.
+    // We strip the prompt from the result to avoid duplication.
+    const fullText = output[0]?.generated_text || '';
+    if (fullText.startsWith(text)) {
+      return fullText.slice(text.length);
+    }
+    return fullText;
   }
 };
