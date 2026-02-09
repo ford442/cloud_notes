@@ -21,16 +21,62 @@ export const CanvasEditor = ({ initialData, onChange, theme }: CanvasEditorProps
         let json = initialData;
         const match = initialData.match(/^```excalidraw\s+([\s\S]*?)\s*```/);
 
+        let isText = false;
         if (match) {
             json = match[1];
         } else {
             // Check if it's text content
             if (!initialData.trim().startsWith('{')) {
-                error = "This note contains text content. Switch to 'Rich' or 'Simple' mode to view/edit it.";
+                isText = true;
+                // Convert text to Excalidraw Text Element
+                const text = initialData.trim();
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const element: any = {
+                    id: `text-${Date.now()}`,
+                    type: "text",
+                    x: 100,
+                    y: 100,
+                    width: Math.min(text.length * 10, 800), // Approximate width
+                    height: 50,
+                    angle: 0,
+                    strokeColor: theme === 'dark' ? "#ffffff" : "#1e1e1e",
+                    backgroundColor: "transparent",
+                    fillStyle: "hachure",
+                    strokeWidth: 1,
+                    strokeStyle: "solid",
+                    roughness: 1,
+                    opacity: 100,
+                    groupIds: [],
+                    roundness: null,
+                    seed: 12345,
+                    version: 1,
+                    versionNonce: 0,
+                    isDeleted: false,
+                    boundElements: null,
+                    updated: Date.now(),
+                    link: null,
+                    locked: false,
+                    text: text,
+                    fontSize: 20,
+                    fontFamily: 1,
+                    textAlign: "left",
+                    verticalAlign: "top",
+                    baseline: 18,
+                    containerId: null,
+                    originalText: text
+                };
+
+                elements = [element];
+                // Reset appState
+                appState = {
+                   viewBackgroundColor: theme === 'dark' ? "#121212" : "#ffffff",
+                   scrollX: 0,
+                   scrollY: 0
+                };
             }
         }
 
-        if (!error) {
+        if (!error && !isText) {
             try {
                 const data = JSON.parse(json);
                 if (data.elements) {
@@ -59,6 +105,22 @@ export const CanvasEditor = ({ initialData, onChange, theme }: CanvasEditorProps
     }
     return () => PluginRegistry.setCanvasAPI(null);
   }, [excalidrawAPI]);
+
+  // If we auto-converted text to canvas elements, update the parent state immediately
+  useEffect(() => {
+      // Check if we have elements but the initialData was text (heuristic: not starting with ```excalidraw)
+      const isText = initialData && !initialData.trim().startsWith('```excalidraw') && !initialData.trim().startsWith('{');
+
+      if (isText && init.elements.length > 0 && !init.error) {
+           const payload = {
+              elements: init.elements,
+              appState: { viewBackgroundColor: init.appState.viewBackgroundColor }
+          };
+          const json = JSON.stringify(payload);
+          const wrapped = `\`\`\`excalidraw\n${json}\n\`\`\``;
+          onChange(wrapped);
+      }
+  }, [init, initialData, onChange]);
 
   const handleChange = useCallback((elements: readonly ExcalidrawElement[], appState: AppState) => {
       if (init.error) return;
