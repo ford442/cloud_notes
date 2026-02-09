@@ -23,6 +23,7 @@ import { PluginRegistry } from '../services/plugin'
 import { defaultCommands } from './editor/commands'
 import { BlockHandle } from './editor/BlockHandle'
 import { processImage } from '../utils/media'
+import { ExcalidrawExtension } from './editor/ExcalidrawExtension'
 
 interface BlockEditorProps {
   noteId: string;
@@ -90,6 +91,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
           }
         }
       }),
+      ExcalidrawExtension,
       StarterKit.configure({
         // Disable extensions that clash with our custom ones if needed
         // @ts-expect-error - history is not in the type definition but might be needed for older versions or use undoRedo
@@ -267,6 +269,16 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
        // Check if the document has any content.
        // Tiptap's collaboration extension uses a 'default' XmlFragment.
        const fragment = ydoc.getXmlFragment('default');
+
+       // Special handling for Excalidraw content transition
+       const hasExcalidraw = editor.state.doc.content.firstChild?.type.name === 'excalidraw';
+       const isExcalidrawValue = value.trim().startsWith('```excalidraw');
+
+       if (isExcalidrawValue && !hasExcalidraw) {
+           console.log('[BlockEditor] Force hydrating Excalidraw content');
+           editor.commands.setContent(markdownToHtml(value));
+           return;
+       }
 
        if (fragment.length === 0 && value) {
           // If empty, hydrate from props
