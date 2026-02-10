@@ -50,9 +50,10 @@ export const SlashCommand = Extension.create({
   },
 })
 
-export const getSlashSuggestionOptions = (items: CommandItem[]): Omit<SuggestionOptions, 'editor'> => ({
+export const getSlashSuggestionOptions = (items: CommandItem[] | (() => CommandItem[])): Omit<SuggestionOptions, 'editor'> => ({
   items: ({ query }: { query: string }) => {
-    return items.filter((item) => {
+    const list = typeof items === 'function' ? items() : items;
+    return list.filter((item) => {
       const q = query.toLowerCase()
       if (item.title.toLowerCase().includes(q)) return true
       if (item.searchTerms?.some(term => term.toLowerCase().includes(q))) return true

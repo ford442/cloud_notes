@@ -124,7 +124,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         },
       }),
       SlashCommand.configure({
-        suggestion: getSlashSuggestionOptions([
+        suggestion: getSlashSuggestionOptions(() => [
           ...defaultCommands,
           ...PluginRegistry.getSlashCommands()
         ]),
@@ -169,7 +169,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       attributes: {
         class: 'prose prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px] p-8',
       },
-      handleDrop: (view, event, _slice, moved) => {
+      handleDrop: (view, event, _slice, _moved) => {
         // 1. Handle Image Drop
         if (event.dataTransfer?.files?.length) {
            const file = event.dataTransfer.files[0];

@@ -194,7 +194,7 @@ export const StorageService = {
         });
 
         if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
+        await res.json();
 
         // Cache Update (Confirmation)
         db.set(STORE_NOTES_CONTENT, id, { ...note, id: id }).catch(console.warn);
