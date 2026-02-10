@@ -50,6 +50,7 @@ export const EncryptionService = {
     return crypto.subtle.deriveKey(
       {
         name: "PBKDF2",
+        // @ts-expect-error - TS gets confused with SharedArrayBuffer
         salt: salt,
         iterations: PBKDF2_ITERATIONS,
         hash: "SHA-256"
