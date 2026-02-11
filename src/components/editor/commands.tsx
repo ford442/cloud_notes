@@ -5,6 +5,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Heading 1',
     icon: <strong>H1</strong>,
+    section: 'Text',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).setNode('heading', { level: 1 }).run()
     },
@@ -12,6 +13,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Heading 2',
     icon: <strong>H2</strong>,
+    section: 'Text',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).setNode('heading', { level: 2 }).run()
     },
@@ -19,6 +21,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Heading 3',
     icon: <strong>H3</strong>,
+    section: 'Text',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).setNode('heading', { level: 3 }).run()
     },
@@ -26,6 +29,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Bullet List',
     icon: <strong>•</strong>,
+    section: 'Lists',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).toggleBulletList().run()
     },
@@ -33,6 +37,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Ordered List',
     icon: <strong>1.</strong>,
+    section: 'Lists',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).toggleOrderedList().run()
     },
@@ -40,6 +45,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Task List',
     icon: <strong>☑</strong>,
+    section: 'Lists',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).toggleTaskList().run()
     },
@@ -47,6 +53,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Quote',
     icon: <strong>❝</strong>,
+    section: 'Text',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).toggleBlockquote().run()
     },
@@ -54,6 +61,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Callout',
     icon: <strong>ℹ️</strong>,
+    section: 'Blocks',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).toggleBlockquote().insertContent('**Note:** ').run()
     },
@@ -61,6 +69,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Code Block',
     icon: <strong>{'<>'}</strong>,
+    section: 'Blocks',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).toggleCodeBlock().run()
     },
@@ -68,6 +77,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Divider',
     icon: <strong>—</strong>,
+    section: 'Text',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).setHorizontalRule().run()
     },
@@ -75,6 +85,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Image',
     icon: <strong>🖼️</strong>,
+    section: 'Media',
     command: ({ editor, range }) => {
       const url = window.prompt('Enter image URL:')
       if (url) {
@@ -87,6 +98,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'YouTube',
     icon: <strong>📺</strong>,
+    section: 'Media',
     command: ({ editor, range }) => {
       const url = window.prompt('Enter YouTube URL:')
       if (url) {
@@ -99,6 +111,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Table',
     icon: <strong>📊</strong>,
+    section: 'Media',
     command: ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
     },
@@ -106,6 +119,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Date',
     icon: <strong>📅</strong>,
+    section: 'Insert',
     command: ({ editor, range }) => {
       const date = new Date().toISOString().split('T')[0]
       editor.chain().focus().deleteRange(range).insertContent(date).run()
@@ -114,6 +128,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Time',
     icon: <strong>⌚</strong>,
+    section: 'Insert',
     command: ({ editor, range }) => {
       const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       editor.chain().focus().deleteRange(range).insertContent(time).run()
@@ -122,6 +137,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Summarize Note',
     icon: <strong>✨</strong>,
+    section: 'AI',
     command: async ({ editor, range }) => {
       // 1. Delete the slash command text
       editor.chain().focus().deleteRange(range).run();
@@ -174,6 +190,7 @@ export const defaultCommands: CommandItem[] = [
   {
     title: 'Continue Writing',
     icon: <strong>🤖</strong>,
+    section: 'AI',
     command: async ({ editor, range }) => {
       editor.chain().focus().deleteRange(range).run();
 

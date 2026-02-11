@@ -60,6 +60,7 @@ export const InteractiveTemplatesPlugin: Plugin = {
         description: 'Insert template',
         searchTerms: ['template', t.title.toLowerCase()],
         icon: <span className="text-lg">📋</span>,
+        section: 'Templates',
         command: ({ editor, range }) => {
             const filled = processTemplate(t.content);
             if (filled) {
@@ -69,12 +70,66 @@ export const InteractiveTemplatesPlugin: Plugin = {
       });
     });
 
+    // Smart Meeting Command
+    ctx.registerCommand({
+        title: 'Smart Meeting',
+        description: 'AI-generated meeting agenda',
+        searchTerms: ['meeting', 'agenda', 'ai'],
+        icon: <span className="text-lg">🤖</span>,
+        section: 'AI',
+        command: async ({ editor, range }) => {
+            const topic = window.prompt('Meeting Topic:');
+            if (!topic) return;
+            const attendees = window.prompt('Attendees:');
+
+            const placeholder = `[Generating Agenda for "${topic}"...]`;
+            editor.chain().focus().deleteRange(range).insertContent(placeholder).run();
+
+            try {
+                const prompt = `Generate a structured meeting agenda for a meeting about "${topic}" with attendees: ${attendees || 'Team'}.
+                Include sections for:
+                - Date: ${new Date().toLocaleDateString()}
+                - Attendees
+                - Objective
+                - Agenda Items (Timeboxed)
+                - Discussion Notes
+                - Action Items
+                Format as Markdown.`;
+
+                const content = await AIService.generateText(prompt, 500);
+
+                 const doc = editor.state.doc;
+                 let from = -1;
+                 let to = -1;
+
+                 doc.descendants((node, pos) => {
+                    if (node.isText && node.text && node.text.includes(placeholder)) {
+                        from = pos + node.text.indexOf(placeholder);
+                        to = from + placeholder.length;
+                        return false;
+                    }
+                 });
+
+                 if (from !== -1) {
+                     editor.chain().focus().deleteRange({ from, to }).insertContent(content).run();
+                 } else {
+                     editor.chain().focus().insertContent(content).run();
+                 }
+
+            } catch (e) {
+                console.error(e);
+                alert('Failed to generate agenda');
+            }
+        }
+    });
+
     // 2. AI Draft Command
     ctx.registerCommand({
       title: 'Draft with AI',
       description: 'Generate text from a prompt',
       searchTerms: ['ai', 'generate', 'draft', 'gpt'],
       icon: <span className="text-lg">✨</span>,
+      section: 'AI',
       command: async ({ editor, range }) => {
         const prompt = window.prompt('What should I write?');
         if (!prompt) return;
@@ -142,6 +197,7 @@ export const InteractiveTemplatesPlugin: Plugin = {
           description: 'Insert user template',
           searchTerms: ['template', n.name.toLowerCase()],
           icon: <span className="text-lg">📄</span>,
+          section: 'User Templates',
           command: async ({ editor, range }) => {
               // Fetch full content
               try {

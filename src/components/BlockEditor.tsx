@@ -153,7 +153,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
            ...getWikiLinkSuggestionOptions([]),
            items: ({ query }) => {
               const items = notesRef.current;
-              return items.filter((item) => {
+              const results = items.filter((item) => {
                 const parts = (item.description || '').split(' ::: ');
                 const subject = parts[0] || '';
                 const tags = parts[2] || '';
@@ -161,6 +161,19 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
                        subject.toLowerCase().includes(query.toLowerCase()) ||
                        tags.toLowerCase().includes(query.toLowerCase());
               }).slice(0, 10);
+
+              const exactMatch = results.find(i => i.name.toLowerCase() === query.toLowerCase());
+              if (!exactMatch && query.trim().length > 0) {
+                  results.push({
+                      id: 'CREATE_NEW',
+                      name: query,
+                      description: 'Create new note ::: Actions',
+                      author: 'System',
+                      date: new Date().toISOString(),
+                      type: 'note'
+                  });
+              }
+              return results;
            }
         },
       }),
