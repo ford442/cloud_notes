@@ -18,6 +18,7 @@ export interface CommandItem {
   description?: string;
   searchTerms?: string[];
   icon: React.ReactNode;
+  section?: string;
   command: (props: CommandProps) => void;
 }
 
