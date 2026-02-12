@@ -1,9 +1,96 @@
 import type { Plugin } from '../services/plugin';
+import { AIService } from '../services/ai';
+import { SemanticService } from '../services/semantic';
+import { StorageService } from '../services/api';
 
 export const AIPlugin: Plugin = {
   id: 'ai-features',
   name: 'AI Features',
   init: (ctx) => {
+    // Slash Command: Ask AI (Q&A)
+    ctx.registerCommand({
+        title: 'Ask AI',
+        description: 'Ask a question about your notes',
+        searchTerms: ['ask', 'qa', 'question', 'query', 'ai'],
+        icon: <span className="text-lg">❓</span>,
+        section: 'AI',
+        command: async ({ editor, range }) => {
+            const question = window.prompt('What is your question?');
+            if (!question) return;
+
+            const uniqueId = Date.now().toString().slice(-4);
+            const placeholder = `[Thinking about "${question}" ${uniqueId}...]`;
+            editor.chain().focus().deleteRange(range).insertContent(placeholder).run();
+
+            try {
+                // 1. Find relevant notes
+                const relevant = await SemanticService.findSimilar(question, undefined, 3);
+
+                // 2. Fetch content
+                const context = [];
+                for (const item of relevant) {
+                    try {
+                         // Try cache first
+                         let note = await StorageService.getCachedNote(item.id);
+                         if (!note) {
+                             note = await StorageService.getNoteContent(item.id);
+                         }
+                         if (note) {
+                            context.push(`Note: ${note.title}\n${note.content}`);
+                         }
+                    } catch (e) { console.warn('Failed to fetch note for context', e); }
+                }
+
+                if (context.length === 0) {
+                     // Fallback if no relevant notes found (or no index)
+                     context.push("No relevant notes found. Answer based on general knowledge if possible.");
+                }
+
+                // 3. Generate Answer
+                const prompt = `Context:\n${context.join('\n\n')}\n\nQuestion: ${question}\n\nAnswer based on the context above:`;
+                const answer = await AIService.generateText(prompt, 300);
+
+                // 4. Replace
+                 const doc = editor.state.doc;
+                 let from = -1;
+                 let to = -1;
+
+                 doc.descendants((node, pos) => {
+                    if (node.isText && node.text && node.text.includes(placeholder)) {
+                        from = pos + node.text.indexOf(placeholder);
+                        to = from + placeholder.length;
+                        return false;
+                    }
+                 });
+
+                 const content = `> **Q:** ${question}\n\n${answer}`;
+
+                 if (from !== -1) {
+                     editor.chain().focus().deleteRange({ from, to }).insertContent(content).run();
+                 } else {
+                     editor.chain().focus().insertContent(content).run();
+                 }
+
+            } catch (e) {
+                console.error(e);
+                alert('Failed to get answer');
+
+                // Cleanup
+                 const doc = editor.state.doc;
+                 let from = -1;
+                 let to = -1;
+                 doc.descendants((node, pos) => {
+                    if (node.isText && node.text && node.text.includes(placeholder)) {
+                        from = pos + node.text.indexOf(placeholder);
+                        to = from + placeholder.length;
+                        return false;
+                    }
+                 });
+                 if (from !== -1) editor.chain().focus().deleteRange({ from, to }).run();
+            }
+        }
+    });
+
     // Slash Command: Auto-Link
     ctx.registerCommand({
       title: 'Auto-Link Notes',
