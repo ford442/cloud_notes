@@ -11,7 +11,9 @@ interface SettingsModalProps {
   setTheme: (theme: 'light' | 'dark') => void;
 }
 
-const Tabs = ['General', 'Security', 'Integrations'];
+import { SemanticService } from '../services/semantic';
+
+const Tabs = ['General', 'Security', 'Integrations', 'Data'];
 
 export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, theme, setTheme }: SettingsModalProps) => {
   const { addToast } = useToast();
@@ -19,6 +21,8 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
   const [readwiseToken, setReadwiseToken] = useState('');
   const [encryptionKey, setEncryptionKey] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [isReindexing, setIsReindexing] = useState(false);
+  const [reindexProgress, setReindexProgress] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -40,6 +44,24 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
         addToast('Encryption key updated. Please reload.', 'success');
         setTimeout(() => window.location.reload(), 1500);
     }
+  };
+
+  const handleReindex = async () => {
+      if (isReindexing) return;
+      setIsReindexing(true);
+      setReindexProgress('Starting...');
+      try {
+          await SemanticService.reindexAll((count, total) => {
+              setReindexProgress(`Indexing ${count} / ${total}...`);
+          });
+          addToast('Re-indexing complete', 'success');
+          setReindexProgress('Done');
+      } catch (e) {
+          console.error(e);
+          addToast('Re-indexing failed', 'error');
+      } finally {
+          setIsReindexing(false);
+      }
   };
 
   if (!isOpen) return null;
@@ -123,6 +145,36 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
                   </button>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === 'Data' && (
+            <div className="space-y-4">
+               <div>
+                   <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Semantic Index</h3>
+                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                       Re-build the vector index for all your notes. This allows the AI Q&A and "Find Similar" features to work across your entire knowledge base.
+                       This process happens entirely in your browser.
+                   </p>
+
+                   <div className="flex items-center gap-4">
+                       <button
+                         onClick={handleReindex}
+                         disabled={isReindexing}
+                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                       >
+                         {isReindexing ? (
+                             <>
+                               <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                               Indexing...
+                             </>
+                         ) : 'Re-index All Notes'}
+                       </button>
+                       {reindexProgress && (
+                           <span className="text-sm text-slate-500 font-mono">{reindexProgress}</span>
+                       )}
+                   </div>
+               </div>
             </div>
           )}
 

@@ -1,5 +1,6 @@
 import { AIService } from './ai';
 import { db, STORE_EMBEDDINGS } from '../utils/db';
+import { StorageService } from './api';
 
 // Cosine similarity between two vectors
 const cosineSimilarity = (a: number[], b: number[]) => {
@@ -55,6 +56,33 @@ export const SemanticService = {
     } catch (e) {
       console.error('[Semantic] Find similar failed', e);
       return [];
+    }
+  },
+
+  async reindexAll(onProgress?: (count: number, total: number) => void) {
+    const notes = await StorageService.getNotes();
+    let count = 0;
+    for (const note of notes) {
+      try {
+        // Try cache first
+        let contentVal = '';
+        const cached = await StorageService.getCachedNote(note.id);
+        if (cached) {
+          contentVal = cached.content;
+        } else {
+          // Network fallback
+          const full = await StorageService.getNoteContent(note.id);
+          contentVal = full.content;
+        }
+
+        if (contentVal && contentVal.length > 30) {
+          await this.indexNote(note.id, contentVal);
+        }
+      } catch (e) {
+        console.warn('Failed to reindex', note.id, e);
+      }
+      count++;
+      if (onProgress) onProgress(count, notes.length);
     }
   }
 };

@@ -32,6 +32,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [results, setResults] = useState<ActionItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input when opened
@@ -75,7 +76,10 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
     if (!query.trim()) {
       // Wrap in timeout to avoid "setState during render" warning
       const t = setTimeout(() => {
-        if (isActive) setResults(allItems.slice(0, 50));
+        if (isActive) {
+           setResults(allItems.slice(0, 50));
+           setIsSearching(false);
+        }
       }, 0);
       return () => {
         isActive = false;
@@ -83,9 +87,16 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
       };
     }
 
+    setIsSearching(true);
     const timer = setTimeout(async () => {
       // 1. Fuzzy Search (Fast, Local)
       const fuzzyResults = fuse.search(query).map(r => r.item).slice(0, 50);
+
+      // Immediate update with fuzzy results
+      if (isActive) {
+          setResults(fuzzyResults);
+          setSelectedIndex(0);
+      }
 
       // 2. Semantic Search (Async, Smart)
       let semanticItems: ActionItem[] = [];
@@ -124,7 +135,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
       }
 
       setResults(merged.slice(0, 50));
-      setSelectedIndex(0); // Reset selection on new results
+      setIsSearching(false);
     }, 300); // 300ms Debounce
 
     return () => {
@@ -188,6 +199,14 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
           />
           <div className="text-xs font-medium text-slate-400 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</div>
         </div>
+
+        {/* Loading Indicator */}
+        {isSearching && (
+           <div className="px-4 py-2 text-xs text-blue-500 font-medium bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30 flex items-center gap-2">
+               <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+               Searching semantically...
+           </div>
+        )}
 
         {/* Results List */}
         <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
