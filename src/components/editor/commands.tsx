@@ -1,5 +1,6 @@
 import type { CommandItem } from './slash-command'
 import { AIService } from '../../services/ai'
+import { PluginRegistry } from '../../services/plugin'
 
 export const defaultCommands: CommandItem[] = [
   {
@@ -86,12 +87,13 @@ export const defaultCommands: CommandItem[] = [
     title: 'Image',
     icon: <strong>🖼️</strong>,
     section: 'Media',
-    command: ({ editor, range }) => {
-      const url = window.prompt('Enter image URL:')
+    command: async ({ editor, range }) => {
+      // Clear slash command first to close the menu
+      editor.chain().focus().deleteRange(range).run()
+
+      const url = await PluginRegistry.prompt('Enter image URL:')
       if (url) {
-        editor.chain().focus().deleteRange(range).setImage({ src: url }).run()
-      } else {
-        editor.chain().focus().deleteRange(range).run()
+        editor.chain().focus().setImage({ src: url }).run()
       }
     },
   },
@@ -99,12 +101,13 @@ export const defaultCommands: CommandItem[] = [
     title: 'YouTube',
     icon: <strong>📺</strong>,
     section: 'Media',
-    command: ({ editor, range }) => {
-      const url = window.prompt('Enter YouTube URL:')
+    command: async ({ editor, range }) => {
+      // Clear slash command first to close the menu
+      editor.chain().focus().deleteRange(range).run()
+
+      const url = await PluginRegistry.prompt('Enter YouTube URL:')
       if (url) {
-        editor.chain().focus().deleteRange(range).setYoutubeVideo({ src: url }).run()
-      } else {
-        editor.chain().focus().deleteRange(range).run()
+        editor.chain().focus().setYoutubeVideo({ src: url }).run()
       }
     },
   },

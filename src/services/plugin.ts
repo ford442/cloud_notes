@@ -3,6 +3,14 @@ import type { ActionItem } from '../components/CommandPalette';
 import type { Note, CloudItemMeta } from './api';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 
+export interface DialogRequest {
+  type: 'alert' | 'confirm' | 'prompt';
+  message: string;
+  defaultValue?: string;
+}
+
+export type DialogHandler = (request: DialogRequest) => Promise<string | boolean | undefined | null>;
+
 export interface PluginContext {
   registerCommand: (command: CommandItem) => void;
   registerCommandProvider: (provider: () => CommandItem[]) => void;
@@ -14,6 +22,9 @@ export interface PluginContext {
   navigateTo: (id: string) => void;
   getCanvasAPI: () => ExcalidrawImperativeAPI | null;
   setMode: (mode: string) => void;
+  alert: (message: string) => Promise<void>;
+  confirm: (message: string) => Promise<boolean>;
+  prompt: (message: string, defaultValue?: string) => Promise<string | null>;
 }
 
 export interface Plugin {
@@ -36,6 +47,25 @@ class PluginRegistryService {
   private navigator: (id: string) => void = () => {};
   private modeSetter: (mode: string) => void = () => {};
   private canvasAPI: ExcalidrawImperativeAPI | null = null;
+  private dialogHandler: DialogHandler = async () => null;
+
+  setDialogHandler(handler: DialogHandler) {
+    this.dialogHandler = handler;
+  }
+
+  async alert(message: string): Promise<void> {
+    await this.dialogHandler({ type: 'alert', message });
+  }
+
+  async confirm(message: string): Promise<boolean> {
+    const result = await this.dialogHandler({ type: 'confirm', message });
+    return result === true;
+  }
+
+  async prompt(message: string, defaultValue?: string): Promise<string | null> {
+    const result = await this.dialogHandler({ type: 'prompt', message, defaultValue });
+    return typeof result === 'string' ? result : null;
+  }
 
   setNoteGetter(getter: () => Note | null) {
     this.noteGetter = getter;
@@ -95,7 +125,10 @@ class PluginRegistryService {
       createNote: (note) => this.noteCreator(note),
       navigateTo: (id) => this.navigator(id),
       getCanvasAPI: () => this.canvasAPI,
-      setMode: (mode) => this.modeSetter(mode)
+      setMode: (mode) => this.modeSetter(mode),
+      alert: (msg) => this.alert(msg),
+      confirm: (msg) => this.confirm(msg),
+      prompt: (msg, def) => this.prompt(msg, def)
     };
 
     try {
