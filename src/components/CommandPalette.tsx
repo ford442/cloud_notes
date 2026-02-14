@@ -116,7 +116,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
             perform: () => onNavigate(note.id),
             keywords: [note.description]
           };
-        }).filter(Boolean) as ActionItem[];
+        }).filter((item): item is ActionItem => item !== null);
       } catch (e) {
         console.warn('Semantic search failed', e);
       }
@@ -194,7 +194,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
             value={query}
             onChange={e => {
               setQuery(e.target.value);
-              // Selection reset handled in effect
+              if (e.target.value.trim()) setIsSearching(true);
             }}
           />
           <div className="text-xs font-medium text-slate-400 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</div>

@@ -15,12 +15,14 @@ export const AIPlugin: Plugin = {
         icon: <span className="text-lg">❓</span>,
         section: 'AI',
         command: async ({ editor, range }) => {
-            const question = window.prompt('What is your question?');
+            editor.chain().focus().deleteRange(range).run();
+
+            const question = await ctx.prompt('What is your question?');
             if (!question) return;
 
             const uniqueId = Date.now().toString().slice(-4);
             const placeholder = `[Thinking about "${question}" ${uniqueId}...]`;
-            editor.chain().focus().deleteRange(range).insertContent(placeholder).run();
+            editor.chain().focus().insertContent(placeholder).run();
 
             try {
                 // 1. Find relevant notes
@@ -73,7 +75,7 @@ export const AIPlugin: Plugin = {
 
             } catch (e) {
                 console.error(e);
-                alert('Failed to get answer');
+                await ctx.alert('Failed to get answer');
 
                 // Cleanup
                  const doc = editor.state.doc;

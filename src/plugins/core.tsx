@@ -19,14 +19,17 @@ export const StatsPlugin: Plugin = {
       icon: <span className="text-lg">📊</span>,
       perform: () => {
         const note = ctx.getCurrentNote();
-        if (!note) return alert('No note selected');
+        if (!note) {
+            ctx.alert('No note selected');
+            return;
+        }
 
         const content = note.content || '';
         const words = content.trim().split(/\s+/).filter(Boolean).length;
         const chars = content.length;
         const lines = content.split('\n').length;
 
-        alert(`Statistics for "${note.title}"\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
+        ctx.alert(`Statistics for "${note.title}"\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
       }
     });
 
@@ -35,7 +38,7 @@ export const StatsPlugin: Plugin = {
       description: 'Show word count and stats',
       searchTerms: ['stats', 'count', 'word'],
       icon: <span className="text-lg">📊</span>,
-      command: ({ editor, range }) => {
+      command: async ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
 
         const content = editor.getText();
@@ -43,7 +46,7 @@ export const StatsPlugin: Plugin = {
         const chars = content.length;
         const lines = content.split('\n').length;
 
-        alert(`Statistics\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
+        await ctx.alert(`Statistics\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
       }
     });
   }
@@ -74,7 +77,10 @@ export const ExportPlugin: Plugin = {
       icon: <span className="text-lg">⬇️</span>,
       perform: () => {
         const note = ctx.getCurrentNote();
-        if (!note) return alert('No note selected');
+        if (!note) {
+            ctx.alert('No note selected');
+            return;
+        }
         downloadFile(`${note.title || 'untitled'}.md`, note.content, 'text/markdown');
       }
     });
@@ -86,7 +92,10 @@ export const ExportPlugin: Plugin = {
       icon: <span className="text-lg">📦</span>,
       perform: () => {
         const note = ctx.getCurrentNote();
-        if (!note) return alert('No note selected');
+        if (!note) {
+            ctx.alert('No note selected');
+            return;
+        }
         downloadFile(`${note.title || 'untitled'}.json`, JSON.stringify(note, null, 2), 'application/json');
       }
     });

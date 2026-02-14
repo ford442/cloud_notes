@@ -17,6 +17,8 @@ import { ToastProvider, useToast } from './components/Toast'
 import { SemanticService } from './services/semantic'
 import { SettingsModal } from './components/SettingsModal'
 import { createPackedDescription } from './utils/metadata'
+import { Dialog } from './components/Dialog'
+import type { DialogType } from './components/Dialog'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
@@ -42,6 +44,33 @@ function App() {
   // Command Palette
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+
+  // Global Dialog State
+  const [dialogConfig, setDialogConfig] = useState<{
+    isOpen: boolean;
+    type: DialogType;
+    message: string;
+    defaultValue?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolve: (value: any) => void;
+  } | null>(null);
+
+  useEffect(() => {
+     PluginRegistry.setDialogHandler((request) => {
+         return new Promise((resolve) => {
+             setDialogConfig({
+                 isOpen: true,
+                 type: request.type,
+                 message: request.message,
+                 defaultValue: request.defaultValue,
+                 resolve: (val) => {
+                     setDialogConfig(null);
+                     resolve(val);
+                 }
+             });
+         });
+     });
+  }, []);
 
   // Editor mode state
   const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards'>('rich')
@@ -323,6 +352,26 @@ function App() {
              theme={theme}
              setTheme={(t) => setTheme(t as 'light' | 'dark')}
            />
+        )}
+
+        {/* Global Dialog */}
+        {dialogConfig && (
+            <Dialog
+                key={dialogConfig.message + dialogConfig.type}
+                isOpen={dialogConfig.isOpen}
+                type={dialogConfig.type}
+                message={dialogConfig.message}
+                defaultValue={dialogConfig.defaultValue}
+                onConfirm={(val) => {
+                    if (dialogConfig.type === 'confirm') dialogConfig.resolve(true);
+                    else if (dialogConfig.type === 'prompt') dialogConfig.resolve(val);
+                    else dialogConfig.resolve(undefined); // alert
+                }}
+                onCancel={() => {
+                    if (dialogConfig.type === 'confirm') dialogConfig.resolve(false);
+                    else dialogConfig.resolve(null); // prompt or alert
+                }}
+            />
         )}
 
         {/* Command Palette */}
