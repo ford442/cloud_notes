@@ -338,6 +338,56 @@ function App() {
     }
   };
 
+  const handleMoveNote = async (id: string, newSubject: string, newSection: string) => {
+    setIsLoading(true);
+    try {
+      // 1. Find existing meta
+      const noteMeta = notes.find(n => n.id === id);
+      if (!noteMeta) throw new Error("Note not found");
+
+      // 2. Get Content (Cache or Network)
+      let fullNote = await StorageService.getCachedNote(id);
+      if (!fullNote) {
+         fullNote = await StorageService.getNoteContent(id);
+      }
+
+      if (!fullNote) throw new Error("Failed to load note content");
+
+      // 3. Update Metadata
+      const updatedNote: Note = {
+          ...fullNote,
+          subject: newSubject,
+          section: newSection
+      };
+
+      // 4. Save
+      const res = await StorageService.updateNote(id, updatedNote, authorName);
+
+      if (res.success) {
+          // 5. Optimistic Update of List
+          const packedDesc = createPackedDescription(updatedNote);
+          const newItem = { ...noteMeta, description: packedDesc };
+
+          setNotes(prev => prev.map(n => n.id === id ? newItem : n));
+
+          // Update current note if it's the one being moved
+          if (currentNote?.id === id) {
+              setCurrentNote(updatedNote);
+          }
+
+          addToast(`Moved to ${newSubject}/${newSection}`, "success");
+      } else {
+          throw new Error("Update failed");
+      }
+
+    } catch (e) {
+        console.error(e);
+        addToast("Failed to move note", "error");
+    } finally {
+        setIsLoading(false);
+    }
+  };
+
   return (
     <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
       <div className="h-full w-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
@@ -390,6 +440,7 @@ function App() {
           onSelect={handleSelectNote}
           onNew={handleNew}
           isLoading={isLoading}
+          onMoveNote={handleMoveNote}
         />
 
         {/* Main Content */}

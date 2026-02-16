@@ -8,6 +8,7 @@ interface SidebarProps {
   onSelect: (id: string) => void;
   onNew: () => void;
   isLoading: boolean;
+  onMoveNote?: (id: string, newSubject: string, newSection: string) => void;
 }
 
 // Icons
@@ -32,9 +33,10 @@ const parseMeta = (desc: string) => {
   return { subject: parts[0] || 'General', section: parts[1] || 'Inbox' };
 };
 
-export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: SidebarProps) => {
+export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState('');
+  const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
 
   const toggle = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -126,7 +128,25 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
               {/* SUBJECT (Root) */}
               <div 
                 onClick={() => toggle(subject)}
-                className="flex items-center gap-3 p-3 hover:bg-slate-200/50 dark:hover:bg-slate-700/30 rounded-xl cursor-pointer text-slate-700 dark:text-slate-200 transition-all group"
+                onDragOver={(e) => {
+                    e.preventDefault();
+                    if (onMoveNote) setDragOverTarget(subject);
+                }}
+                onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                    setDragOverTarget(null);
+                }}
+                onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOverTarget(null);
+                    const id = e.dataTransfer.getData('text/plain');
+                    if (id && onMoveNote) onMoveNote(id, subject, 'Inbox');
+                }}
+                className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer text-slate-700 dark:text-slate-200 transition-all group ${
+                    dragOverTarget === subject
+                    ? 'bg-blue-100 dark:bg-blue-900/40 border border-blue-500/30'
+                    : 'hover:bg-slate-200/50 dark:hover:bg-slate-700/30 border border-transparent'
+                }`}
               >
                 <span className={`text-xs text-slate-400 dark:text-slate-400 transition-transform ${(!isSearching && collapsed[subject]) ? '-rotate-90' : ''}`}>▼</span>
                 <FolderIcon />
@@ -142,7 +162,25 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
                       {/* SECTION (Sub-folder) */}
                       <div 
                         onClick={() => toggle(`${subject}-${section}`)}
-                        className="flex items-center gap-3 p-2 hover:bg-slate-100/50 dark:hover:bg-slate-700/20 rounded-lg cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
+                        onDragOver={(e) => {
+                            e.preventDefault();
+                            if (onMoveNote) setDragOverTarget(`${subject}-${section}`);
+                        }}
+                        onDragLeave={(e) => {
+                            if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                            setDragOverTarget(null);
+                        }}
+                        onDrop={(e) => {
+                            e.preventDefault();
+                            setDragOverTarget(null);
+                            const id = e.dataTransfer.getData('text/plain');
+                            if (id && onMoveNote) onMoveNote(id, subject, section);
+                        }}
+                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 ${
+                            dragOverTarget === `${subject}-${section}`
+                            ? 'bg-blue-100 dark:bg-blue-900/40'
+                            : 'hover:bg-slate-100/50 dark:hover:bg-slate-700/20'
+                        }`}
                       >
                         <span className={`text-xs text-slate-400 dark:text-slate-500 transition-transform ${(!isSearching && collapsed[`${subject}-${section}`]) ? '-rotate-90' : ''}`}>▼</span>
                         <SectionIcon />
@@ -156,6 +194,11 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading }: Sideb
                           {sectionNotes.map(note => (
                             <div
                               key={note.id}
+                              draggable="true"
+                              onDragStart={(e) => {
+                                  e.dataTransfer.setData('text/plain', note.id);
+                                  e.dataTransfer.effectAllowed = 'move';
+                              }}
                               onClick={() => onSelect(note.id)}
                               className={`
                                 group flex items-center gap-3 px-3 py-2 rounded-lg text-sm cursor-pointer transition-all relative
