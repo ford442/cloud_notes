@@ -84,6 +84,19 @@ export const defaultCommands: CommandItem[] = [
     },
   },
   {
+    title: 'Excalidraw',
+    icon: <strong>🎨</strong>,
+    section: 'Media',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent({
+         type: 'excalidraw',
+         attrs: {
+           data: JSON.stringify({ elements: [], appState: { viewBackgroundColor: '#ffffff' } })
+         }
+      }).run()
+    },
+  },
+  {
     title: 'Image',
     icon: <strong>🖼️</strong>,
     section: 'Media',
