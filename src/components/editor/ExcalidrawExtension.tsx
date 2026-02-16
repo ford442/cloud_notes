@@ -1,11 +1,15 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 import { Excalidraw } from '@excalidraw/excalidraw'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 
 const ExcalidrawComponent = (props: any) => {
   const node = props.node;
+  const updateAttributes = props.updateAttributes;
   const dataString = node.attrs.data;
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [tempData, setTempData] = useState<any>(null);
 
   const parsedData = useMemo(() => {
       try {
@@ -25,14 +29,41 @@ const ExcalidrawComponent = (props: any) => {
     )
   }
 
+  const handleEdit = () => {
+      setTempData(parsedData);
+      setIsEditing(true);
+  };
+
+  const handleSave = () => {
+      if (tempData) {
+          updateAttributes({ data: JSON.stringify(tempData) });
+      }
+      setIsEditing(false);
+  };
+
   return (
-    <NodeViewWrapper className="excalidraw-component border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden my-4 shadow-sm relative group">
-      {/* Label */}
-      <div className="absolute top-2 right-2 z-10 bg-white/80 dark:bg-slate-800/80 backdrop-blur px-2 py-1 rounded text-xs font-mono text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none select-none">
-        Excalidraw Preview
+    <NodeViewWrapper className={`excalidraw-component border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden my-4 shadow-sm relative group ${isEditing ? 'ring-2 ring-blue-500 z-50' : ''}`}>
+
+      {/* Controls */}
+      <div className="absolute top-2 right-2 z-10 flex gap-2">
+          {!isEditing ? (
+              <button
+                onClick={handleEdit}
+                className="bg-white/80 dark:bg-slate-800/80 backdrop-blur px-3 py-1 rounded text-xs font-medium text-slate-700 dark:text-slate-200 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white dark:hover:bg-slate-700"
+              >
+                Edit Sketch
+              </button>
+          ) : (
+              <button
+                onClick={handleSave}
+                className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium shadow-sm hover:bg-blue-700 transition-colors"
+              >
+                Done
+              </button>
+          )}
       </div>
 
-      <div style={{ height: '400px', width: '100%', position: 'relative' }}>
+      <div style={{ height: '500px', width: '100%', position: 'relative' }}>
          <Excalidraw
             initialData={{
                 elements: parsedData.elements,
@@ -44,9 +75,14 @@ const ExcalidrawComponent = (props: any) => {
                 },
                 scrollToContent: true
             }}
-            viewModeEnabled={true}
-            zenModeEnabled={true}
-            gridModeEnabled={false}
+            viewModeEnabled={!isEditing}
+            zenModeEnabled={!isEditing}
+            gridModeEnabled={isEditing}
+            onChange={(elements, appState) => {
+                if (isEditing) {
+                    setTempData({ elements, appState });
+                }
+            }}
          />
       </div>
     </NodeViewWrapper>
