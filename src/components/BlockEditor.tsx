@@ -24,6 +24,8 @@ import { defaultCommands } from './editor/commands'
 import { BlockHandle } from './editor/BlockHandle'
 import { processImage } from '../utils/media'
 import { ExcalidrawExtension } from './editor/ExcalidrawExtension'
+import { AudioExtension } from './editor/AudioExtension'
+import { StorageService, API_BASE_URL } from '../services/api'
 
 interface BlockEditorProps {
   noteId: string;
@@ -91,6 +93,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
           }
         }
       }),
+      AudioExtension,
       ExcalidrawExtension,
       StarterKit.configure({
         // Disable extensions that clash with our custom ones if needed
@@ -182,7 +185,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       attributes: {
         class: 'prose prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px] p-8',
       },
-      handleDrop: (view, event, _slice, _moved) => {
+      handleDrop: (view, event) => {
         // 1. Handle Image Drop
         if (event.dataTransfer?.files?.length) {
            const file = event.dataTransfer.files[0];
@@ -234,10 +237,45 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         }
         return false;
       },
-      handlePaste: (view, event, _slice) => {
+      handlePaste: (view, event) => {
         const items = Array.from(event.clipboardData?.items || []);
-        const imageItem = items.find(item => item.type.startsWith('image/'));
 
+        // 1. Audio Paste
+        const audioItem = items.find(item => item.type.startsWith('audio/'));
+        if (audioItem) {
+            const file = audioItem.getAsFile();
+            if (file) {
+                 event.preventDefault();
+                 const id = Math.random().toString(36).substring(7);
+                 const placeholder = `[Uploading Audio ${id}...]`;
+                 const tr = view.state.tr.replaceSelectionWith(view.state.schema.text(placeholder));
+                 view.dispatch(tr);
+
+                 StorageService.uploadFile(file, "User", "Pasted Audio").then(res => {
+                     if (res.success && res.id) {
+                         const url = `${API_BASE_URL}/api/samples/${res.id}`;
+
+                         let pos = -1;
+                         view.state.doc.descendants((node, position) => {
+                             if (node.isText && node.text?.includes(placeholder)) {
+                                 pos = position + node.text.indexOf(placeholder);
+                                 return false;
+                             }
+                         });
+
+                         if (pos !== -1) {
+                             const node = view.state.schema.nodes.audio.create({ src: url });
+                             const tr = view.state.tr.replaceWith(pos, pos + placeholder.length, node);
+                             view.dispatch(tr);
+                         }
+                     }
+                 });
+                 return true;
+            }
+        }
+
+        // 2. Image Paste
+        const imageItem = items.find(item => item.type.startsWith('image/'));
         if (imageItem) {
             const file = imageItem.getAsFile();
             if (file) {
@@ -250,6 +288,20 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
                  return true;
             }
         }
+
+        // 3. YouTube Link Paste
+        const text = event.clipboardData?.getData('text/plain');
+        if (text) {
+             const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
+             if (youtubeRegex.test(text.trim())) {
+                 event.preventDefault();
+                 const node = view.state.schema.nodes.youtube.create({ src: text.trim() });
+                 const tr = view.state.tr.replaceSelectionWith(node);
+                 view.dispatch(tr);
+                 return true;
+             }
+        }
+
         return false;
       },
       handleClick: (_view, _pos, event) => {
