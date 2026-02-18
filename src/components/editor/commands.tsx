@@ -1,6 +1,8 @@
 import type { CommandItem } from './slash-command'
 import { AIService } from '../../services/ai'
 import { PluginRegistry } from '../../services/plugin'
+import { SemanticService } from '../../services/semantic'
+import { StorageService } from '../../services/api'
 
 export const defaultCommands: CommandItem[] = [
   {
@@ -253,5 +255,95 @@ export const defaultCommands: CommandItem[] = [
         }
       }
     },
+  },
+  {
+    title: 'Smart Meeting',
+    icon: <strong>🗓️</strong>,
+    section: 'AI',
+    command: async ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+      const topic = await PluginRegistry.prompt('Meeting Topic:') || 'Untitled Meeting'
+      const attendees = await PluginRegistry.prompt('Attendees (comma separated):') || 'Unknown'
+
+      const template = `
+# Meeting: ${topic}
+**Date:** ${new Date().toLocaleDateString()}
+**Attendees:** ${attendees}
+
+## Agenda
+- [ ]
+
+## Notes
+-
+
+## Action Items
+- [ ]
+`
+      editor.chain().focus().insertContent(template).run()
+    }
+  },
+  {
+    title: 'Ask AI',
+    icon: <strong>🧠</strong>,
+    section: 'AI',
+    command: async ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+      const question = await PluginRegistry.prompt('What is your question?')
+      if (!question) return
+
+      const placeholderId = Math.random().toString(36).substring(7)
+      const placeholderText = `[AI THINKING ${placeholderId}...]`
+      editor.chain().focus().insertContent(`\n${placeholderText}\n`).run()
+
+      try {
+        // 1. Find relevant notes
+        const similar = await SemanticService.findSimilar(question, undefined, 3)
+
+        let context = ""
+        for (const item of similar) {
+            const note = await StorageService.getCachedNote(item.id) || await StorageService.getNoteContent(item.id).catch(() => null)
+            if (note) {
+                context += `Note: ${note.title}\nContent: ${note.content.substring(0, 500)}...\n\n`
+            }
+        }
+
+        // 2. Construct Prompt
+        const prompt = `Context:\n${context}\n\nQuestion: ${question}\n\nAnswer:`
+
+        // 3. Generate
+        const answer = await AIService.generateText(prompt, 300)
+
+        const formattedAnswer = `\n> **Q:** ${question}\n> **A:** ${answer}\n`
+
+        // 4. Replace placeholder
+        let pos = -1
+        editor.state.doc.descendants((node, position) => {
+          if (node.isText && node.text?.includes(placeholderText)) {
+            pos = position + node.text.indexOf(placeholderText)
+            return false
+          }
+        })
+
+        if (pos >= 0) {
+          editor.chain().focus().deleteRange({ from: pos, to: pos + placeholderText.length }).insertContent(formattedAnswer).run()
+        } else {
+          editor.chain().focus().insertContent(formattedAnswer).run()
+        }
+
+      } catch (e) {
+         console.error(e)
+         // Remove placeholder on error
+         let pos = -1
+         editor.state.doc.descendants((node, position) => {
+          if (node.isText && node.text?.includes(placeholderText)) {
+            pos = position + node.text.indexOf(placeholderText)
+            return false
+          }
+         })
+         if (pos >= 0) {
+           editor.chain().focus().deleteRange({ from: pos, to: pos + placeholderText.length }).insertContent('\n*AI Error*\n').run()
+         }
+      }
+    }
   },
 ]
