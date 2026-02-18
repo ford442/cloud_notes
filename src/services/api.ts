@@ -4,7 +4,7 @@ import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OP
 import { EncryptionService } from '../utils/encryption';
 import { createPackedDescription } from '../utils/metadata';
 
-const API_BASE_URL = "https://ford442-storage-manager.hf.space";
+export const API_BASE_URL = "https://ford442-storage-manager.hf.space";
 
 interface PendingOp {
   id: string;
@@ -150,6 +150,7 @@ export const StorageService = {
   },
 
   // Prepare payload for saving/updating
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async _preparePayload(note: Note, author: string): Promise<any> {
       // PACKING METADATA:
       // We format the description as: "Subject ::: Section ::: Tags ::: Links ::: Keywords"
@@ -242,6 +243,28 @@ export const StorageService = {
       return { success: true, id: data.id };
     } catch (e) {
       console.error(e);
+      return { success: false };
+    }
+  },
+
+  // Upload file (e.g. audio/image)
+  async uploadFile(file: File, author: string, description: string = ""): Promise<{ success: boolean; id?: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('author', author);
+      formData.append('description', description);
+
+      const res = await fetch(`${API_BASE_URL}/api/samples`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      return { success: true, id: data.id };
+    } catch (e) {
+      console.error('[API] Upload failed', e);
       return { success: false };
     }
   }

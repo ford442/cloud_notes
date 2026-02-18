@@ -5,6 +5,7 @@ import { DailyNotesPlugin } from './daily';
 import { FlashcardsPlugin } from './flashcards';
 import { InteractiveTemplatesPlugin } from './templates';
 import { ReadwisePlugin } from './readwise';
+import { VoicePlugin } from './voice';
 
 // --- Stats Plugin ---
 
@@ -132,4 +133,4 @@ export const TextToolsPlugin: Plugin = {
   }
 };
 
-export const CorePlugins = [InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin];
+export const CorePlugins = [InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin];
