@@ -33,6 +33,7 @@ interface BlockEditorProps {
   onChange: (val: string) => void;
   availableNotes?: CloudItemMeta[];
   onNavigate?: (id: string) => void;
+  lastExternalUpdate?: number;
 }
 
 // Helper to handle image uploads and placeholder management
@@ -89,7 +90,7 @@ const handleImageUpload = (view: any, file: File, pos: number) => {
   });
 };
 
-export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNavigate }: BlockEditorProps) => {
+export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNavigate, lastExternalUpdate }: BlockEditorProps) => {
   // Use refs to keep track of latest props without triggering re-init
   const notesRef = useRef(availableNotes);
   const onNavigateRef = useRef(onNavigate);
@@ -378,6 +379,17 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       onChange(markdown);
     },
   }, [ydoc]) // Re-create editor when ydoc changes
+
+  // Handle External Updates (e.g. Restore History)
+  const lastProcessedRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    if (editor && lastExternalUpdate && lastExternalUpdate !== lastProcessedRef.current) {
+       console.log('[BlockEditor] Force updating content from external source', lastExternalUpdate);
+       editor.commands.setContent(markdownToHtml(value));
+       lastProcessedRef.current = lastExternalUpdate;
+    }
+  }, [lastExternalUpdate, editor, value]);
 
   // Hydrate Yjs doc from props if empty
   useEffect(() => {
