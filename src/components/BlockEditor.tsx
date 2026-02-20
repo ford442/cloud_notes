@@ -22,7 +22,7 @@ import type { CloudItemMeta } from '../services/api'
 import { PluginRegistry } from '../services/plugin'
 import { defaultCommands } from './editor/commands'
 import { BlockHandle } from './editor/BlockHandle'
-import { processImage } from '../utils/media'
+import { processImageToBlob } from '../utils/media'
 import { ExcalidrawExtension } from './editor/ExcalidrawExtension'
 import { AudioExtension } from './editor/AudioExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
@@ -35,6 +35,59 @@ interface BlockEditorProps {
   onNavigate?: (id: string) => void;
 }
 
+// Helper to handle image uploads and placeholder management
+const handleImageUpload = (view: any, file: File, pos: number) => {
+  // Insert placeholder
+  const id = Math.random().toString(36).substring(7);
+  const placeholder = `[Uploading Image ${id}...]`;
+
+  // Use transaction to insert text at specific position
+  const tr = view.state.tr.insert(pos, view.state.schema.text(placeholder));
+  view.dispatch(tr);
+
+  processImageToBlob(file).then((blob: Blob) => {
+    // Convert Blob back to File for upload API
+    const fileName = (file.name || "image").replace(/\.[^/.]+$/, "") + ".webp";
+    const uploadFile = new File([blob], fileName, { type: 'image/webp' });
+    return StorageService.uploadFile(uploadFile, "User", "Uploaded Image");
+  }).then((res: { success: boolean; id?: string }) => {
+    if (res.success && res.id) {
+      const url = `${API_BASE_URL}/api/samples/${res.id}`;
+
+      // Find placeholder position
+      let targetPos = -1;
+      view.state.doc.descendants((node: any, position: number) => {
+        if (node.isText && node.text?.includes(placeholder)) {
+          targetPos = position + node.text.indexOf(placeholder);
+          return false;
+        }
+      });
+
+      if (targetPos !== -1) {
+        const node = view.state.schema.nodes.image.create({ src: url });
+        const tr = view.state.tr.replaceWith(targetPos, targetPos + placeholder.length, node);
+        view.dispatch(tr);
+      }
+    } else {
+      throw new Error("Upload failed");
+    }
+  }).catch((e: any) => {
+    console.error("Image upload failed", e);
+    // Remove placeholder on error
+    let targetPos = -1;
+    view.state.doc.descendants((node: any, position: number) => {
+      if (node.isText && node.text?.includes(placeholder)) {
+        targetPos = position + node.text.indexOf(placeholder);
+        return false;
+      }
+    });
+
+    if (targetPos !== -1) {
+      const tr = view.state.tr.delete(targetPos, targetPos + placeholder.length);
+      view.dispatch(tr);
+    }
+  });
+};
 
 export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNavigate }: BlockEditorProps) => {
   // Use refs to keep track of latest props without triggering re-init
@@ -193,15 +246,9 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
                event.preventDefault(); // Stop browser from opening file
 
                const coordinates = view.posAtCoords({ left: event.clientX, top: event.clientY });
+               const pos = coordinates?.pos ?? view.state.selection.from;
 
-               processImage(file).then(src => {
-                   if (coordinates) {
-                       const node = view.state.schema.nodes.image.create({ src });
-                       const tr = view.state.tr.insert(coordinates.pos, node);
-                       view.dispatch(tr);
-                   }
-               }).catch(e => console.error("Image drop failed", e));
-
+               handleImageUpload(view, file, pos);
                return true;
            }
         }
@@ -280,11 +327,17 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
             const file = imageItem.getAsFile();
             if (file) {
                  event.preventDefault();
-                 processImage(file).then(src => {
-                     const node = view.state.schema.nodes.image.create({ src });
-                     const tr = view.state.tr.replaceSelectionWith(node);
+
+                 // Replace selection if any
+                 const { from, to } = view.state.selection;
+                 if (from !== to) {
+                     const tr = view.state.tr.delete(from, to);
                      view.dispatch(tr);
-                 }).catch(e => console.error("Image paste failed", e));
+                 }
+
+                 // Insert at cursor (after deletion)
+                 const pos = view.state.selection.from;
+                 handleImageUpload(view, file, pos);
                  return true;
             }
         }
