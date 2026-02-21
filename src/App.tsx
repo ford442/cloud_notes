@@ -19,6 +19,8 @@ import { SettingsModal } from './components/SettingsModal'
 import { createPackedDescription } from './utils/metadata'
 import { Dialog } from './components/Dialog'
 import type { DialogType } from './components/Dialog'
+import { db, STORE_HISTORY } from './utils/db'
+import { HistoryModal } from './components/HistoryModal'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
@@ -44,6 +46,8 @@ function App() {
   // Command Palette
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [lastRestoreTs, setLastRestoreTs] = useState(0)
 
   // Global Dialog State
   const [dialogConfig, setDialogConfig] = useState<{
@@ -281,6 +285,19 @@ function App() {
       if (savedId && currentNote.content.length > 30) {
          SemanticService.indexNote(savedId, currentNote.content);
       }
+
+      // Save to History (Fire and Forget)
+      if (savedId) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          db.get<any[]>(STORE_HISTORY, savedId).then((history) => {
+             const newHistory = [...(history || []), {
+                 timestamp: Date.now(),
+                 content: currentNote.content,
+                 author: authorName
+             }].slice(-50); // Keep last 50
+             db.set(STORE_HISTORY, savedId, newHistory);
+          });
+      }
     } else {
       addToast("Save failed", "error")
     }
@@ -388,6 +405,12 @@ function App() {
     }
   };
 
+  const handleRestore = (content: string) => {
+    setCurrentNote(prev => ({ ...prev, content }));
+    setLastRestoreTs(Date.now());
+    addToast("Version restored. Don't forget to save!", "success");
+  };
+
   return (
     <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
       <div className="h-full w-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
@@ -402,6 +425,16 @@ function App() {
              theme={theme}
              setTheme={(t) => setTheme(t as 'light' | 'dark')}
            />
+        )}
+
+        {/* History Modal */}
+        {isHistoryOpen && selectedId && (
+            <HistoryModal
+              isOpen={isHistoryOpen}
+              onClose={() => setIsHistoryOpen(false)}
+              noteId={selectedId}
+              onRestore={handleRestore}
+            />
         )}
 
         {/* Global Dialog */}
@@ -483,6 +516,15 @@ function App() {
                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
                    </svg>
+                 </button>
+
+                 <button
+                   onClick={() => setIsHistoryOpen(true)}
+                   disabled={!selectedId}
+                   className="p-2 text-slate-400 hover:text-blue-500 transition-colors disabled:opacity-30"
+                   title="View History"
+                 >
+                   <span className="text-xl">🕰️</span>
                  </button>
 
                  {/* Editor Mode Toggle */}
@@ -581,6 +623,7 @@ function App() {
                   onChange={val => setCurrentNote({...currentNote, content: val})}
                   availableNotes={notes}
                   onNavigate={handleSelectNote}
+                  lastExternalUpdate={lastRestoreTs}
                 />
               )}
 
