@@ -115,7 +115,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
             icon: <span className="text-lg">✨</span>,
             perform: () => onNavigate(note.id),
             keywords: [note.description]
-          };
+          } as ActionItem;
         }).filter((item): item is ActionItem => item !== null);
       } catch (e) {
         console.warn('Semantic search failed', e);

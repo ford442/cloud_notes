@@ -6,7 +6,8 @@ interface BlockActionMenuProps {
   position: { top: number; left: number };
   onClose: () => void;
   currentNodePos: number;
-  ignoreRef?: RefObject<HTMLElement>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ignoreRef?: RefObject<any>;
 }
 
 const MenuItem = ({ icon, label, onClick, danger = false }: { icon: ReactNode, label: string, onClick: () => void, danger?: boolean }) => (
