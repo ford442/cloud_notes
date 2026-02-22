@@ -1,15 +1,18 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { StorageService } from './services/api'
 import { AIService } from './services/ai'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
-import { BlockEditor } from './components/BlockEditor'
-import { CanvasEditor } from './components/CanvasEditor'
+
+// Lazy load heavy components
+const BlockEditor = lazy(() => import('./components/BlockEditor').then(m => ({ default: m.BlockEditor })))
+const CanvasEditor = lazy(() => import('./components/CanvasEditor').then(m => ({ default: m.CanvasEditor })))
+const GraphView = lazy(() => import('./components/GraphView').then(m => ({ default: m.GraphView })))
+const FlashcardView = lazy(() => import('./components/FlashcardView').then(m => ({ default: m.FlashcardView })))
+
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
-import { GraphView } from './components/GraphView'
-import { FlashcardView } from './components/FlashcardView'
 import { CommandPalette } from './components/CommandPalette'
 import { PluginRegistry } from './services/plugin'
 import { CorePlugins } from './plugins/core'
@@ -588,6 +591,11 @@ function App() {
           {/* Editor Card */}
           <div className="flex-1 flex flex-col bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden transition-colors duration-200">
             <div className="flex-1 relative min-h-0">
+              <Suspense fallback={
+                <div className="flex items-center justify-center h-full">
+                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              }>
               {editorMode === 'graph' ? (
                 <GraphView
                   notes={notes}
@@ -626,6 +634,7 @@ function App() {
                   lastExternalUpdate={lastRestoreTs}
                 />
               )}
+              </Suspense>
 
               {(isLoading || isAiLoading) && (
                 <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-20">
