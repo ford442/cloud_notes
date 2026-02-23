@@ -1,9 +1,9 @@
-import type { Plugin } from '../services/plugin';
+import type { Plugin, PluginContext } from '../services/plugin';
 import { StorageService } from '../services/api';
 import { AIService } from '../services/ai';
 
 // Helper to handle variables in templates
-const processTemplate = (content: string): string | null => {
+const processTemplate = async (content: string, ctx: PluginContext): Promise<string | null> => {
   // Find all unique variables {{Var}}
   const regex = /\{\{(.*?)\}\}/g;
   const variables = new Set<string>();
@@ -18,9 +18,8 @@ const processTemplate = (content: string): string | null => {
     const isDate = variable.toLowerCase().includes('date');
     const defaultValue = isDate ? new Date().toLocaleDateString() : '';
 
-    // We use window.prompt for simplicity.
-    // In a future evolution, we could use a nice modal dialog via PluginRegistry.
-    const value = window.prompt(`Enter value for '${variable}':`, defaultValue);
+    // Use the application's modal dialog
+    const value = await ctx.prompt(`Enter value for '${variable}':`, defaultValue);
 
     if (value === null) return null; // User cancelled
 
@@ -61,10 +60,18 @@ export const InteractiveTemplatesPlugin: Plugin = {
         searchTerms: ['template', t.title.toLowerCase()],
         icon: <span className="text-lg">📋</span>,
         section: 'Templates',
-        command: ({ editor, range }) => {
-            const filled = processTemplate(t.content);
-            if (filled) {
-                editor.chain().focus().deleteRange(range).insertContent(filled).run();
+        command: async ({ editor, range }) => {
+            // Clear slash command first to close the menu
+            editor.chain().focus().deleteRange(range).run();
+
+            try {
+              const filled = await processTemplate(t.content, ctx);
+              if (filled) {
+                  editor.chain().focus().insertContent(filled).run();
+              }
+            } catch (e) {
+              console.error(e);
+              await ctx.alert('Failed to process template.');
             }
         }
       });
@@ -78,12 +85,14 @@ export const InteractiveTemplatesPlugin: Plugin = {
         icon: <span className="text-lg">🤖</span>,
         section: 'AI',
         command: async ({ editor, range }) => {
-            const topic = window.prompt('Meeting Topic:');
+            editor.chain().focus().deleteRange(range).run();
+
+            const topic = await ctx.prompt('Meeting Topic:');
             if (!topic) return;
-            const attendees = window.prompt('Attendees:');
+            const attendees = await ctx.prompt('Attendees:');
 
             const placeholder = `[Generating Agenda for "${topic}"...]`;
-            editor.chain().focus().deleteRange(range).insertContent(placeholder).run();
+            editor.chain().focus().insertContent(placeholder).run();
 
             try {
                 const prompt = `Generate a structured meeting agenda for a meeting about "${topic}" with attendees: ${attendees || 'Team'}.
@@ -118,7 +127,7 @@ export const InteractiveTemplatesPlugin: Plugin = {
 
             } catch (e) {
                 console.error(e);
-                alert('Failed to generate agenda');
+                await ctx.alert('Failed to generate agenda');
             }
         }
     });
@@ -131,13 +140,15 @@ export const InteractiveTemplatesPlugin: Plugin = {
       icon: <span className="text-lg">✨</span>,
       section: 'AI',
       command: async ({ editor, range }) => {
-        const prompt = window.prompt('What should I write?');
+        editor.chain().focus().deleteRange(range).run();
+
+        const prompt = await ctx.prompt('What should I write?');
         if (!prompt) return;
 
         const uniqueId = Date.now().toString().slice(-4);
         const placeholder = `[AI DRAFTING ${uniqueId}]...`;
 
-        editor.chain().focus().deleteRange(range).insertContent(placeholder).run();
+        editor.chain().focus().insertContent(placeholder).run();
 
         try {
           const text = await AIService.generateText(prompt, 200);
@@ -177,7 +188,7 @@ export const InteractiveTemplatesPlugin: Plugin = {
           });
           if (from !== -1) editor.chain().focus().deleteRange({ from, to }).run();
 
-          alert('AI Draft failed.');
+          await ctx.alert('AI Draft failed.');
         }
       }
     });
@@ -199,18 +210,21 @@ export const InteractiveTemplatesPlugin: Plugin = {
           icon: <span className="text-lg">📄</span>,
           section: 'User Templates',
           command: async ({ editor, range }) => {
+              // Clear slash command first
+              editor.chain().focus().deleteRange(range).run();
+
               // Fetch full content
               try {
                   const note = await StorageService.getNoteContent(n.id);
                   if (note && note.content) {
-                      const filled = processTemplate(note.content);
+                      const filled = await processTemplate(note.content, ctx);
                       if (filled) {
-                           editor.chain().focus().deleteRange(range).insertContent(filled).run();
+                           editor.chain().focus().insertContent(filled).run();
                       }
                   }
               } catch (e) {
                   console.error('Failed to load template', e);
-                  alert('Failed to load template content.');
+                  await ctx.alert('Failed to load template content.');
               }
           }
       }));
