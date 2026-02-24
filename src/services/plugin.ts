@@ -22,6 +22,7 @@ export interface PluginContext {
   navigateTo: (id: string) => void;
   getCanvasAPI: () => ExcalidrawImperativeAPI | null;
   setMode: (mode: string) => void;
+  setFocusMode: (enabled: boolean) => void;
   alert: (message: string) => Promise<void>;
   confirm: (message: string) => Promise<boolean>;
   prompt: (message: string, defaultValue?: string) => Promise<string | null>;
@@ -46,6 +47,7 @@ class PluginRegistryService {
   private noteCreator: (note: Partial<Note>) => void = () => {};
   private navigator: (id: string) => void = () => {};
   private modeSetter: (mode: string) => void = () => {};
+  private focusModeSetter: (enabled: boolean) => void = () => {};
   private canvasAPI: ExcalidrawImperativeAPI | null = null;
   private dialogHandler: DialogHandler = async () => null;
 
@@ -91,6 +93,10 @@ class PluginRegistryService {
     this.modeSetter = setter;
   }
 
+  setFocusModeSetter(setter: (enabled: boolean) => void) {
+    this.focusModeSetter = setter;
+  }
+
   setCanvasAPI(api: ExcalidrawImperativeAPI | null) {
     this.canvasAPI = api;
   }
@@ -126,6 +132,7 @@ class PluginRegistryService {
       navigateTo: (id) => this.navigator(id),
       getCanvasAPI: () => this.canvasAPI,
       setMode: (mode) => this.modeSetter(mode),
+      setFocusMode: (enabled) => this.focusModeSetter(enabled),
       alert: (msg) => this.alert(msg),
       confirm: (msg) => this.confirm(msg),
       prompt: (msg, def) => this.prompt(msg, def)

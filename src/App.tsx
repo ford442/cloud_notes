@@ -50,6 +50,7 @@ function App() {
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
+  const [isFocusMode, setIsFocusMode] = useState(false)
   const [lastRestoreTs, setLastRestoreTs] = useState(0)
 
   // Global Dialog State
@@ -119,6 +120,7 @@ function App() {
          console.warn(`Plugin attempted to set invalid mode: ${mode}`);
        }
     });
+    PluginRegistry.setFocusModeSetter(setIsFocusMode);
   }, []);
 
   // Sync Pending Ops on Mount & Online
@@ -414,6 +416,8 @@ function App() {
     addToast("Version restored. Don't forget to save!", "success");
   };
 
+  const wordCount = currentNote.content ? currentNote.content.trim().split(/\s+/).filter(Boolean).length : 0;
+
   return (
     <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
       <div className="h-full w-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
@@ -470,20 +474,38 @@ function App() {
         />
 
         {/* Sidebar */}
-        <Sidebar
-          notes={notes}
-          selectedId={selectedId}
-          onSelect={handleSelectNote}
-          onNew={handleNew}
-          isLoading={isLoading}
-          onMoveNote={handleMoveNote}
-        />
+        <div className={`${isFocusMode ? 'hidden' : 'block h-full'}`}>
+          <Sidebar
+            notes={notes}
+            selectedId={selectedId}
+            onSelect={handleSelectNote}
+            onNew={handleNew}
+            isLoading={isLoading}
+            onMoveNote={handleMoveNote}
+          />
+        </div>
 
         {/* Main Content */}
-        <div className="flex-1 flex flex-col h-full min-w-0 p-4 gap-4">
+        <div className="flex-1 flex flex-col h-full min-w-0 p-4 gap-4 relative transition-all duration-300">
+
+          {/* Focus Mode Overlay Controls */}
+          {isFocusMode && (
+             <div className="absolute bottom-6 right-6 z-50 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
+                 <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-full shadow-lg text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-3">
+                     <span className="font-mono">{wordCount} words</span>
+                     <div className="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
+                     <button
+                       onClick={() => setIsFocusMode(false)}
+                       className="hover:text-slate-900 dark:hover:text-white transition-colors"
+                     >
+                        Exit Focus
+                     </button>
+                 </div>
+             </div>
+          )}
 
           {/* Header Card */}
-          <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10">
+          <div className={`${isFocusMode ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1 flex items-center gap-4">
                  <input
@@ -589,7 +611,11 @@ function App() {
           </div>
 
           {/* Editor Card */}
-          <div className="flex-1 flex flex-col bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden transition-colors duration-200">
+          <div className={`flex-1 flex flex-col transition-all duration-300 ${
+              isFocusMode
+              ? 'max-w-4xl mx-auto w-full bg-transparent'
+              : 'bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden'
+          }`}>
             <div className="flex-1 relative min-h-0">
               <Suspense fallback={
                 <div className="flex items-center justify-center h-full">
@@ -648,7 +674,7 @@ function App() {
               )}
             </div>
 
-            {(editorMode !== 'graph' && editorMode !== 'canvas') && (
+            {(!isFocusMode && editorMode !== 'graph' && editorMode !== 'canvas') && (
               <>
                 <RelatedNotes
                   notes={notes}
@@ -666,7 +692,7 @@ function App() {
           </div>
 
           {/* Footer Card */}
-          <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200">
+          <div className={`${isFocusMode ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
