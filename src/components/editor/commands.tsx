@@ -153,6 +153,14 @@ export const defaultCommands: CommandItem[] = [
     },
   },
   {
+    title: 'Link to Note',
+    icon: <strong>🔗</strong>,
+    section: 'Insert',
+    command: ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).insertContent('[[').run()
+    },
+  },
+  {
     title: 'Summarize Note',
     icon: <strong>✨</strong>,
     section: 'AI',
