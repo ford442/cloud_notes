@@ -1,4 +1,4 @@
-import { useState, useImperativeHandle, forwardRef, useMemo } from 'react'
+import { useState, useImperativeHandle, forwardRef, useMemo, useEffect } from 'react'
 import type { CommandItem } from './slash-command'
 
 interface SlashCommandListProps {
@@ -11,13 +11,13 @@ const SECTION_ORDER = ['Text', 'Lists', 'Blocks', 'Media', 'Insert', 'AI'];
 export const SlashCommandList = forwardRef((props: SlashCommandListProps, ref) => {
   const [selectedIndex, setSelectedIndex] = useState(0)
 
-  // Derived state pattern to reset selection when items change
-  const [prevItems, setPrevItems] = useState(props.items)
-
-  if (props.items !== prevItems) {
-    setPrevItems(props.items)
+  // Reset selection when items change
+  // We use a heuristic (length + first item) to avoid resetting on every render if props.items is a new reference but same content
+  const firstItemTitle = props.items.length > 0 ? props.items[0].title : '';
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSelectedIndex(0)
-  }
+  }, [props.items.length, firstItemTitle])
 
   // Sort items by section
   const sortedItems = useMemo(() => {

@@ -77,40 +77,69 @@ export const InteractiveTemplatesPlugin: Plugin = {
       });
     });
 
-    // Smart Meeting Command
+    // Smart Meeting Command (Hybrid: Instant Structure + AI Content)
     ctx.registerCommand({
         title: 'Smart Meeting',
-        description: 'AI-generated meeting agenda',
+        description: 'Instant meeting template with AI agenda',
         searchTerms: ['meeting', 'agenda', 'ai'],
-        icon: <span className="text-lg">🤖</span>,
+        icon: <span className="text-lg">🗓️</span>,
         section: 'AI',
         command: async ({ editor, range }) => {
             editor.chain().focus().deleteRange(range).run();
 
             const topic = await ctx.prompt('Meeting Topic:');
             if (!topic) return;
-            const attendees = await ctx.prompt('Attendees:');
+            const attendees = await ctx.prompt('Attendees:', 'Team');
 
-            const placeholder = `[Generating Agenda for "${topic}"...]`;
-            editor.chain().focus().insertContent(placeholder).run();
+            const uniqueId = Date.now().toString().slice(-4);
+            const placeholder = `[AI SUGGESTING AGENDA ${uniqueId}...]`;
 
+            // 1. Insert Static Structure IMMEDIATELY
+            const template = `
+# Meeting: ${topic}
+**Date:** ${new Date().toLocaleDateString()}
+**Attendees:** ${attendees}
+
+## Agenda
+${placeholder}
+
+## Discussion
+-
+
+## Action Items
+- [ ]
+`;
+            editor.chain().focus().insertContent(template).run();
+
+            // 2. Call AI asynchronously
             try {
-                const prompt = `Generate a structured meeting agenda for a meeting about "${topic}" with attendees: ${attendees || 'Team'}.
-                Include sections for:
-                - Date: ${new Date().toLocaleDateString()}
-                - Attendees
-                - Objective
-                - Agenda Items (Timeboxed)
-                - Discussion Notes
-                - Action Items
-                Format as Markdown.`;
+                const prompt = `Generate a concise, numbered meeting agenda (3-5 items) for a meeting about "${topic}". Just the list.`;
+                const agenda = await AIService.generateText(prompt, 150);
 
-                const content = await AIService.generateText(prompt, 500);
+                // 3. Replace Placeholder
+                const doc = editor.state.doc;
+                let from = -1;
+                let to = -1;
 
+                doc.descendants((node, pos) => {
+                    if (node.isText && node.text && node.text.includes(placeholder)) {
+                        from = pos + node.text.indexOf(placeholder);
+                        to = from + placeholder.length;
+                        return false;
+                    }
+                });
+
+                if (from !== -1) {
+                    const content = agenda ? agenda : "- [ ] ";
+                    editor.chain().focus().deleteRange({ from, to }).insertContent(content).run();
+                }
+
+            } catch (e) {
+                console.error(e);
+                // Fallback: just remove placeholder
                  const doc = editor.state.doc;
                  let from = -1;
                  let to = -1;
-
                  doc.descendants((node, pos) => {
                     if (node.isText && node.text && node.text.includes(placeholder)) {
                         from = pos + node.text.indexOf(placeholder);
@@ -118,21 +147,12 @@ export const InteractiveTemplatesPlugin: Plugin = {
                         return false;
                     }
                  });
-
-                 if (from !== -1) {
-                     editor.chain().focus().deleteRange({ from, to }).insertContent(content).run();
-                 } else {
-                     editor.chain().focus().insertContent(content).run();
-                 }
-
-            } catch (e) {
-                console.error(e);
-                await ctx.alert('Failed to generate agenda');
+                 if (from !== -1) editor.chain().focus().deleteRange({ from, to }).insertContent("- [ ] ").run();
             }
         }
     });
 
-    // 2. AI Draft Command
+    // 2. Draft with AI Command
     ctx.registerCommand({
       title: 'Draft with AI',
       description: 'Generate text from a prompt',
@@ -148,7 +168,7 @@ export const InteractiveTemplatesPlugin: Plugin = {
         const uniqueId = Date.now().toString().slice(-4);
         const placeholder = `[AI DRAFTING ${uniqueId}]...`;
 
-        editor.chain().focus().insertContent(placeholder).run();
+        editor.chain().focus().insertContent(`\n${placeholder}\n`).run();
 
         try {
           const text = await AIService.generateText(prompt, 200);
@@ -167,15 +187,13 @@ export const InteractiveTemplatesPlugin: Plugin = {
           });
 
           if (from !== -1) {
-            editor.chain().focus().deleteRange({ from, to }).run();
-            if (text) editor.chain().insertContent(text).run();
+            editor.chain().focus().deleteRange({ from, to }).insertContent(text || "").run();
           } else {
-             // Placeholder not found (deleted by user?), just insert result at cursor
              if (text) editor.chain().focus().insertContent(text).run();
           }
         } catch (e) {
           console.error(e);
-          // Cleanup placeholder if exists
+          // Cleanup
           const doc = editor.state.doc;
           let from = -1;
           let to = -1;
@@ -196,10 +214,8 @@ export const InteractiveTemplatesPlugin: Plugin = {
     // 3. User Templates (Dynamic)
     ctx.registerCommandProvider(() => {
       const notes = ctx.getAllNotes();
-      console.log('InteractiveTemplates: notes count', notes.length);
       const templateNotes = notes.filter(n => {
          const parts = (n.description || '').split(' ::: ');
-         // parts[1] is Section. We handle cases where description might be missing or malformed.
          return parts.length > 1 && parts[1].trim() === 'Templates';
       });
 
@@ -210,10 +226,7 @@ export const InteractiveTemplatesPlugin: Plugin = {
           icon: <span className="text-lg">📄</span>,
           section: 'User Templates',
           command: async ({ editor, range }) => {
-              // Clear slash command first
               editor.chain().focus().deleteRange(range).run();
-
-              // Fetch full content
               try {
                   const note = await StorageService.getNoteContent(n.id);
                   if (note && note.content) {
