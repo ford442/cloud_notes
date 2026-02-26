@@ -7,7 +7,7 @@ export const AIPlugin: Plugin = {
   id: 'ai-features',
   name: 'AI Features',
   init: (ctx) => {
-    // Slash Command: Ask AI (Q&A)
+    // 1. Ask AI (Q&A)
     ctx.registerCommand({
         title: 'Ask AI',
         description: 'Ask a question about your notes',
@@ -22,7 +22,7 @@ export const AIPlugin: Plugin = {
 
             const uniqueId = Date.now().toString().slice(-4);
             const placeholder = `[Thinking about "${question}" ${uniqueId}...]`;
-            editor.chain().focus().insertContent(placeholder).run();
+            editor.chain().focus().insertContent(`\n${placeholder}\n`).run();
 
             try {
                 // 1. Find relevant notes
@@ -38,13 +38,12 @@ export const AIPlugin: Plugin = {
                              note = await StorageService.getNoteContent(item.id);
                          }
                          if (note) {
-                            context.push(`Note: ${note.title}\n${note.content}`);
+                            context.push(`Note: ${note.name || note.title}\n${note.content.substring(0, 1000)}...`);
                          }
                     } catch (e) { console.warn('Failed to fetch note for context', e); }
                 }
 
                 if (context.length === 0) {
-                     // Fallback if no relevant notes found (or no index)
                      context.push("No relevant notes found. Answer based on general knowledge if possible.");
                 }
 
@@ -52,7 +51,7 @@ export const AIPlugin: Plugin = {
                 const prompt = `Context:\n${context.join('\n\n')}\n\nQuestion: ${question}\n\nAnswer based on the context above:`;
                 const answer = await AIService.generateText(prompt, 300);
 
-                // 4. Replace
+                // 4. Replace placeholder
                  const doc = editor.state.doc;
                  let from = -1;
                  let to = -1;
@@ -65,12 +64,12 @@ export const AIPlugin: Plugin = {
                     }
                  });
 
-                 const content = `> **Q:** ${question}\n\n${answer}`;
+                 const formattedAnswer = `\n> **Q:** ${question}\n> **A:** ${answer}\n`;
 
                  if (from !== -1) {
-                     editor.chain().focus().deleteRange({ from, to }).insertContent(content).run();
+                     editor.chain().focus().deleteRange({ from, to }).insertContent(formattedAnswer).run();
                  } else {
-                     editor.chain().focus().insertContent(content).run();
+                     editor.chain().focus().insertContent(formattedAnswer).run();
                  }
 
             } catch (e) {
@@ -93,10 +92,118 @@ export const AIPlugin: Plugin = {
         }
     });
 
-    // Slash Command: Auto-Link
+    // 2. Summarize Note
+    ctx.registerCommand({
+      title: 'Summarize Note',
+      description: 'Generate a summary of the current note',
+      searchTerms: ['summarize', 'summary', 'ai'],
+      icon: <span className="text-lg">✨</span>,
+      section: 'AI',
+      command: async ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).run();
+
+        const content = editor.getText();
+        if (!content.trim()) return;
+
+        const uniqueId = Date.now().toString().slice(-4);
+        const placeholder = `[AI SUMMARIZING ${uniqueId}...]`;
+        editor.chain().focus().insertContent(`\n${placeholder}\n`).run();
+
+        try {
+          const summary = await AIService.summarize(content);
+          const formattedSummary = `\n> **Summary:** ${summary}\n`;
+
+          let pos = -1;
+          editor.state.doc.descendants((node, position) => {
+            if (node.isText && node.text?.includes(placeholder)) {
+              pos = position + node.text.indexOf(placeholder);
+              return false;
+            }
+          });
+
+          if (pos >= 0) {
+            editor.chain().focus().deleteRange({ from: pos, to: pos + placeholder.length }).insertContent(formattedSummary).run();
+          } else {
+            editor.chain().focus().insertContent(formattedSummary).run();
+          }
+
+        } catch (e) {
+          console.error(e);
+          let pos = -1;
+          editor.state.doc.descendants((node, position) => {
+            if (node.isText && node.text?.includes(placeholder)) {
+              pos = position + node.text.indexOf(placeholder);
+              return false;
+            }
+          });
+          if (pos >= 0) {
+            editor.chain().focus().deleteRange({ from: pos, to: pos + placeholder.length }).insertContent(`\n*AI Summarization failed.*\n`).run();
+          }
+        }
+      },
+    });
+
+    // 3. Continue Writing
+    ctx.registerCommand({
+      title: 'Continue Writing',
+      description: 'Let AI finish your thought',
+      searchTerms: ['continue', 'write', 'generate', 'ai'],
+      icon: <span className="text-lg">🤖</span>,
+      section: 'AI',
+      command: async ({ editor, range }) => {
+        editor.chain().focus().deleteRange(range).run();
+
+        const { from } = editor.state.selection;
+        const start = Math.max(0, from - 1000);
+        const context = editor.state.doc.textBetween(start, from, '\n');
+
+        if (!context.trim()) return;
+
+        const uniqueId = Date.now().toString().slice(-4);
+        const placeholder = `[AI WRITING ${uniqueId}...]`;
+        editor.chain().focus().insertContent(` ${placeholder} `).run();
+
+        try {
+          const result = await AIService.generateText(context);
+
+          let pos = -1;
+          editor.state.doc.descendants((node, position) => {
+            if (node.isText && node.text?.includes(placeholder)) {
+              pos = position + node.text.indexOf(placeholder);
+              return false;
+            }
+          });
+
+          if (pos >= 0) {
+            const tr = editor.chain().focus().deleteRange({ from: pos, to: pos + placeholder.length });
+            if (result) {
+              tr.insertContent(result);
+            }
+            tr.run();
+          }
+
+        } catch (e) {
+          console.error(e);
+          let pos = -1;
+          editor.state.doc.descendants((node, position) => {
+            if (node.isText && node.text?.includes(placeholder)) {
+              pos = position + node.text.indexOf(placeholder);
+              return false;
+            }
+          });
+          if (pos >= 0) {
+            editor.chain().focus().deleteRange({ from: pos, to: pos + placeholder.length }).run();
+          }
+        }
+      },
+    });
+
+    // 4. Auto-Link Notes
     ctx.registerCommand({
       title: 'Auto-Link Notes',
+      description: 'Automatically link mentioned notes',
       icon: <span className="text-lg">🔗</span>,
+      section: 'Tools',
       command: async ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
 
@@ -106,27 +213,15 @@ export const AIPlugin: Plugin = {
         const availableNotes = ctx.getAllNotes();
         if (availableNotes.length === 0) return;
 
-        // Simple keyword matching
-        // Create a map of lowercased title/tag -> original title
         const map = new Map<string, { id: string, name: string }>();
 
         availableNotes.forEach(n => {
             const name = n.name || '';
             if (name) map.set(name.toLowerCase(), { id: n.id, name: name });
-
-            // Also map tags? Maybe later.
         });
 
-        // Scan content for keywords
-        // We iterate over the map keys and check if they exist in the text
-        // This is a naive approach, O(N*M), but fine for small N.
-        // For better performance, Aho-Corasick or Regex construction.
-
-        // Let's use a regex approach for all keys.
-        // Sort keys by length descending to match longest first
         const keys = Array.from(map.keys()).sort((a, b) => b.length - a.length);
 
-        // Escape regex special chars
         const escapeRegExp = (string: string) => {
            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         };
@@ -135,15 +230,10 @@ export const AIPlugin: Plugin = {
         let transactions = editor.state.tr;
         let modified = false;
 
-        // We need to find ranges.
-        // We can iterate over all occurrences of all titles.
-
         keys.forEach(key => {
             const { id } = map.get(key)!;
-            if (key.length < 3) return; // Skip short words to avoid noise
+            if (key.length < 3) return;
 
-            // Find all occurrences of 'name' (case insensitive)
-            // We use a regex for this specific name
             const regex = new RegExp(`\\b${escapeRegExp(key)}\\b`, 'gi');
 
             editor.state.doc.descendants((node, pos) => {
@@ -156,11 +246,9 @@ export const AIPlugin: Plugin = {
                     const start = pos + match.index;
                     const end = start + match[0].length;
 
-                    // Check if already has link mark
                     const hasLink = node.marks.some(m => m.type.name === 'link');
                     if (hasLink) continue;
 
-                    // Add link mark
                     transactions = transactions.addMark(start, end, editor.schema.marks.link.create({ href: id }));
                     modified = true;
                     matchCount++;
@@ -170,11 +258,9 @@ export const AIPlugin: Plugin = {
 
         if (modified) {
              editor.view.dispatch(transactions);
-             // Use toast if available? We don't have access to toast here easily.
-             // We can use alert or console.
-             // Or better, PluginContext could expose a `notify` method.
-             // But for now:
-             console.log(`Auto-linked ${matchCount} items.`);
+             await ctx.alert(`Auto-linked ${matchCount} items.`);
+        } else {
+             await ctx.alert('No new links found.');
         }
       }
     });
