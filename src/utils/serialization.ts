@@ -12,8 +12,35 @@ const turndownService = new TurndownService({
 // Use the GFM plugin to handle tables, strikethrough, and task lists
 turndownService.use(gfm);
 
-// Keep iframe and div tags to support YouTube embeds and other rich content
-turndownService.keep(['iframe', 'div']);
+// Custom Rule for Tiptap Task Lists
+// Tiptap renders <ul data-type="taskList">...</ul>
+turndownService.addRule('tiptapTaskList', {
+  filter: (node) => {
+    return node.nodeName === 'UL' && node.getAttribute('data-type') === 'taskList';
+  },
+  replacement: (content) => {
+    return content;
+  }
+});
+
+// Custom Rule for Tiptap Task Items
+// Tiptap renders <li data-type="taskItem" data-checked="true/false">...</li>
+turndownService.addRule('tiptapTaskItem', {
+  filter: (node) => {
+    return node.nodeName === 'LI' && node.getAttribute('data-type') === 'taskItem';
+  },
+  replacement: (content, node) => {
+    const isChecked = (node as HTMLElement).getAttribute('data-checked') === 'true';
+    // Clean up content (remove newlines usually added by block elements inside li)
+    const cleanContent = content.trim();
+    return `${isChecked ? '- [x]' : '- [ ]'} ${cleanContent}\n`;
+  }
+});
+
+
+// Keep iframe tags to support YouTube embeds and other rich content
+// We removed 'div' from keep because Tiptap wraps task items in divs which caused them to be serialized as HTML instead of Markdown
+turndownService.keep(['iframe']);
 
 /**
  * Converts Markdown string to HTML string
