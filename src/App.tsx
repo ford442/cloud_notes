@@ -10,6 +10,7 @@ const BlockEditor = lazy(() => import('./components/BlockEditor').then(m => ({ d
 const CanvasEditor = lazy(() => import('./components/CanvasEditor').then(m => ({ default: m.CanvasEditor })))
 const GraphView = lazy(() => import('./components/GraphView').then(m => ({ default: m.GraphView })))
 const FlashcardView = lazy(() => import('./components/FlashcardView').then(m => ({ default: m.FlashcardView })))
+const TaskView = lazy(() => import('./components/TaskView').then(m => ({ default: m.TaskView })))
 
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
@@ -81,7 +82,7 @@ function App() {
   }, []);
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards'>('rich')
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks'>('rich')
 
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
@@ -113,7 +114,7 @@ function App() {
       });
     });
     PluginRegistry.setModeSetter((mode) => {
-       if (['simple', 'rich', 'graph', 'canvas', 'flashcards'].includes(mode)) {
+       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks'].includes(mode)) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setEditorMode(mode as any);
        } else {
@@ -578,6 +579,12 @@ function App() {
                   >
                     Canvas
                   </button>
+                  <button
+                    onClick={() => setEditorMode('tasks')}
+                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'tasks' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    Tasks
+                  </button>
                 </div>
 
                 {/* Theme Toggle */}
@@ -643,6 +650,15 @@ function App() {
                 <FlashcardView
                   notes={notes}
                   onClose={() => setEditorMode('rich')}
+                />
+              ) : editorMode === 'tasks' ? (
+                <TaskView
+                  notes={notes}
+                  onClose={() => setEditorMode('rich')}
+                  onNavigate={(id) => {
+                      handleSelectNote(id);
+                      setEditorMode('rich');
+                  }}
                 />
               ) : editorMode === 'simple' ? (
                 <Editor
