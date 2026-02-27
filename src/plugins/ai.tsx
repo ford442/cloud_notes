@@ -38,6 +38,7 @@ export const AIPlugin: Plugin = {
                              note = await StorageService.getNoteContent(item.id);
                          }
                          if (note) {
+                            // @ts-expect-error - name might be on cloud meta but note uses title
                             context.push(`Note: ${note.name || note.title}\n${note.content.substring(0, 1000)}...`);
                          }
                     } catch (e) { console.warn('Failed to fetch note for context', e); }
