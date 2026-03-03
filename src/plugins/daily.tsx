@@ -56,7 +56,8 @@ export const DailyNotesPlugin: Plugin = {
       title: 'Daily Note',
       description: "Open or create today's daily note",
       searchTerms: ['daily', 'journal', 'today'],
-      icon: <span className="text-lg">📅</span>,
+      section: 'Actions',
+      icon: <strong>📅</strong>,
       command: ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
         openDailyNote();

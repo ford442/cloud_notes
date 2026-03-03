@@ -13,6 +13,9 @@ def run():
         print("Waiting for editor...")
         page.wait_for_selector(".ProseMirror", timeout=10000)
 
+        # Wait for any loading spinners to disappear
+        time.sleep(3)
+
         page.click(".ProseMirror")
 
         print("Typing slash command '/dai'...")
