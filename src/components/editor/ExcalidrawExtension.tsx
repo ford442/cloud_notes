@@ -1,7 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 import { Excalidraw } from '@excalidraw/excalidraw'
-import { useMemo, useState } from 'react'
+import React, { useMemo, useState, useRef } from 'react'
 
 const ExcalidrawComponent = (props: any) => {
   const node = props.node;
@@ -34,8 +34,13 @@ const ExcalidrawComponent = (props: any) => {
       setIsEditing(true);
   };
 
+  // Keep a ref to avoid triggering infinite re-renders inside `onChange`
+  const lastStateRef = React.useRef<any>(null);
+
   const handleSave = () => {
-      if (tempData) {
+      if (lastStateRef.current) {
+          updateAttributes({ data: JSON.stringify(lastStateRef.current) });
+      } else if (tempData) {
           updateAttributes({ data: JSON.stringify(tempData) });
       }
       setIsEditing(false);
@@ -45,7 +50,7 @@ const ExcalidrawComponent = (props: any) => {
     <NodeViewWrapper className={`excalidraw-component border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden my-4 shadow-sm relative group ${isEditing ? 'ring-2 ring-blue-500 z-50' : ''}`}>
 
       {/* Controls */}
-      <div className="absolute top-2 right-2 z-10 flex gap-2">
+      <div className="absolute top-2 right-2 z-[100] flex gap-2">
           {!isEditing ? (
               <button
                 onClick={handleEdit}
@@ -56,7 +61,7 @@ const ExcalidrawComponent = (props: any) => {
           ) : (
               <button
                 onClick={handleSave}
-                className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium shadow-sm hover:bg-blue-700 transition-colors"
+                className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-medium shadow-sm hover:bg-blue-700 transition-colors pointer-events-auto"
               >
                 Done
               </button>
@@ -65,6 +70,7 @@ const ExcalidrawComponent = (props: any) => {
 
       <div style={{ height: '500px', width: '100%', position: 'relative' }}>
          <Excalidraw
+            key={isEditing ? 'editing' : 'viewing'}
             initialData={{
                 elements: parsedData.elements,
                 appState: {
@@ -80,7 +86,7 @@ const ExcalidrawComponent = (props: any) => {
             gridModeEnabled={isEditing}
             onChange={(elements, appState) => {
                 if (isEditing) {
-                    setTempData({ elements, appState });
+                    lastStateRef.current = { elements, appState };
                 }
             }}
          />
