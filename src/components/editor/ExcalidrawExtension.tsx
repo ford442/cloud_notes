@@ -1,7 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 import { Excalidraw } from '@excalidraw/excalidraw'
-import React, { useMemo, useState, useRef } from 'react'
+import React, { useMemo, useState } from 'react'
 
 const ExcalidrawComponent = (props: any) => {
   const node = props.node;
