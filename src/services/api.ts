@@ -6,12 +6,13 @@ import { createPackedDescription } from '../utils/metadata';
 
 export const API_BASE_URL = "https://ford442-storage-manager.hf.space";
 
+// 1. EXPANDED: Now handles creates, updates, and deletes
 interface PendingOp {
   id: string;
-  type: 'update'; // limiting to update for safety
-  noteId: string;
-  note: Note;
-  author: string;
+  type: 'create' | 'update' | 'delete';
+  noteId: string; // Can be a temporary UUID if created offline
+  note?: Note;
+  author?: string;
   timestamp: number;
 }
 
@@ -47,40 +48,6 @@ export const StorageService = {
     }
   },
 
-  async syncPending() {
-    if (!navigator.onLine) return;
-
-    try {
-      const ops = await db.getAll<PendingOp>(STORE_PENDING_OPS);
-      if (ops.length === 0) return;
-
-      console.log(`[Sync] Processing ${ops.length} pending operations...`);
-
-      // Sort by timestamp to ensure correct order
-      ops.sort((a, b) => a.value.timestamp - b.value.timestamp);
-
-      for (const { key, value: op } of ops) {
-        try {
-          let success = false;
-          if (op.type === 'update') {
-            const res = await this.updateNote(op.noteId, op.note, op.author, true);
-            success = res.success;
-          }
-
-          if (success) {
-            await db.del(STORE_PENDING_OPS, key);
-          } else {
-            console.warn(`[Sync] Op ${key} failed, keeping in queue.`);
-          }
-        } catch (e) {
-          console.error(`[Sync] Failed to process op ${key}`, e);
-        }
-      }
-    } catch (e) {
-      console.error('[Sync] Failed to sync pending ops', e);
-    }
-  },
-
   async getCachedNote(id: string): Promise<Note | undefined> {
     try {
       return await db.get<Note>(STORE_NOTES_CONTENT, id);
@@ -90,9 +57,74 @@ export const StorageService = {
     }
   },
 
-  // --- NETWORK METHODS (With Cache Side-Effects) ---
+  // --- THE SYNC ENGINE ---
 
-  // Fetch list of notes
+  async syncPending() {
+    if (!navigator.onLine) return;
+
+    try {
+      const ops = await db.getAll<PendingOp>(STORE_PENDING_OPS);
+      if (ops.length === 0) return;
+
+      console.log(`[Sync Engine] Processing ${ops.length} offline operations...`);
+
+      // Sort by timestamp to replay history exactly as it happened
+      ops.sort((a, b) => a.value.timestamp - b.value.timestamp);
+
+      // Map to track temporary offline IDs resolving to real server IDs
+      const idMap = new Map<string, string>();
+
+      for (const { key, value: op } of ops) {
+        try {
+          let success = false;
+
+          // Resolve the target ID (if this note was created offline, use the new real server ID)
+          const targetId = idMap.get(op.noteId) || op.noteId;
+
+          if (op.type === 'create' && op.note) {
+            const res = await this._networkSaveNote(op.note, op.author || "User");
+            if (res.success && res.id) {
+              idMap.set(op.noteId, res.id); // Map the temp ID to the real ID!
+
+              // Clean up local cache: migrate temp ID to real ID
+              await db.del(STORE_NOTES_CONTENT, op.noteId);
+              await db.set(STORE_NOTES_CONTENT, res.id, { ...op.note, id: res.id });
+
+              success = true;
+            }
+          }
+          else if (op.type === 'update' && op.note) {
+            const res = await this._networkUpdateNote(targetId, op.note, op.author || "User");
+            success = res.success;
+          }
+          // Note: Ready for offline DELETE when you implement delete UI
+          else if (op.type === 'delete') {
+             // await this._networkDeleteNote(targetId);
+             success = true;
+          }
+
+          if (success) {
+            await db.del(STORE_PENDING_OPS, key);
+          } else {
+            console.warn(`[Sync Engine] Op ${key} failed, keeping in queue for next retry.`);
+          }
+        } catch (e) {
+          console.error(`[Sync Engine] Failed to process op ${key}`, e);
+        }
+      }
+
+      // If we synced things successfully, refresh the global cache
+      if (ops.length > 0) {
+          this.getNotes(false).catch(console.warn);
+      }
+
+    } catch (e) {
+      console.error('[Sync Engine] Failed to run sync queue', e);
+    }
+  },
+
+  // --- NETWORK METHODS (With Offline Fallbacks) ---
+
   async getNotes(skipCacheUpdate = false): Promise<CloudItemMeta[]> {
     try {
       const res = await fetch(`${API_BASE_URL}/api/songs?type=note`);
@@ -100,34 +132,24 @@ export const StorageService = {
       const notes = await res.json();
 
       if (!skipCacheUpdate) {
-        // Update cache in background
         db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, notes).catch(e =>
           console.warn('[Cache] Failed to update notes list', e)
         );
       }
-
       return notes;
     } catch (e) {
-      console.error(e);
-      // Fallback to cache if network fails entirely?
-      // Current contract expects empty array on error, but maybe we should throw if offline?
-      // For now, return empty array to match previous behavior, but we might want to change this later.
-      return [];
+      console.warn("[Network] Offline or API unreachable. Falling back to cache.", e);
+      return this.getCachedNotes();
     }
   },
 
-  // Fetch full content of a specific note
   async getNoteContent(id: string): Promise<Note> {
     try {
       const res = await fetch(`${API_BASE_URL}/api/songs/${id}?type=note`);
       if (!res.ok) throw new Error("Failed to load note");
-      
       const data = await res.json();
       
-      // DECRYPT CONTENT
       const decryptedContent = await EncryptionService.decrypt(data.content || '');
-
-      // Backward compatibility: Default to General/Inbox if missing
       const note: Note = {
         ...data,
         content: decryptedContent,
@@ -135,34 +157,19 @@ export const StorageService = {
         section: data.section || "Inbox"
       };
 
-      // Update cache (We store DECRYPTED content in local cache for speed/offline editing)
-      // This is a trade-off: Local IndexedDB is not encrypted by us, but it is sandboxed by browser.
-      // E2E requirement usually focuses on SERVER not seeing data.
-      db.set(STORE_NOTES_CONTENT, id, note).catch(e =>
-        console.warn(`[Cache] Failed to update content for ${id}`, e)
-      );
-
+      db.set(STORE_NOTES_CONTENT, id, note).catch(console.warn);
       return note;
     } catch (e) {
-      console.error(e);
+      console.warn(`[Network] Offline. Attempting to load ${id} from local DB.`);
+      const cached = await this.getCachedNote(id);
+      if (cached) return cached;
       throw e;
     }
   },
 
-  // Prepare payload for saving/updating
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async _preparePayload(note: Note, author: string): Promise<any> {
-      // PACKING METADATA:
-      // We format the description as: "Subject ::: Section ::: Tags ::: Links ::: Keywords"
-      // This allows the Sidebar and Graph to parse the tree structure instantly.
+  async _preparePayload(note: Note, author: string) {
       const packedDesc = createPackedDescription(note);
-
-      console.log('[API] Saving/Updating note:', { title: note.title, packedDesc });
-
-      // ENCRYPT CONTENT BEFORE SENDING
       const encryptedContent = await EncryptionService.encrypt(note.content);
-
-      // We clone the note to avoid modifying the UI state object
       const secureNote = { ...note, content: encryptedContent };
 
       return {
@@ -174,80 +181,96 @@ export const StorageService = {
       };
   },
 
-  // Update existing note (PUT)
-  async updateNote(id: string, note: Note, author: string = "User", skipQueue = false): Promise<{ success: boolean; id?: string }> {
-      try {
-        if (!id) throw new Error("ID required for update");
-
-        // Optimistic Cache Update
-        db.set(STORE_NOTES_CONTENT, id, note).catch(console.warn);
-
-        if (!navigator.onLine && !skipQueue) {
-           throw new Error("Offline");
-        }
-
-        const payload = await this._preparePayload(note, author);
-
-        const res = await fetch(`${API_BASE_URL}/api/songs/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) throw new Error(await res.text());
-        await res.json();
-
-        // Cache Update (Confirmation)
-        db.set(STORE_NOTES_CONTENT, id, { ...note, id: id }).catch(console.warn);
-
-        return { success: true, id: id };
-      } catch (e) {
-          console.error(e);
-          if (!skipQueue && id) {
-             console.log('[API] Queueing offline update for', id);
-             const op: PendingOp = {
-                id: crypto.randomUUID(),
-                type: 'update',
-                noteId: id,
-                note,
-                author,
-                timestamp: Date.now()
-             };
-             // Use timestamp as key prefix for order
-             await db.set(STORE_PENDING_OPS, `${op.timestamp}-${op.id}`, op);
-             return { success: true, id: id }; // Mock success
-          }
-          return { success: false };
-      }
-  },
-
-  // Create new note (POST)
-  async saveNote(note: Note, author: string = "User"): Promise<{ success: boolean; id?: string }> {
-    try {
+  // Pure network call for Creates
+  async _networkSaveNote(note: Note, author: string): Promise<{ success: boolean; id?: string }> {
       const payload = await this._preparePayload(note, author);
-
       const res = await fetch(`${API_BASE_URL}/api/songs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-
-      // If new note, update cache with new ID
-      if (data.id) {
-         db.set(STORE_NOTES_CONTENT, data.id, { ...note, id: data.id }).catch(console.warn);
-      }
-
       return { success: true, id: data.id };
+  },
+
+  // Pure network call for Updates
+  async _networkUpdateNote(id: string, note: Note, author: string): Promise<{ success: boolean; id?: string }> {
+      const payload = await this._preparePayload(note, author);
+      const res = await fetch(`${API_BASE_URL}/api/songs/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      await res.json();
+      return { success: true, id: id };
+  },
+
+  // Public Update (Handles Offline Queuing)
+  async updateNote(id: string, note: Note, author: string = "User"): Promise<{ success: boolean; id?: string }> {
+      try {
+        if (!id) throw new Error("ID required for update");
+
+        // 1. Always do Optimistic Cache Update for immediate feedback
+        db.set(STORE_NOTES_CONTENT, id, { ...note, id }).catch(console.warn);
+
+        // 2. If clearly offline, throw to trigger queue immediately
+        if (!navigator.onLine) throw new Error("Offline");
+
+        // 3. Attempt Network Call
+        return await this._networkUpdateNote(id, note, author);
+
+      } catch (e) {
+          console.log('[Sync Engine] Queueing offline update for', id);
+          const op: PendingOp = {
+            id: crypto.randomUUID(),
+            type: 'update',
+            noteId: id,
+            note,
+            author,
+            timestamp: Date.now()
+          };
+          await db.set(STORE_PENDING_OPS, `${op.timestamp}-${op.id}`, op);
+          return { success: true, id: id }; // Return mock success to keep UI happy
+      }
+  },
+
+  // Public Save/Create (Handles Offline Queuing)
+  async saveNote(note: Note, author: string = "User"): Promise<{ success: boolean; id?: string }> {
+    try {
+      // 1. If clearly offline, throw to trigger queue
+      if (!navigator.onLine) throw new Error("Offline");
+
+      // 2. Attempt Network Call
+      const res = await this._networkSaveNote(note, author);
+      if (res.success && res.id) {
+         db.set(STORE_NOTES_CONTENT, res.id, { ...note, id: res.id }).catch(console.warn);
+      }
+      return res;
+
     } catch (e) {
-      console.error(e);
-      return { success: false };
+      // 3. Offline Creation Logic
+      const tempId = `offline-${crypto.randomUUID()}`;
+      console.log('[Sync Engine] Queueing offline creation with temp ID:', tempId);
+
+      const op: PendingOp = {
+        id: crypto.randomUUID(),
+        type: 'create',
+        noteId: tempId,
+        note,
+        author,
+        timestamp: Date.now()
+      };
+
+      // Store operation and optimistic cache
+      await db.set(STORE_PENDING_OPS, `${op.timestamp}-${op.id}`, op);
+      await db.set(STORE_NOTES_CONTENT, tempId, { ...note, id: tempId });
+
+      return { success: true, id: tempId }; // Return mock success with temporary ID
     }
   },
 
-  // Upload file (e.g. audio/image)
   async uploadFile(file: File, author: string, description: string = ""): Promise<{ success: boolean; id?: string }> {
     try {
       const formData = new FormData();
