@@ -1,6 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 import { Excalidraw } from '@excalidraw/excalidraw'
+import "@excalidraw/excalidraw/index.css"
 import React, { useMemo, useState } from 'react'
 
 const ExcalidrawComponent = (props: any) => {
@@ -47,7 +48,7 @@ const ExcalidrawComponent = (props: any) => {
   };
 
   return (
-    <NodeViewWrapper className={`excalidraw-component border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden my-4 shadow-sm relative group ${isEditing ? 'ring-2 ring-blue-500 z-50' : ''}`}>
+    <NodeViewWrapper className={`not-prose excalidraw-component border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden my-4 shadow-sm relative group ${isEditing ? 'ring-2 ring-blue-500 z-50' : ''}`}>
 
       {/* Controls */}
       <div className="absolute top-2 right-2 z-[100] flex gap-2">
