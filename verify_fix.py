@@ -8,21 +8,16 @@ def run(playwright):
     # 1. Go to app
     page.goto("http://localhost:5173")
 
-    # 2. Select the "History Test Note" if it exists, or create one
-    # Assuming the previous test run left the note
-    # We can try to find it in the sidebar
-    try:
-        page.get_by_text("History Test Note").first.click(timeout=2000)
-    except:
-        # Create new if not found
-        page.get_by_placeholder("Note Title...").fill("Fix Test Note")
-        page.locator(".ProseMirror").fill("Initial Content")
-        page.get_by_role("button", name="Save Note").click()
-        page.wait_for_timeout(1000)
-        # Create history
-        page.locator(".ProseMirror").fill("Second Content")
-        page.get_by_role("button", name="Save Note").click()
-        page.wait_for_timeout(1000)
+    # 2. Create a new Note
+    page.get_by_placeholder("Note Title...").fill("Fix Test Note")
+    page.locator(".ProseMirror").fill("Initial Content")
+    page.get_by_role("button", name="Save Note").click()
+    page.wait_for_timeout(1000)
+
+    # Create history
+    page.locator(".ProseMirror").fill("Second Content")
+    page.get_by_role("button", name="Save Note").click()
+    page.wait_for_timeout(1000)
 
     # 3. Open History & Restore
     page.get_by_title("View History").click()
@@ -32,8 +27,8 @@ def run(playwright):
     history_items = page.locator("div.divide-y > button")
     if history_items.count() >= 1:
         history_items.nth(0).click() # Click first one (doesn't matter which, just need a restore event)
-        page.on("dialog", lambda dialog: dialog.accept())
         page.get_by_role("button", name="Restore This Version").click()
+        page.locator("div[role='dialog']").get_by_role("button", name="Confirm").click()
         page.get_by_text("Note History").wait_for(state="hidden")
 
     # 4. Type something

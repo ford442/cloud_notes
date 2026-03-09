@@ -16,7 +16,7 @@ def run():
         page.keyboard.type("/dai")
         time.sleep(1)
 
-        page.keyboard.press("ArrowDown")
+        # page.keyboard.press("ArrowDown")
         time.sleep(0.5)
         page.keyboard.press("Enter")
         time.sleep(1)

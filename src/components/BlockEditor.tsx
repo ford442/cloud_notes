@@ -386,7 +386,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
   useEffect(() => {
     if (editor && lastExternalUpdate && lastExternalUpdate !== lastProcessedRef.current) {
        console.log('[BlockEditor] Force updating content from external source', lastExternalUpdate);
-       editor.commands.setContent(markdownToHtml(value));
+       editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
        lastProcessedRef.current = lastExternalUpdate;
     }
   }, [lastExternalUpdate, editor, value]);
@@ -406,7 +406,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
 
        if (isExcalidrawValue && !hasExcalidraw) {
            console.log('[BlockEditor] Force hydrating Excalidraw content');
-           editor.commands.setContent(markdownToHtml(value));
+           editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
            return;
        }
 
@@ -414,7 +414,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
           // If empty, hydrate from props
           // We must be careful not to overwrite if we are just loading
           console.log('[BlockEditor] Hydrating Yjs from API content');
-          editor.commands.setContent(markdownToHtml(value));
+          editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
        }
     };
 
