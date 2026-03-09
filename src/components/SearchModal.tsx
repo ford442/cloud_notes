@@ -1,0 +1,215 @@
+import { useState, useEffect, useMemo, useRef } from 'react';
+import Fuse from 'fuse.js';
+import type { FuseResultMatch } from 'fuse.js';
+import { db, STORE_NOTES_CONTENT } from '../utils/db';
+import type { Note } from '../services/api';
+
+interface SearchModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onNavigate: (id: string) => void;
+}
+
+interface SearchResult {
+  item: Note;
+  matches?: readonly FuseResultMatch[];
+}
+
+export const SearchModal = ({ isOpen, onClose, onNavigate }: SearchModalProps) => {
+  const [query, setQuery] = useState('');
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load all notes from local DB when opened
+  useEffect(() => {
+    if (isOpen) {
+      const loadNotes = async () => {
+        setIsLoading(true);
+        try {
+          const allNotes = await db.getAll<Note>(STORE_NOTES_CONTENT);
+          setNotes(allNotes.map(n => n.value));
+        } catch (e) {
+          console.error('Failed to load notes for search', e);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      loadNotes();
+
+      setTimeout(() => {
+        inputRef.current?.focus();
+        setQuery('');
+        setSelectedIndex(0);
+      }, 50);
+    }
+  }, [isOpen]);
+
+  // Set up Fuse.js
+  const fuse = useMemo(() => {
+    return new Fuse(notes, {
+      keys: ['title', 'content'],
+      includeMatches: true,
+      threshold: 0.3,
+      ignoreLocation: true,
+    });
+  }, [notes]);
+
+  const results = useMemo<SearchResult[]>(() => {
+    if (!query.trim()) return [];
+    return fuse.search(query).slice(0, 20);
+  }, [query, fuse]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev + 1) % (results.length || 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => (prev - 1 + results.length) % (results.length || 1));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (results[selectedIndex]) {
+          const id = results[selectedIndex].item.id;
+          if (id) {
+             onNavigate(id);
+             onClose();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, results, selectedIndex, onClose, onNavigate]);
+
+  if (!isOpen) return null;
+
+  // Helper to extract a snippet with the matched text highlighted
+  const renderSnippet = (match: FuseResultMatch | undefined) => {
+    if (!match || !match.value) return null;
+
+    // Find the first match indices
+    const indices = match.indices[0];
+    if (!indices) return <span className="truncate">{match.value.substring(0, 100)}...</span>;
+
+    const start = Math.max(0, indices[0] - 40);
+    const end = Math.min(match.value.length, indices[1] + 40);
+
+    const prefix = start > 0 ? '...' : '';
+    const suffix = end < match.value.length ? '...' : '';
+
+    const before = match.value.substring(start, indices[0]);
+    const highlighted = match.value.substring(indices[0], indices[1] + 1);
+    const after = match.value.substring(indices[1] + 1, end);
+
+    return (
+      <span className="text-sm text-slate-500 dark:text-slate-400 block truncate">
+        {prefix}
+        {before}
+        <strong className="text-blue-600 dark:text-blue-400 bg-blue-100/50 dark:bg-blue-900/30 px-0.5 rounded">{highlighted}</strong>
+        {after}
+        {suffix}
+      </span>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[15vh] px-4">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* Modal */}
+      <div className="relative w-full max-w-3xl bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col max-h-[70vh] animate-in fade-in zoom-in-95 duration-200">
+
+        {/* Search Input */}
+        <div className="flex items-center border-b border-slate-100 dark:border-slate-700 p-4 gap-3">
+          <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+          <input
+            ref={inputRef}
+            className="flex-1 bg-transparent text-lg text-slate-800 dark:text-white placeholder:text-slate-400 outline-none"
+            placeholder="Search inside all notes..."
+            value={query}
+            onChange={e => {
+              setQuery(e.target.value);
+              setSelectedIndex(0);
+            }}
+          />
+          {isLoading && (
+            <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+          )}
+          <div className="text-xs font-medium text-slate-400 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</div>
+        </div>
+
+        {/* Results List */}
+        <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+          {!query.trim() ? (
+            <div className="p-8 text-center text-slate-400 dark:text-slate-500 flex flex-col items-center gap-2">
+               <svg className="w-8 h-8 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+               Search through the full content of your notes
+            </div>
+          ) : results.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 dark:text-slate-400">
+              No results found for "{query}"
+            </div>
+          ) : (
+            results.map((result, index) => {
+               // Find the content match to show as a snippet, fallback to title match
+               const contentMatch = result.matches?.find(m => m.key === 'content');
+               const titleMatch = result.matches?.find(m => m.key === 'title');
+
+               return (
+                  <button
+                    key={result.item.id}
+                    onClick={() => {
+                      if (result.item.id) {
+                         onNavigate(result.item.id);
+                         onClose();
+                      }
+                    }}
+                    className={`w-full flex flex-col gap-1 px-4 py-3 rounded-lg text-left transition-colors ${
+                      index === selectedIndex
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border border-blue-100/50 dark:border-blue-800/30'
+                        : 'border border-transparent hover:bg-slate-50 dark:hover:bg-slate-700/30'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                        <div className={`font-semibold ${index === selectedIndex ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-200'}`}>
+                           {result.item.title || 'Untitled Note'}
+                        </div>
+                        <div className="text-xs text-slate-400 uppercase tracking-wider font-medium">
+                           {result.item.subject} / {result.item.section}
+                        </div>
+                    </div>
+
+                    {contentMatch ? renderSnippet(contentMatch) : titleMatch ? renderSnippet(titleMatch) : null}
+                  </button>
+               );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 p-2 px-4 text-xs text-slate-400 flex justify-between items-center">
+            <span>
+                <span className="font-semibold text-slate-500 dark:text-slate-300">↑↓</span> to navigate
+            </span>
+            <span>
+                <span className="font-semibold text-slate-500 dark:text-slate-300">↵</span> to open note
+            </span>
+        </div>
+      </div>
+    </div>
+  );
+};

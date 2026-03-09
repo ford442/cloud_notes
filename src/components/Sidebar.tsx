@@ -9,6 +9,7 @@ interface SidebarProps {
   onNew: () => void;
   isLoading: boolean;
   onMoveNote?: (id: string, newSubject: string, newSection: string) => void;
+  onSearchOpen?: () => void;
 }
 
 // Icons
@@ -33,7 +34,7 @@ const parseMeta = (desc: string) => {
   return { subject: parts[0] || 'General', section: parts[1] || 'Inbox' };
 };
 
-export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote }: SidebarProps) => {
+export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote, onSearchOpen }: SidebarProps) => {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState('');
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
@@ -87,12 +88,21 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
           <h1 className="font-bold text-gray-800 dark:text-gray-100 text-sm tracking-widest flex items-center gap-3">
             <span className="text-blue-500 dark:text-blue-400 text-lg">📚</span> KNOWLEDGE
           </h1>
-          <button
-            onClick={onNew}
-            className="text-xs font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-3 py-1.5 rounded-lg transition-all shadow-lg"
-          >
-            + New
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onSearchOpen}
+              className="text-xs p-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition-all shadow-sm flex items-center justify-center"
+              title="Deep Search (Cmd+Shift+F)"
+            >
+              <SearchIcon />
+            </button>
+            <button
+              onClick={onNew}
+              className="text-xs font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-3 py-1.5 rounded-lg transition-all shadow-lg"
+            >
+              + New
+            </button>
+          </div>
         </div>
 
         {/* Search Bar */}
