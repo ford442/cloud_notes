@@ -15,6 +15,7 @@ const TaskView = lazy(() => import('./components/TaskView').then(m => ({ default
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
 import { CommandPalette } from './components/CommandPalette'
+import { SearchModal } from './components/SearchModal'
 import { PluginRegistry } from './services/plugin'
 import { CorePlugins } from './plugins/core'
 import { ToastProvider, useToast } from './components/Toast'
@@ -49,6 +50,7 @@ function App() {
   
   // Command Palette
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [isFocusMode, setIsFocusMode] = useState(false)
@@ -144,6 +146,11 @@ function App() {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         setIsCmdPaletteOpen(prev => !prev)
+      }
+      // Ctrl+Shift+F or Cmd+Shift+F for Search
+      if (e.key === 'F' && e.shiftKey && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setIsSearchOpen(prev => !prev)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -474,6 +481,13 @@ function App() {
           actions={PluginRegistry.getActions()}
         />
 
+        {/* Search Modal */}
+        <SearchModal
+          isOpen={isSearchOpen}
+          onClose={() => setIsSearchOpen(false)}
+          onNavigate={handleSelectNote}
+        />
+
         {/* Sidebar */}
         <div className={`${isFocusMode ? 'hidden' : 'block h-full'}`}>
           <Sidebar
@@ -483,6 +497,7 @@ function App() {
             onNew={handleNew}
             isLoading={isLoading}
             onMoveNote={handleMoveNote}
+            onSearchOpen={() => setIsSearchOpen(true)}
           />
         </div>
 
