@@ -53,11 +53,11 @@ def run(playwright):
         # Click the older one (second item, index 1)
         history_items.nth(1).click()
 
-        # Handle Confirm Dialog
-        page.on("dialog", lambda dialog: dialog.accept())
-
         # Click Restore
         page.get_by_role("button", name="Restore This Version").click()
+
+        # Handle Custom Confirm Dialog
+        page.locator("div[role='dialog']").get_by_role("button", name="Confirm").click()
 
         # Wait for modal to close
         page.get_by_text("Note History").wait_for(state="hidden")

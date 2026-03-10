@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db, STORE_HISTORY } from '../utils/db';
+import { PluginRegistry } from '../services/plugin';
 
 interface HistoryEntry {
   timestamp: number;
@@ -35,9 +36,9 @@ export const HistoryModal = ({ isOpen, onClose, noteId, onRestore }: HistoryModa
     }
   }, [isOpen, noteId]);
 
-  const handleRestore = () => {
+  const handleRestore = async () => {
     if (selectedVersion) {
-      if (confirm(`Are you sure you want to restore the version from ${new Date(selectedVersion.timestamp).toLocaleString()}? Unsaved changes will be lost.`)) {
+      if (await PluginRegistry.confirm(`Are you sure you want to restore the version from ${new Date(selectedVersion.timestamp).toLocaleString()}? Unsaved changes will be lost.`)) {
         onRestore(selectedVersion.content);
         onClose();
       }
