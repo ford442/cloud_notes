@@ -9,6 +9,7 @@ import { VoicePlugin } from './voice';
 import { FocusPlugin } from './focus';
 import { TasksPlugin } from './tasks';
 import { ClusterPlugin } from './cluster';
+import { StorageService } from '../services/api';
 
 // --- Stats Plugin ---
 
@@ -101,6 +102,41 @@ export const ExportPlugin: Plugin = {
             return;
         }
         downloadFile(`${note.title || 'untitled'}.json`, JSON.stringify(note, null, 2), 'application/json');
+      }
+    });
+
+    ctx.registerAction({
+      id: 'export-all-markdown',
+      title: 'Export All as Markdown',
+      section: 'Actions',
+      icon: <span className="text-lg">📚</span>,
+      perform: async () => {
+        const allNotes = ctx.getAllNotes();
+        if (allNotes.length === 0) {
+            ctx.alert('No notes to export');
+            return;
+        }
+
+        try {
+            let combined = `# All Notes (${new Date().toLocaleDateString()})\n\n`;
+            for (const meta of allNotes) {
+                // Try cache first, fallback to network
+                let note = await StorageService.getCachedNote(meta.id);
+                if (!note) {
+                    note = await StorageService.getNoteContent(meta.id);
+                }
+                if (note && note.content) {
+                    combined += `## ${note.title}\n\n`;
+                    combined += `*Subject: ${note.subject} | Section: ${note.section} | Tags: ${note.tags}*\n\n`;
+                    combined += `${note.content}\n\n---\n\n`;
+                }
+            }
+            downloadFile(`cloud_notes_backup_${new Date().toISOString().split('T')[0]}.md`, combined, 'text/markdown');
+            ctx.alert('Successfully exported all notes.');
+        } catch (e) {
+            console.error('Export failed', e);
+            ctx.alert('Failed to export all notes. Make sure you are online to fetch uncached notes.');
+        }
       }
     });
   }
