@@ -54,13 +54,25 @@ export const DailyNotesPlugin: Plugin = {
 
     ctx.registerCommand({
       title: 'Daily Note',
-      description: "Open or create today's daily note",
+      description: "Insert today's daily note template",
       searchTerms: ['daily', 'journal', 'today'],
       section: 'Actions',
       icon: <strong>📅</strong>,
       command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).run();
-        openDailyNote();
+        const todayLocale = new Date().toLocaleDateString();
+        const template = `## Daily Journal: ${todayLocale}
+
+### 🌟 Gratitude
+1.
+2.
+3.
+
+### 🧠 Brain Dump
+-
+
+### ✅ Action Items
+- [ ] `;
+        editor.chain().focus().deleteRange(range).insertContent(template).run();
       }
     });
   }
