@@ -157,4 +157,22 @@ export const defaultCommands: CommandItem[] = [
       editor.chain().focus().deleteRange(range).insertContent('[[').run()
     },
   },
+  {
+    title: 'Twitter Embed',
+    icon: <strong>🐦</strong>,
+    section: 'Media',
+    command: async ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+
+      const url = await PluginRegistry.prompt('Enter Twitter/X URL:')
+      if (url) {
+        // Simple iframe embed for twitter
+        const tweetId = url.split('/').pop()?.split('?')[0];
+        if (tweetId) {
+            const embedHtml = `<iframe border="0" frameborder="0" height="250" width="100%" src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}"></iframe>`;
+            editor.chain().focus().insertContent(embedHtml).run();
+        }
+      }
+    },
+  },
 ]

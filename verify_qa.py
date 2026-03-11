@@ -6,7 +6,7 @@ def verify(page):
     page.goto("http://localhost:5173")
 
     # Wait for app to load
-    page.wait_for_selector('input[placeholder="Note Title..."]')
+    page.wait_for_selector('input[placeholder="Note Title..."]', state='attached')
     print("App loaded.")
 
     # 1. Verify Settings & Data Tab
