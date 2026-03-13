@@ -1,6 +1,7 @@
 import type { Plugin, PluginContext } from '../services/plugin';
 import { StorageService } from '../services/api';
 import { AIService } from '../services/ai';
+import { markdownToHtml } from '../utils/serialization';
 
 // Helper to handle variables in templates
 const processTemplate = async (content: string, ctx: PluginContext): Promise<string | null> => {
@@ -67,7 +68,7 @@ export const InteractiveTemplatesPlugin: Plugin = {
             try {
               const filled = await processTemplate(t.content, ctx);
               if (filled) {
-                  editor.chain().focus().insertContent(filled).run();
+                  editor.chain().focus().insertContent(markdownToHtml(filled)).run();
               }
             } catch (e) {
               console.error(e);
@@ -109,7 +110,7 @@ ${placeholder}
 ## Action Items
 - [ ]
 `;
-            editor.chain().focus().insertContent(template).run();
+            editor.chain().focus().insertContent(markdownToHtml(template)).run();
 
             // 2. Call AI asynchronously
             try {
@@ -131,7 +132,7 @@ ${placeholder}
 
                 if (from !== -1) {
                     const content = agenda ? agenda : "- [ ] ";
-                    editor.chain().focus().deleteRange({ from, to }).insertContent(content).run();
+                    editor.chain().focus().deleteRange({ from, to }).insertContent(markdownToHtml(content)).run();
                 }
 
             } catch (e) {
@@ -147,7 +148,7 @@ ${placeholder}
                         return false;
                     }
                  });
-                 if (from !== -1) editor.chain().focus().deleteRange({ from, to }).insertContent("- [ ] ").run();
+                 if (from !== -1) editor.chain().focus().deleteRange({ from, to }).insertContent(markdownToHtml("- [ ] ")).run();
             }
         }
     });
@@ -187,9 +188,9 @@ ${placeholder}
           });
 
           if (from !== -1) {
-            editor.chain().focus().deleteRange({ from, to }).insertContent(text || "").run();
+            editor.chain().focus().deleteRange({ from, to }).insertContent(markdownToHtml(text || "")).run();
           } else {
-             if (text) editor.chain().focus().insertContent(text).run();
+             if (text) editor.chain().focus().insertContent(markdownToHtml(text)).run();
           }
         } catch (e) {
           console.error(e);
@@ -232,7 +233,7 @@ ${placeholder}
                   if (note && note.content) {
                       const filled = await processTemplate(note.content, ctx);
                       if (filled) {
-                           editor.chain().focus().insertContent(filled).run();
+                           editor.chain().focus().insertContent(markdownToHtml(filled)).run();
                       }
                   }
               } catch (e) {

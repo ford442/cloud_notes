@@ -1,4 +1,5 @@
 import type { Plugin } from '../services/plugin';
+import { markdownToHtml } from '../utils/serialization';
 
 export const FlashcardsPlugin: Plugin = {
   id: 'flashcards',
@@ -21,7 +22,7 @@ export const FlashcardsPlugin: Plugin = {
       searchTerms: ['card', 'study', 'flashcard'],
       icon: <span className="text-lg">🗂️</span>,
       command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).insertContent('\n\nQuestion :: Answer\n\n').run();
+        editor.chain().focus().deleteRange(range).insertContent(markdownToHtml('\n\nQuestion :: Answer\n\n')).run();
       }
     });
   }

@@ -1,4 +1,5 @@
 import type { Plugin } from '../services/plugin';
+import { markdownToHtml } from '../utils/serialization';
 
 export const DailyNotesPlugin: Plugin = {
   id: 'daily-notes',
@@ -72,7 +73,7 @@ export const DailyNotesPlugin: Plugin = {
 
 ### ✅ Action Items
 - [ ] `;
-        editor.chain().focus().deleteRange(range).insertContent(template).run();
+        editor.chain().focus().deleteRange(range).insertContent(markdownToHtml(template)).run();
       }
     });
   }

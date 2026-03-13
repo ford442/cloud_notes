@@ -2,6 +2,7 @@ import type { Plugin } from '../services/plugin';
 import { AIService } from '../services/ai';
 import { SemanticService } from '../services/semantic';
 import { StorageService } from '../services/api';
+import { markdownToHtml } from '../utils/serialization';
 
 export const AIPlugin: Plugin = {
   id: 'ai-features',
@@ -68,9 +69,9 @@ export const AIPlugin: Plugin = {
                  const formattedAnswer = `\n> **Q:** ${question}\n> **A:** ${answer}\n`;
 
                  if (from !== -1) {
-                     editor.chain().focus().deleteRange({ from, to }).insertContent(formattedAnswer).run();
+                     editor.chain().focus().deleteRange({ from, to }).insertContent(markdownToHtml(formattedAnswer)).run();
                  } else {
-                     editor.chain().focus().insertContent(formattedAnswer).run();
+                     editor.chain().focus().insertContent(markdownToHtml(formattedAnswer)).run();
                  }
 
             } catch (e) {
@@ -123,9 +124,9 @@ export const AIPlugin: Plugin = {
           });
 
           if (pos >= 0) {
-            editor.chain().focus().deleteRange({ from: pos, to: pos + placeholder.length }).insertContent(formattedSummary).run();
+            editor.chain().focus().deleteRange({ from: pos, to: pos + placeholder.length }).insertContent(markdownToHtml(formattedSummary)).run();
           } else {
-            editor.chain().focus().insertContent(formattedSummary).run();
+            editor.chain().focus().insertContent(markdownToHtml(formattedSummary)).run();
           }
 
         } catch (e) {
@@ -138,7 +139,7 @@ export const AIPlugin: Plugin = {
             }
           });
           if (pos >= 0) {
-            editor.chain().focus().deleteRange({ from: pos, to: pos + placeholder.length }).insertContent(`\n*AI Summarization failed.*\n`).run();
+            editor.chain().focus().deleteRange({ from: pos, to: pos + placeholder.length }).insertContent(markdownToHtml(`\n*AI Summarization failed.*\n`)).run();
           }
         }
       },

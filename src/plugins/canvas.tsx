@@ -90,7 +90,7 @@ export const CanvasToolsPlugin: Plugin = {
         const api = ctx.getCanvasAPI();
         if (!api) return alert('Canvas is not active. Switch to Canvas mode.');
 
-        const note = ctx.getNote();
+        const note = ctx.getCurrentNote();
         if (!note || !note.content) return alert('No text to sync.');
 
         const content = note.content;
