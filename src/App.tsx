@@ -428,7 +428,7 @@ function App() {
 
   return (
     <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
-      <div className="h-full w-full bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
+      <div className="h-full w-full bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
         
         {/* Settings Modal */}
         {isSettingsOpen && (
@@ -535,13 +535,13 @@ function App() {
                      value={currentNote.subject}
                      onChange={e => setCurrentNote({...currentNote, subject: e.target.value})}
                      placeholder="Subject"
-                     className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-lg text-xs font-medium w-24 outline-none transition-colors text-center"
+                     className="bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1 rounded-xl text-xs font-medium w-24 outline-none transition-colors text-center"
                    />
                    <input
                      value={currentNote.section}
                      onChange={e => setCurrentNote({...currentNote, section: e.target.value})}
                      placeholder="Section"
-                     className="bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-lg text-xs font-medium w-24 outline-none transition-colors text-center"
+                     className="bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1 rounded-xl text-xs font-medium w-24 outline-none transition-colors text-center"
                    />
                  </div>
               </div>

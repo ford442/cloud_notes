@@ -237,7 +237,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
     ],
     editorProps: {
       attributes: {
-        class: 'prose prose-slate dark:prose-invert max-w-none focus:outline-none min-h-[500px] p-8',
+        class: 'prose prose-slate dark:prose-invert max-w-3xl mx-auto focus:outline-none min-h-[500px] p-10',
       },
       handleDrop: (view, event) => {
         // 1. Handle Image Drop

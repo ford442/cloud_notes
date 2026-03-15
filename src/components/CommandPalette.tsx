@@ -182,7 +182,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col max-h-[60vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col max-h-[60vh] animate-in fade-in zoom-in-95 duration-200">
 
         {/* Search Input */}
         <div className="flex items-center border-b border-slate-100 dark:border-slate-700 p-4 gap-3">
@@ -224,7 +224,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
                 }}
                 className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-left transition-colors ${
                   index === selectedIndex
-                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-200'
+                    ? 'bg-blue-100/50 dark:bg-blue-900/40 text-blue-800 dark:text-blue-100 border border-blue-200/50 dark:border-blue-700/50'
                     : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
                 }`}
               >
