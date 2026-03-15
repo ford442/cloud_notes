@@ -141,7 +141,7 @@ export const Editor = ({ value, onChange }: EditorProps) => {
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               onBlur={() => setTimeout(() => setSlashMenuOpen(false), 150)}
-              className="absolute inset-0 w-full h-full bg-transparent p-8 text-slate-900 dark:text-slate-100 text-lg leading-relaxed resize-none outline-none font-mono selection:bg-blue-500/30 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors duration-200"
+              className="absolute inset-0 w-full h-full bg-transparent p-10 text-slate-900 dark:text-slate-100 text-lg leading-loose resize-none outline-none font-mono selection:bg-blue-500/30 placeholder:text-slate-400 dark:placeholder:text-slate-500 transition-colors duration-200"
               placeholder="Start writing your note in Markdown..."
               spellCheck={false}
             />
@@ -167,7 +167,7 @@ export const Editor = ({ value, onChange }: EditorProps) => {
           </>
         ) : (
           <div
-            className="absolute inset-0 w-full h-full overflow-y-auto p-8 prose prose-slate dark:prose-invert max-w-none transition-colors duration-200"
+            className="absolute inset-0 w-full h-full overflow-y-auto p-10 leading-loose prose prose-slate dark:prose-invert max-w-none transition-colors duration-200"
             dangerouslySetInnerHTML={{ __html: htmlContent }}
           />
         )}

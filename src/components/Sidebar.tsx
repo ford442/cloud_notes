@@ -115,7 +115,7 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search notes..."
-            className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-600 rounded-xl leading-5 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors shadow-sm"
+            className="block w-full pl-10 pr-3 py-2 border border-slate-200 dark:border-slate-600 rounded-2xl leading-5 bg-slate-50 dark:bg-slate-900/50 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors shadow-sm"
           />
         </div>
       </div>
@@ -186,10 +186,10 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                             const id = e.dataTransfer.getData('text/plain');
                             if (id && onMoveNote) onMoveNote(id, subject, section);
                         }}
-                        className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 ${
+                        className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 ${
                             dragOverTarget === `${subject}-${section}`
                             ? 'bg-blue-100 dark:bg-blue-900/40'
-                            : 'hover:bg-slate-100/50 dark:hover:bg-slate-700/20'
+                            : 'hover:bg-slate-200/50 dark:hover:bg-slate-700/20'
                         }`}
                       >
                         <span className={`text-xs text-slate-400 dark:text-slate-500 transition-transform ${(!isSearching && collapsed[`${subject}-${section}`]) ? '-rotate-90' : ''}`}>▼</span>
@@ -211,10 +211,10 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                               }}
                               onClick={() => onSelect(note.id)}
                               className={`
-                                group flex items-center gap-3 px-3 py-2 rounded-lg text-sm cursor-pointer transition-all relative
+                                group flex items-center gap-3 px-3 py-2 rounded-xl text-sm cursor-pointer transition-all relative
                                 ${selectedId === note.id 
                                   ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-700 dark:text-blue-100 border border-blue-500/30'
-                                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-700/20'
+                                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/20'
                                 }
                               `}
                             >
