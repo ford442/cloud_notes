@@ -343,16 +343,54 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
             }
         }
 
-        // 3. YouTube Link Paste
+        // 3. YouTube/Figma/Twitter Link Paste
         const text = event.clipboardData?.getData('text/plain');
         if (text) {
+             const trimmedText = text.trim();
              const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
-             if (youtubeRegex.test(text.trim())) {
+             const figmaRegex = /https:\/\/([\w\.-]+\.)?figma.com\/(file|proto)\/([0-9a-zA-Z]{22,128})(?:\/.*)?$/;
+             const twitterRegex = /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com)\/.+$/;
+
+             if (youtubeRegex.test(trimmedText)) {
                  event.preventDefault();
-                 const node = view.state.schema.nodes.youtube.create({ src: text.trim() });
+                 const node = view.state.schema.nodes.youtube.create({ src: trimmedText });
                  const tr = view.state.tr.replaceSelectionWith(node);
                  view.dispatch(tr);
                  return true;
+             } else if (figmaRegex.test(trimmedText)) {
+                 event.preventDefault();
+                 const embedHtml = `<iframe style="border: 1px solid rgba(0, 0, 0, 0.1);" width="100%" height="450" src="https://www.figma.com/embed?embed_host=share&url=${encodeURIComponent(trimmedText)}" allowfullscreen></iframe>`;
+
+                 // Replace selection if any
+                 const { from, to } = view.state.selection;
+                 if (from !== to) {
+                     const tr = view.state.tr.delete(from, to);
+                     view.dispatch(tr);
+                 }
+
+                 // We must schedule this for the next tick to allow the current transaction to complete
+                 setTimeout(() => {
+                     editor?.chain().focus().insertContent(embedHtml).run();
+                 }, 0);
+                 return true;
+             } else if (twitterRegex.test(trimmedText)) {
+                 event.preventDefault();
+                 const tweetId = trimmedText.split('/').pop()?.split('?')[0];
+                 if (tweetId) {
+                     const embedHtml = `<iframe border="0" frameborder="0" height="250" width="100%" src="https://platform.twitter.com/embed/Tweet.html?id=${tweetId}"></iframe>`;
+
+                     // Replace selection if any
+                     const { from, to } = view.state.selection;
+                     if (from !== to) {
+                         const tr = view.state.tr.delete(from, to);
+                         view.dispatch(tr);
+                     }
+
+                     setTimeout(() => {
+                         editor?.chain().focus().insertContent(embedHtml).run();
+                     }, 0);
+                     return true;
+                 }
              }
         }
 
