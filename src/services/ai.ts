@@ -56,4 +56,7 @@ export const AIService = {
 
   generateText: (text: string, maxNewTokens = 200) =>
     request<string>('generateText', { text, maxNewTokens }),
+
+  transcribeAudio: (audioData: Float32Array, onProgress?: (msg: string) => void) =>
+    request<string>('transcribeAudio', audioData, onProgress),
 };
