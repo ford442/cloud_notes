@@ -522,8 +522,8 @@ function App() {
 
           {/* Header Card */}
           <div className={`${isFocusMode ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex-1 flex items-center gap-4">
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <div className="flex-1 flex items-center gap-4 min-w-[300px]">
                  <input
                    value={currentNote.title}
                    onChange={e => setCurrentNote({...currentNote, title: e.target.value})}
