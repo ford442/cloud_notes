@@ -10,6 +10,7 @@ import { FocusPlugin } from './focus';
 import { TasksPlugin } from './tasks';
 import { ClusterPlugin } from './cluster';
 import { StorageService } from '../services/api';
+import { E2EPlugin } from './e2e';
 
 // --- Stats Plugin ---
 
@@ -172,4 +173,4 @@ export const TextToolsPlugin: Plugin = {
   }
 };
 
-export const CorePlugins = [InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin];
+export const CorePlugins = [InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin, E2EPlugin];
