@@ -155,7 +155,7 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                 className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer text-slate-700 dark:text-slate-200 transition-all group ${
                     dragOverTarget === subject
                     ? 'bg-blue-100 dark:bg-blue-900/40 border border-blue-500/30'
-                    : 'hover:bg-slate-200/50 dark:hover:bg-slate-700/30 border border-transparent'
+                    : 'hover:bg-blue-50/50 dark:hover:bg-blue-900/20 border border-transparent'
                 }`}
               >
                 <span className={`text-xs text-slate-400 dark:text-slate-400 transition-transform ${(!isSearching && collapsed[subject]) ? '-rotate-90' : ''}`}>▼</span>
@@ -186,7 +186,7 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                             const id = e.dataTransfer.getData('text/plain');
                             if (id && onMoveNote) onMoveNote(id, subject, section);
                         }}
-                        className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 ${
+                        className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-colors ${
                             dragOverTarget === `${subject}-${section}`
                             ? 'bg-blue-100 dark:bg-blue-900/40'
                             : 'hover:bg-slate-200/50 dark:hover:bg-slate-700/20'
@@ -213,14 +213,14 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                               className={`
                                 group flex items-center gap-3 px-3 py-2 rounded-xl text-sm cursor-pointer transition-all relative
                                 ${selectedId === note.id 
-                                  ? 'bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-blue-700 dark:text-blue-100 border border-blue-500/30'
+                                  ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
                                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/20'
                                 }
                               `}
                             >
                               <NoteIcon />
                               <div className="truncate">{note.name}</div>
-                              {selectedId === note.id && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-gradient-to-b from-blue-500 to-purple-500 rounded-r"></div>}
+                              {selectedId === note.id && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-500 rounded-r transition-all duration-300"></div>}
                             </div>
                           ))}
                         </div>

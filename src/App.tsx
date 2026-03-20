@@ -528,20 +528,20 @@ function App() {
                    value={currentNote.title}
                    onChange={e => setCurrentNote({...currentNote, title: e.target.value})}
                    placeholder="Note Title..."
-                   className="text-2xl font-bold bg-transparent outline-none w-full placeholder:text-slate-300 dark:placeholder:text-slate-600 transition-colors"
+                   className="text-3xl font-extrabold tracking-tight bg-transparent outline-none w-full placeholder:text-slate-300 dark:placeholder:text-slate-600 transition-colors"
                  />
                  <div className="flex gap-2">
                    <input
                      value={currentNote.subject}
                      onChange={e => setCurrentNote({...currentNote, subject: e.target.value})}
                      placeholder="Subject"
-                     className="bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1 rounded-xl text-xs font-medium w-24 outline-none transition-colors text-center"
+                     className="bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1.5 rounded-xl text-xs font-medium w-24 outline-none transition-colors text-center focus:ring-2 focus:ring-blue-500/50"
                    />
                    <input
                      value={currentNote.section}
                      onChange={e => setCurrentNote({...currentNote, section: e.target.value})}
                      placeholder="Section"
-                     className="bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1 rounded-xl text-xs font-medium w-24 outline-none transition-colors text-center"
+                     className="bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1.5 rounded-xl text-xs font-medium w-24 outline-none transition-colors text-center focus:ring-2 focus:ring-blue-500/50"
                    />
                  </div>
               </div>
@@ -569,34 +569,34 @@ function App() {
                  </button>
 
                  {/* Editor Mode Toggle */}
-                 <div className="bg-slate-100 dark:bg-slate-700 p-1 rounded-lg flex text-xs font-medium">
+                 <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-xl flex text-xs font-medium shadow-inner">
                   <button
                     onClick={() => setEditorMode('simple')}
-                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'simple' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'simple' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Simple
                   </button>
                   <button
                     onClick={() => setEditorMode('rich')}
-                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'rich' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'rich' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Rich
                   </button>
                   <button
                     onClick={() => setEditorMode('graph')}
-                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'graph' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'graph' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Graph
                   </button>
                   <button
                     onClick={() => setEditorMode('canvas')}
-                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'canvas' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'canvas' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Canvas
                   </button>
                   <button
                     onClick={() => setEditorMode('tasks')}
-                    className={`px-3 py-2 rounded-md transition-all ${editorMode === 'tasks' ? 'bg-white dark:bg-slate-600 shadow text-slate-900 dark:text-white' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'tasks' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     Tasks
                   </button>
