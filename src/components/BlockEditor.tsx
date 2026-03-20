@@ -350,7 +350,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         if (text) {
              const trimmedText = text.trim();
              const youtubeRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\/.+$/;
-             const figmaRegex = /https:\/\/([\w\.-]+\.)?figma.com\/(file|proto)\/([0-9a-zA-Z]{22,128})(?:\/.*)?$/;
+             const figmaRegex = /https:\/\/([\w.-]+\.)?figma.com\/(file|proto)\/([0-9a-zA-Z]{22,128})(?:\/.*)?$/;
              const twitterRegex = /^(https?:\/\/)?(www\.)?(twitter\.com|x\.com)\/.+$/;
 
              if (youtubeRegex.test(trimmedText)) {
