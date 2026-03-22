@@ -174,22 +174,22 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[20vh] px-4">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300 ease-in-out"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-slate-200 dark:border-slate-700 overflow-hidden flex flex-col max-h-[60vh] animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] border border-slate-200/50 dark:border-slate-700/50 overflow-hidden flex flex-col max-h-[70vh] animate-in fade-in zoom-in-95 duration-200">
 
         {/* Search Input */}
-        <div className="flex items-center border-b border-slate-100 dark:border-slate-700 p-4 gap-3">
-          <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        <div className="flex items-center border-b border-slate-200/50 dark:border-slate-700/50 p-5 gap-4 bg-transparent">
+          <svg className="w-6 h-6 text-slate-400 dark:text-slate-500 animate-pulse-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input
             ref={inputRef}
-            className="flex-1 bg-transparent text-lg text-slate-800 dark:text-white placeholder:text-slate-400 outline-none"
+            className="flex-1 bg-transparent text-xl font-medium text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500/80 outline-none transition-all duration-200"
             placeholder="Type a command or search..."
             value={query}
             onChange={e => {
@@ -197,22 +197,23 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
               if (e.target.value.trim()) setIsSearching(true);
             }}
           />
-          <div className="text-xs font-medium text-slate-400 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</div>
+          <div className="text-[10px] font-bold tracking-wider text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md px-2 py-1 shadow-sm uppercase">ESC</div>
         </div>
 
         {/* Loading Indicator */}
         {isSearching && (
-           <div className="px-4 py-2 text-xs text-blue-500 font-medium bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/30 flex items-center gap-2">
-               <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-               Searching semantically...
+           <div className="px-5 py-2.5 text-xs text-indigo-500 dark:text-indigo-400 font-semibold bg-indigo-50/50 dark:bg-indigo-900/20 border-b border-indigo-100/50 dark:border-indigo-800/30 flex items-center gap-3 animate-in slide-in-from-top-2 duration-300">
+               <div className="w-3.5 h-3.5 border-2 border-indigo-500 dark:border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
+               Scanning semantic network...
            </div>
         )}
 
         {/* Results List */}
-        <div className="flex-1 overflow-y-auto p-2 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
           {results.length === 0 ? (
-            <div className="p-8 text-center text-slate-500 dark:text-slate-400">
-              No results found.
+            <div className="p-12 flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500">
+              <svg className="w-12 h-12 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <span className="text-sm font-medium tracking-wide">No connections found</span>
             </div>
           ) : (
             results.map((item, index) => (
@@ -222,32 +223,36 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
                   item.perform();
                   onClose();
                 }}
-                className={`w-full flex items-center gap-4 px-4 py-3 rounded-lg text-left transition-colors ${
+                className={`group w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-all duration-150 ease-out outline-none ${
                   index === selectedIndex
-                    ? 'bg-blue-100/50 dark:bg-blue-900/40 text-blue-800 dark:text-blue-100 border border-blue-200/50 dark:border-blue-700/50'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                    ? 'bg-indigo-50/80 dark:bg-indigo-500/10 text-indigo-900 dark:text-indigo-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ring-1 ring-indigo-200 dark:ring-indigo-500/30 scale-[1.01]'
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
                 }`}
               >
-                <div className={`p-2 rounded-md ${
+                <div className={`p-2.5 rounded-lg shadow-sm transition-colors duration-200 ${
                   index === selectedIndex
-                    ? 'bg-white dark:bg-blue-800/30 text-blue-600 dark:text-blue-300 shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-700/50 text-slate-500 dark:text-slate-400'
+                    ? 'bg-white dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/20'
+                    : 'bg-slate-100/80 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-transparent'
                 }`}>
                   {item.icon || <ActionIcon />}
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{item.title}</div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500 truncate flex items-center gap-2">
+                  <div className={`text-[15px] truncate transition-all duration-200 ${
+                    index === selectedIndex ? 'font-semibold' : 'font-medium'
+                  }`}>
+                    {item.title}
+                  </div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500 truncate flex items-center gap-2 mt-0.5">
                     {item.section === 'Semantic' && (
-                        <span className="text-amber-500 font-medium text-[10px] uppercase tracking-wider border border-amber-500/30 px-1 rounded">Related</span>
+                        <span className="text-amber-500/90 font-bold text-[9px] uppercase tracking-widest border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-sm">Related</span>
                     )}
-                    <span>{item.section === 'Notes' || item.section === 'Semantic' ? 'Jump to Note' : 'Command'}</span>
+                    <span className="font-medium">{item.section === 'Notes' || item.section === 'Semantic' ? 'Jump to Note' : 'Command'}</span>
                   </div>
                 </div>
 
                 {index === selectedIndex && (
-                   <svg className="w-5 h-5 text-blue-500 dark:text-blue-400 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                   <svg className="w-5 h-5 text-indigo-500 dark:text-indigo-400 opacity-70 drop-shadow-sm animate-in fade-in slide-in-from-left-2 duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
                 )}
               </button>
             ))
@@ -255,12 +260,12 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-700 p-2 px-4 text-xs text-slate-400 flex justify-between items-center">
-            <span>
-                <span className="font-semibold text-slate-500 dark:text-slate-300">↑↓</span> to navigate
+        <div className="bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-200/50 dark:border-slate-700/50 p-2.5 px-5 text-xs text-slate-400 dark:text-slate-500 flex justify-between items-center backdrop-blur-sm">
+            <span className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-slate-700/50 px-1.5 rounded shadow-sm">↑↓</span> to navigate
             </span>
-            <span>
-                <span className="font-semibold text-slate-500 dark:text-slate-300">↵</span> to select
+            <span className="flex items-center gap-1.5">
+                <span className="font-bold text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-slate-700/50 px-1.5 rounded shadow-sm">↵</span> to select
             </span>
         </div>
       </div>
