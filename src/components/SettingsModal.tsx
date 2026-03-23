@@ -149,32 +149,46 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
           )}
 
           {activeTab === 'Data' && (
-            <div className="space-y-4">
-               <div>
-                   <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Semantic Index</h3>
-                   <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-                       Re-build the vector index for all your notes. This allows the AI Q&A and "Find Similar" features to work across your entire knowledge base.
-                       This process happens entirely in your browser.
-                   </p>
+            <div className="space-y-6">
+              <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-5 transition-all">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">Semantic Index</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
+                      Re-build the vector index for all your notes. This allows the AI Q&A and "Find Similar" features to work across your entire knowledge base. This process happens entirely in your browser.
+                    </p>
 
-                   <div className="flex items-center gap-4">
-                       <button
-                         onClick={handleReindex}
-                         disabled={isReindexing}
-                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                       >
-                         {isReindexing ? (
-                             <>
-                               <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-                               Indexing...
-                             </>
-                         ) : 'Re-index All Notes'}
-                       </button>
-                       {reindexProgress && (
-                           <span className="text-sm text-slate-500 font-mono">{reindexProgress}</span>
-                       )}
-                   </div>
-               </div>
+                    <div className="flex items-center gap-4">
+                        <button
+                          onClick={handleReindex}
+                          disabled={isReindexing}
+                          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {isReindexing ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                                Indexing...
+                              </>
+                          ) : (
+                              <>
+                                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                Re-index All Notes
+                              </>
+                          )}
+                        </button>
+                        {reindexProgress && (
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Status</span>
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 font-mono">{reindexProgress}</span>
+                            </div>
+                        )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
