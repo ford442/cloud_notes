@@ -26,6 +26,7 @@ import { processImageToBlob } from '../utils/media'
 import { ExcalidrawExtension } from './editor/ExcalidrawExtension'
 import { AudioExtension } from './editor/AudioExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
+import { AIBubbleMenu } from './editor/AIBubbleMenu'
 
 interface BlockEditorProps {
   noteId: string;
@@ -481,6 +482,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
 
   return (
     <div className="w-full h-full overflow-auto relative" onClick={() => editor?.commands.focus()}>
+      {editor && <AIBubbleMenu editor={editor} />}
       <BlockHandle editor={editor} />
       <EditorContent editor={editor} />
     </div>
