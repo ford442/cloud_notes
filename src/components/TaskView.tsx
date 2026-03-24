@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { CloudItemMeta } from '../services/api';
 import { StorageService } from '../services/api';
+import { useToast } from './Toast';
 
 interface TaskViewProps {
   notes: CloudItemMeta[];
@@ -19,6 +20,7 @@ interface Task {
 export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { addToast } = useToast();
 
   const loadTasks = async () => {
     setIsLoading(true);
@@ -83,19 +85,19 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
               const updatedNote = { ...note, content: newContent };
 
               // We don't have author name here easily, defaults to "User" or we can try to get it from localStorage
-              const author = localStorage.getItem('author_name') || "User";
+              const author = localStorage.getItem('author_name') || "Anon";
 
               await StorageService.updateNote(task.noteId, updatedNote, author);
 
               // Remove from local list
               setTasks(prev => prev.filter(t => t.id !== task.id));
           } else {
-              alert('Task line changed or moved. Please reload.');
+              addToast('Task line changed or moved. Please reload.', 'error');
               loadTasks(); // Reload to sync
           }
       } catch (e) {
           console.error(e);
-          alert('Failed to complete task');
+          addToast('Failed to complete task', 'error');
       }
   };
 
