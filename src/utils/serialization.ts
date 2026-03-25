@@ -39,8 +39,11 @@ turndownService.addRule('tiptapTaskItem', {
 
 
 // Keep iframe tags to support YouTube embeds and other rich content
-// We removed 'div' from keep because Tiptap wraps task items in divs which caused them to be serialized as HTML instead of Markdown
-turndownService.keep(['iframe']);
+// We removed 'div' from keep because Tiptap wraps task items in divs which caused them to be serialized as HTML instead of Markdown.
+// Instead, we use a specific keep filter for divs with data-type="prompt-section"
+turndownService.keep((node) => {
+  return node.nodeName === 'IFRAME' || (node.nodeName === 'DIV' && node.getAttribute('data-type') === 'prompt-section');
+});
 
 /**
  * Converts Markdown string to HTML string

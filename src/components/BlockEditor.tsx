@@ -25,6 +25,7 @@ import { BlockHandle } from './editor/BlockHandle'
 import { processImageToBlob } from '../utils/media'
 import { ExcalidrawExtension } from './editor/ExcalidrawExtension'
 import { AudioExtension } from './editor/AudioExtension'
+import { PromptSectionExtension } from './editor/PromptSectionExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
 import { AIBubbleMenu } from './editor/AIBubbleMenu'
 
@@ -152,6 +153,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       }),
       AudioExtension,
       ExcalidrawExtension,
+      PromptSectionExtension,
       StarterKit.configure({
         // Disable extensions that clash with our custom ones if needed
         // @ts-expect-error - history is not in the type definition but might be needed for older versions or use undoRedo
