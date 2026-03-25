@@ -83,6 +83,29 @@ export const defaultCommands: CommandItem[] = [
     },
   },
   {
+    title: 'Prompt Section',
+    icon: <strong>📝</strong>,
+    section: 'Blocks',
+    command: async ({ editor, range }) => {
+      editor.chain().focus().deleteRange(range).run()
+
+      const lengthStr = await PluginRegistry.prompt('Enter maximum character length (e.g., 2000):')
+      if (lengthStr === null) return // User cancelled
+
+      const maxLength = parseInt(lengthStr || '2000', 10)
+
+      if (!isNaN(maxLength) && maxLength > 0) {
+        editor.chain().focus().insertContent({
+          type: 'promptSection',
+          attrs: { maxLength },
+          content: [
+            { type: 'paragraph' }
+          ]
+        }).run()
+      }
+    },
+  },
+  {
     title: 'Excalidraw',
     icon: <strong>🎨</strong>,
     section: 'Media',
