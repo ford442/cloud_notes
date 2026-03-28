@@ -4,7 +4,7 @@ import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OP
 import { EncryptionService } from '../utils/encryption';
 import { createPackedDescription } from '../utils/metadata';
 
-export const API_BASE_URL = "https://ford442-storage-manager.hf.space";
+export const API_BASE_URL = localStorage.getItem('api_url') || "https://ford442-storage-manager.hf.space";
 
 // 1. EXPANDED: Now handles creates, updates, and deletes
 interface PendingOp {

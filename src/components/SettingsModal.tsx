@@ -23,14 +23,23 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
   const [showKey, setShowKey] = useState(false);
   const [isReindexing, setIsReindexing] = useState(false);
   const [reindexProgress, setReindexProgress] = useState('');
+  const [apiUrl, setApiUrl] = useState('');
 
   useEffect(() => {
     if (isOpen) {
       setReadwiseToken(localStorage.getItem('readwise_token') || '');
       setEncryptionKey(EncryptionService.getOrInitPassword());
       setShowKey(false);
+      setApiUrl(localStorage.getItem('api_url') || 'https://ford442-storage-manager.hf.space');
     }
   }, [isOpen]);
+
+  const handleSaveApiUrl = () => {
+    if (!apiUrl.trim()) return addToast('API URL cannot be empty', 'error');
+    localStorage.setItem('api_url', apiUrl);
+    addToast('Storage API URL updated. Please reload.', 'success');
+    setTimeout(() => window.location.reload(), 1500);
+  };
 
   const handleSaveReadwise = () => {
     localStorage.setItem('readwise_token', readwiseToken);
@@ -151,6 +160,33 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
           {activeTab === 'Data' && (
             <div className="space-y-6">
               <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-5 transition-all">
+                <div className="flex items-start gap-4 mb-6">
+                  <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" /></svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">Storage API URL</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                      Configure the URL of the VPS API or backend storage service.
+                    </p>
+                    <div className="flex gap-3">
+                      <input
+                        type="url"
+                        value={apiUrl}
+                        onChange={e => setApiUrl(e.target.value)}
+                        className="flex-1 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                        placeholder="https://..."
+                      />
+                      <button
+                        onClick={handleSaveApiUrl}
+                        className="px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors shrink-0"
+                      >
+                        Save URL
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="flex items-start gap-4">
                   <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
                     <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" /></svg>
