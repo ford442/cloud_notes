@@ -2,7 +2,7 @@ import { Node, mergeAttributes } from '@tiptap/core';
 import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 
 // The React Component for the Node View
-const PromptSectionComponent = ({ node, updateAttributes, getPos, editor }: any) => {
+const PromptSectionComponent = ({ node }: any) => {
   const maxLength = node.attrs.maxLength || 2000;
 
   // Calculate text length recursively from the node content
