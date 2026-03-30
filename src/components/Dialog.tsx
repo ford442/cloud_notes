@@ -59,7 +59,7 @@ export const Dialog = ({ isOpen, type, title, message, defaultValue = '', onConf
             </h3>
           )}
 
-          <p className="text-slate-600 dark:text-slate-300 mb-6">
+          <p className="text-slate-600 dark:text-slate-300 mb-6 whitespace-pre-wrap">
             {message}
           </p>
 

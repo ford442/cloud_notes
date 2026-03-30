@@ -163,8 +163,26 @@ ${placeholder}
       command: async ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
 
-        const prompt = await ctx.prompt('What should I write?');
+        // Load prompt history
+        const historyJson = localStorage.getItem('ai_prompt_history');
+        const history: string[] = historyJson ? JSON.parse(historyJson) : [];
+        const historyText = history.length > 0 ? `\n\nRecent:\n${history.map((h, i) => `${i + 1}. ${h}`).join('\n')}\n\nEnter a new prompt or a number from the list above.` : '';
+
+        let prompt = await ctx.prompt(`What should I write?${historyText}`);
         if (!prompt) return;
+
+        // Check if user selected a number
+        const trimmed = prompt.trim();
+        if (/^\d+$/.test(trimmed)) {
+            const numberSelection = parseInt(trimmed, 10);
+            if (numberSelection > 0 && numberSelection <= history.length) {
+                prompt = history[numberSelection - 1];
+            }
+        }
+
+        // Save to history
+        const newHistory = [prompt, ...history.filter(h => h !== prompt)].slice(0, 5);
+        localStorage.setItem('ai_prompt_history', JSON.stringify(newHistory));
 
         const uniqueId = Date.now().toString().slice(-4);
         const placeholder = `[AI DRAFTING ${uniqueId}]...`;
