@@ -170,7 +170,7 @@ def home():
     return {"status": "online", "provider": "Google Cloud Storage"}
 
 # --- 1. LISTING (Cached) ---
-@app.get("/api/songs", response_model=List[MetaData])
+@app.get("/api/notes", response_model=List[MetaData])
 async def list_library(type: Optional[str] = Query(None)):
     cache_key = f"library:{type or 'all'}"
     cached = await cache.get(cache_key)
@@ -193,7 +193,7 @@ async def list_library(type: Optional[str] = Query(None)):
     return results
 
 # --- 2. UPLOAD JSON ---
-@app.post("/api/songs")
+@app.post("/api/notes")
 async def upload_item(payload: ItemPayload):
     item_id = str(uuid.uuid4())
     date_str = datetime.now().strftime("%Y-%m-%d")
@@ -236,7 +236,7 @@ async def upload_item(payload: ItemPayload):
             raise HTTPException(500, f"Upload failed: {str(e)}")
 
 # --- 2.5 UPDATE JSON (PUT) ---
-@app.put("/api/songs/{item_id}")
+@app.put("/api/notes/{item_id}")
 async def update_item(item_id: str, payload: ItemPayload):
     # Verify type configuration
     item_type = payload.type if payload.type in STORAGE_MAP else "song"
@@ -309,7 +309,7 @@ async def update_item(item_id: str, payload: ItemPayload):
 
 
 # --- 3. FETCH JSON ITEM ---
-@app.get("/api/songs/{item_id}")
+@app.get("/api/notes/{item_id}")
 async def get_item(item_id: str, type: Optional[str] = Query(None)):
     # Try to find the file
     search_types = [type] if type else ["song", "pattern", "bank"]
