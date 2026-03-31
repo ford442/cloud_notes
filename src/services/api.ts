@@ -6,6 +6,14 @@ import { createPackedDescription } from '../utils/metadata';
 
 export const API_BASE_URL = localStorage.getItem('api_url') || "https://storage.noahcohn.com";
 
+// The Bridge: If the user is still using the legacy HF Space, map `/api/notes` back to `/api/songs`
+const getApiPath = (path: string): string => {
+    if (API_BASE_URL.includes('ford442') || API_BASE_URL.includes('hf.space')) {
+        return path.replace('/api/notes', '/api/songs');
+    }
+    return path;
+};
+
 // 1. EXPANDED: Now handles creates, updates, and deletes
 interface PendingOp {
   id: string;
@@ -127,7 +135,7 @@ export const StorageService = {
 
   async getNotes(skipCacheUpdate = false): Promise<CloudItemMeta[]> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes?type=note`);
+      const res = await fetch(`${API_BASE_URL}${getApiPath('/api/notes')}?type=note`);
       if (!res.ok) throw new Error("Failed to fetch notes");
       const notes = await res.json();
 
@@ -145,7 +153,7 @@ export const StorageService = {
 
   async getNoteContent(id: string): Promise<Note> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes/${id}?type=note`);
+      const res = await fetch(`${API_BASE_URL}${getApiPath(`/api/notes/${id}`)}?type=note`);
       if (!res.ok) throw new Error("Failed to load note");
       const data = await res.json();
       
@@ -184,7 +192,7 @@ export const StorageService = {
   // Pure network call for Creates
   async _networkSaveNote(note: Note, author: string): Promise<{ success: boolean; id?: string }> {
       const payload = await this._preparePayload(note, author);
-      const res = await fetch(`${API_BASE_URL}/api/notes`, {
+      const res = await fetch(`${API_BASE_URL}${getApiPath('/api/notes')}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -197,7 +205,7 @@ export const StorageService = {
   // Pure network call for Updates
   async _networkUpdateNote(id: string, note: Note, author: string): Promise<{ success: boolean; id?: string }> {
       const payload = await this._preparePayload(note, author);
-      const res = await fetch(`${API_BASE_URL}/api/notes/${id}`, {
+      const res = await fetch(`${API_BASE_URL}${getApiPath(`/api/notes/${id}`)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
