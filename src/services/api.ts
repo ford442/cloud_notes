@@ -4,7 +4,7 @@ import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OP
 import { EncryptionService } from '../utils/encryption';
 import { createPackedDescription } from '../utils/metadata';
 
-export const API_BASE_URL = localStorage.getItem('api_url') || "https://ford442-storage-manager.hf.space";
+export const API_BASE_URL = localStorage.getItem('api_url') || "https://storage.noahcohn.com";
 
 // 1. EXPANDED: Now handles creates, updates, and deletes
 interface PendingOp {
@@ -127,7 +127,7 @@ export const StorageService = {
 
   async getNotes(skipCacheUpdate = false): Promise<CloudItemMeta[]> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/songs?type=note`);
+      const res = await fetch(`${API_BASE_URL}/api/notes?type=note`);
       if (!res.ok) throw new Error("Failed to fetch notes");
       const notes = await res.json();
 
@@ -145,7 +145,7 @@ export const StorageService = {
 
   async getNoteContent(id: string): Promise<Note> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/songs/${id}?type=note`);
+      const res = await fetch(`${API_BASE_URL}/api/notes/${id}?type=note`);
       if (!res.ok) throw new Error("Failed to load note");
       const data = await res.json();
       
@@ -184,7 +184,7 @@ export const StorageService = {
   // Pure network call for Creates
   async _networkSaveNote(note: Note, author: string): Promise<{ success: boolean; id?: string }> {
       const payload = await this._preparePayload(note, author);
-      const res = await fetch(`${API_BASE_URL}/api/songs`, {
+      const res = await fetch(`${API_BASE_URL}/api/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -197,7 +197,7 @@ export const StorageService = {
   // Pure network call for Updates
   async _networkUpdateNote(id: string, note: Note, author: string): Promise<{ success: boolean; id?: string }> {
       const payload = await this._preparePayload(note, author);
-      const res = await fetch(`${API_BASE_URL}/api/songs/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/notes/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
