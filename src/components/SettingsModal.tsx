@@ -30,7 +30,7 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
       setReadwiseToken(localStorage.getItem('readwise_token') || '');
       setEncryptionKey(EncryptionService.getOrInitPassword());
       setShowKey(false);
-      setApiUrl(localStorage.getItem('api_url') || 'https://ford442-storage-manager.hf.space');
+      setApiUrl(localStorage.getItem('api_url') || 'https://storage.noahcohn.com');
     }
   }, [isOpen]);
 
