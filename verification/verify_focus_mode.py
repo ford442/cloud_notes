@@ -46,12 +46,12 @@ def run():
         # Check if Sidebar is hidden
         # App.tsx: Sidebar wrapper has class 'hidden' if isFocusMode
         # <div className={`${isFocusMode ? 'hidden' : 'block h-full'}`}>
-        # I can check visibility of an element inside Sidebar, e.g. "General"
+        # I can check visibility of an element inside Sidebar, e.g. "KNOWLEDGE" (the sidebar header)
 
         page.screenshot(path="verification_focus_mode.png")
         print("Focus Mode screenshot saved to verification_focus_mode.png")
 
-        sidebar_visible = page.is_visible("text=General")
+        sidebar_visible = page.is_visible("text=KNOWLEDGE")
         if not sidebar_visible:
             print("SUCCESS: Sidebar is hidden in Focus Mode.")
         else:
@@ -69,7 +69,7 @@ def run():
         time.sleep(1)
 
         # Check if Sidebar is visible again
-        sidebar_visible = page.is_visible("text=General")
+        sidebar_visible = page.is_visible("text=KNOWLEDGE")
         if sidebar_visible:
             print("SUCCESS: Sidebar is visible after exiting Focus Mode.")
         else:

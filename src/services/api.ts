@@ -240,6 +240,15 @@ export const StorageService = {
             timestamp: Date.now()
           };
           await db.set(STORE_PENDING_OPS, `${op.timestamp}-${op.id}`, op);
+
+          // Optimistically update the list
+          const currentList = await this.getCachedNotes();
+          const packedDesc = createPackedDescription(note);
+          const updatedList = currentList.map(item =>
+              item.id === id ? { ...item, name: note.title, description: packedDesc } : item
+          );
+          await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, updatedList);
+
           return { success: true, id: id }; // Return mock success to keep UI happy
       }
   },
@@ -274,6 +283,19 @@ export const StorageService = {
       // Store operation and optimistic cache
       await db.set(STORE_PENDING_OPS, `${op.timestamp}-${op.id}`, op);
       await db.set(STORE_NOTES_CONTENT, tempId, { ...note, id: tempId });
+
+      // Optimistically update the list so it appears in the sidebar while offline
+      const currentList = await this.getCachedNotes();
+      const packedDesc = createPackedDescription(note);
+      const newMeta: CloudItemMeta = {
+          id: tempId,
+          name: note.title,
+          type: 'note',
+          author: author,
+          date: new Date().toISOString(),
+          description: packedDesc
+      };
+      await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [newMeta, ...currentList]);
 
       return { success: true, id: tempId }; // Return mock success with temporary ID
     }
