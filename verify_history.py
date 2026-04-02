@@ -9,7 +9,12 @@ def run(playwright):
     page.goto("http://localhost:5173")
 
     # 2. Create Note
-    page.get_by_placeholder("Note Title...").fill("History Test Note")
+    # We must wait for loading to finish
+    page.locator(".lucide-loader").wait_for(state="hidden")
+    # Wait for the input to be attached and ready
+    title_input = page.get_by_placeholder("Note Title...")
+    title_input.wait_for(state="attached")
+    title_input.fill("History Test Note")
 
     # 3. Add Content (First Version)
     # The editor is a contenteditable div
@@ -20,14 +25,18 @@ def run(playwright):
     # 4. Save
     page.get_by_role("button", name="Save Note").click()
     # Wait for save (toast might appear)
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(2000)
 
     # 5. Change Content (Second Version)
     editor.fill("This is the SECOND version of the note.")
 
     # 6. Save Again
     page.get_by_role("button", name="Save Note").click()
-    page.wait_for_timeout(1000)
+    page.wait_for_timeout(2000)
+
+    # Click the note in the sidebar so it's selected and history is enabled
+    page.get_by_text("History Test Note", exact=True).first.click()
+    page.wait_for_timeout(500)
 
     # 7. Open History
     # The button has title "View History"
@@ -36,9 +45,18 @@ def run(playwright):
     # 8. Wait for Modal
     page.get_by_text("Note History").wait_for()
 
-    # 9. Screenshot Modal
-    page.screenshot(path="verification_history_modal.png")
-    print("Screenshot taken: verification_history_modal.png")
+    # 9. Test diff view modes
+    page.get_by_role("button", name="Line Diff").click()
+    page.wait_for_timeout(500)
+
+    page.screenshot(path="verification_history_modal_line_diff.png")
+    print("Screenshot taken: verification_history_modal_line_diff.png")
+
+    page.get_by_role("button", name="Word Diff").click()
+    page.wait_for_timeout(500)
+
+    page.screenshot(path="verification_history_modal_word_diff.png")
+    print("Screenshot taken: verification_history_modal_word_diff.png")
 
     # 10. Restore First Version
     # Click the second item in the list (the older one)
