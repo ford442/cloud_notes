@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { db, STORE_HISTORY } from '../utils/db';
 import { PluginRegistry } from '../services/plugin';
+import { diffWords, diffLines } from 'diff';
+import type { Change } from 'diff';
 
 interface HistoryEntry {
   timestamp: number;
@@ -19,6 +21,7 @@ export const HistoryModal = ({ isOpen, onClose, noteId, onRestore }: HistoryModa
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<HistoryEntry | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [diffMode, setDiffMode] = useState<'words' | 'lines' | 'none'>('words');
 
   useEffect(() => {
     if (isOpen && noteId) {
@@ -116,8 +119,30 @@ export const HistoryModal = ({ isOpen, onClose, noteId, onRestore }: HistoryModa
             {selectedVersion ? (
               <>
                 <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between bg-slate-50/30 dark:bg-slate-800/30">
-                  <div className="text-sm text-slate-500">
-                    Previewing version from <strong>{new Date(selectedVersion.timestamp).toLocaleString()}</strong>
+                  <div className="flex items-center gap-4">
+                    <div className="text-sm text-slate-500">
+                      Previewing version from <strong>{new Date(selectedVersion.timestamp).toLocaleString()}</strong>
+                    </div>
+                    <div className="flex bg-slate-200/50 dark:bg-slate-700/50 rounded-lg p-1 text-xs font-medium">
+                      <button
+                        onClick={() => setDiffMode('none')}
+                        className={`px-3 py-1 rounded-md transition-colors ${diffMode === 'none' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                      >
+                        Raw
+                      </button>
+                      <button
+                        onClick={() => setDiffMode('words')}
+                        className={`px-3 py-1 rounded-md transition-colors ${diffMode === 'words' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                      >
+                        Word Diff
+                      </button>
+                      <button
+                        onClick={() => setDiffMode('lines')}
+                        className={`px-3 py-1 rounded-md transition-colors ${diffMode === 'lines' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                      >
+                        Line Diff
+                      </button>
+                    </div>
                   </div>
                   <button
                     onClick={handleRestore}
@@ -128,7 +153,41 @@ export const HistoryModal = ({ isOpen, onClose, noteId, onRestore }: HistoryModa
                   </button>
                 </div>
                 <div className="flex-1 overflow-auto p-8 font-mono text-sm leading-relaxed text-slate-800 dark:text-slate-200 whitespace-pre-wrap">
-                  {selectedVersion.content}
+                  {diffMode === 'none' ? (
+                     selectedVersion.content
+                  ) : (
+                    (() => {
+                      // Find the previous version to diff against.
+                      // history array is sorted newest first.
+                      const currentIndex = history.findIndex(h => h.timestamp === selectedVersion.timestamp);
+                      const previousVersion = history[currentIndex + 1];
+
+                      if (!previousVersion) {
+                        return <span className="text-green-600 dark:text-green-400">{selectedVersion.content}</span>; // All new if no previous
+                      }
+
+                      const changes = diffMode === 'lines'
+                          ? diffLines(previousVersion.content, selectedVersion.content)
+                          : diffWords(previousVersion.content, selectedVersion.content);
+
+                      return (
+                        <>
+                          {changes.map((part: Change, index: number) => {
+                            const colorClass = part.added
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                              : part.removed
+                              ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300 line-through'
+                              : 'text-slate-600 dark:text-slate-300';
+                            return (
+                              <span key={index} className={`transition-colors duration-150 rounded-sm px-0.5 ${colorClass}`}>
+                                {part.value}
+                              </span>
+                            );
+                          })}
+                        </>
+                      );
+                    })()
+                  )}
                 </div>
               </>
             ) : (
