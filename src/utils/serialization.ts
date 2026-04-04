@@ -31,8 +31,8 @@ turndownService.addRule('tiptapTaskItem', {
   },
   replacement: (content, node) => {
     const isChecked = (node as HTMLElement).getAttribute('data-checked') === 'true';
-    // Clean up content (remove newlines usually added by block elements inside li)
-    const cleanContent = content.trim();
+    // Clean up content (remove newlines usually added by block elements inside li and our injected &nbsp;)
+    const cleanContent = content.replace(/\u00A0|&nbsp;/g, '').trim();
     return `${isChecked ? '- [x]' : '- [ ]'} ${cleanContent}\n`;
   }
 });
@@ -50,9 +50,11 @@ turndownService.keep((node) => {
  */
 export const markdownToHtml = (markdown: string): string => {
   if (!markdown) return '';
+  // Inject &nbsp; for empty task lists to prevent Tiptap crash
+  const processedMarkdown = markdown.replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 &nbsp;');
   // marked.parse returns a string or Promise<string>. synchronous by default unless async is enabled.
   // We cast to string because we are not using async features of marked.
-  return marked.parse(markdown) as string;
+  return marked.parse(processedMarkdown) as string;
 };
 
 /**
