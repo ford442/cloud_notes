@@ -32,7 +32,13 @@ turndownService.addRule('tiptapTaskItem', {
   replacement: (content, node) => {
     const isChecked = (node as HTMLElement).getAttribute('data-checked') === 'true';
     // Clean up content (remove newlines usually added by block elements inside li)
-    const cleanContent = content.trim();
+    let cleanContent = content.trim();
+
+    // Remove the zero-width space/non-breaking space we inject for empty checkboxes
+    if (cleanContent === '\xa0' || cleanContent === '&nbsp;') {
+       cleanContent = '';
+    }
+
     return `${isChecked ? '- [x]' : '- [ ]'} ${cleanContent}\n`;
   }
 });
@@ -50,9 +56,15 @@ turndownService.keep((node) => {
  */
 export const markdownToHtml = (markdown: string): string => {
   if (!markdown) return '';
+
+  // Workaround for empty checkboxes crashing Tiptap hydration
+  // We inject a non-breaking space into empty checkboxes so marked parses it correctly
+  // and Tiptap's task list extension successfully renders it instead of throwing an error.
+  const modifiedMarkdown = markdown.replace(/- \[([ x])\]\s*$/gm, '- [$1] &nbsp;');
+
   // marked.parse returns a string or Promise<string>. synchronous by default unless async is enabled.
   // We cast to string because we are not using async features of marked.
-  return marked.parse(markdown) as string;
+  return marked.parse(modifiedMarkdown) as string;
 };
 
 /**
