@@ -36,14 +36,6 @@ export const DailyNotesPlugin: Plugin = {
 -
         `.trim();
 
-        // Note: The below createNote is temporarily disabled.
-        // There is an issue where Tiptap throws "Invalid content for node listItem: <>"
-        // when hydrating the empty task lists (- [ ]) on a newly created note.
-        // Documented in weekly_plan.md to fix later.
-
-        await ctx.alert(`Not yet implemented. Try using the '/daily template' slash command inside a note instead.`);
-
-        /*
         ctx.createNote({
           title: `Daily: ${dateStr}`,
           content: template,
@@ -51,7 +43,6 @@ export const DailyNotesPlugin: Plugin = {
           section: 'Daily',
           tags: 'daily, journal'
         });
-        */
     };
 
     // Register as a global action so users can trigger it without a command
