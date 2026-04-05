@@ -56,15 +56,11 @@ turndownService.keep((node) => {
  */
 export const markdownToHtml = (markdown: string): string => {
   if (!markdown) return '';
-
-  // Workaround for empty checkboxes crashing Tiptap hydration
-  // We inject a non-breaking space into empty checkboxes so marked parses it correctly
-  // and Tiptap's task list extension successfully renders it instead of throwing an error.
-  const modifiedMarkdown = markdown.replace(/- \[([ x])\]\s*$/gm, '- [$1] &nbsp;');
-
+  // Inject &nbsp; for empty task lists to prevent Tiptap crash
+  const processedMarkdown = markdown.replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 &nbsp;');
   // marked.parse returns a string or Promise<string>. synchronous by default unless async is enabled.
   // We cast to string because we are not using async features of marked.
-  return marked.parse(modifiedMarkdown) as string;
+  return marked.parse(processedMarkdown) as string;
 };
 
 /**
