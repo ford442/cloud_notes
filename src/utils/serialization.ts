@@ -31,8 +31,14 @@ turndownService.addRule('tiptapTaskItem', {
   },
   replacement: (content, node) => {
     const isChecked = (node as HTMLElement).getAttribute('data-checked') === 'true';
-    // Clean up content (remove newlines usually added by block elements inside li and our injected &nbsp;)
-    const cleanContent = content.replace(/\u00A0|&nbsp;/g, '').trim();
+    // Clean up content (remove newlines usually added by block elements inside li)
+    let cleanContent = content.trim();
+
+    // Remove the zero-width space/non-breaking space we inject for empty checkboxes
+    if (cleanContent === '\xa0' || cleanContent === '&nbsp;') {
+       cleanContent = '';
+    }
+
     return `${isChecked ? '- [x]' : '- [ ]'} ${cleanContent}\n`;
   }
 });
