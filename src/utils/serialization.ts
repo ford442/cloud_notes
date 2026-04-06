@@ -51,15 +51,62 @@ turndownService.keep((node) => {
   return node.nodeName === 'IFRAME' || (node.nodeName === 'DIV' && node.getAttribute('data-type') === 'prompt-section');
 });
 
+const tiptapRenderer = {
+  checkbox() {
+    return '';
+  },
+  list(token: any) {
+    const isTaskList = token.items && token.items.some((item: any) => item.task);
+    if (isTaskList) {
+      let body = '';
+      for (let i = 0; i < token.items.length; i++) {
+        // @ts-ignore - this is bound to the renderer context
+        body += this.listitem(token.items[i]);
+      }
+      return `<ul data-type="taskList">\n${body}</ul>\n`;
+    }
+    return false; // fallback to default
+  },
+  listitem(token: any) {
+    if (token.task) {
+      const isChecked = token.checked ? 'true' : 'false';
+      let pContent = '';
+      let restContent = '';
+
+      for (const t of token.tokens) {
+        if (t.type === 'text') {
+           // @ts-ignore
+           let parsed = this.parser.parseInline([t]).trim();
+           parsed = parsed.replace(/\u200B/g, '').trim();
+           pContent += parsed;
+        } else if (t.type === 'paragraph') {
+           // @ts-ignore
+           let parsed = this.parser.parseInline(t.tokens).trim();
+           parsed = parsed.replace(/\u200B/g, '').trim();
+           pContent += parsed;
+        } else if (t.type === 'list') {
+           // @ts-ignore
+           restContent += this.list(t);
+        } else {
+           // @ts-ignore
+           restContent += this.parser.parse([t]);
+        }
+      }
+      return `<li data-type="taskItem" data-checked="${isChecked}"><p>${pContent}</p>${restContent}</li>\n`;
+    }
+    return false; // fallback to default
+  }
+};
+
+marked.use({ renderer: tiptapRenderer });
+
 /**
  * Converts Markdown string to HTML string
  */
 export const markdownToHtml = (markdown: string): string => {
   if (!markdown) return '';
-  // Inject &nbsp; for empty task lists to prevent Tiptap crash
-  const processedMarkdown = markdown.replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 &nbsp;');
-  // marked.parse returns a string or Promise<string>. synchronous by default unless async is enabled.
-  // We cast to string because we are not using async features of marked.
+  // Inject zero-width space for empty task lists so marked parses them as checkboxes
+  const processedMarkdown = markdown.replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 \u200B');
   return marked.parse(processedMarkdown) as string;
 };
 
