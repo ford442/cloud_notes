@@ -7,6 +7,14 @@ const turndownService = new TurndownService({
   headingStyle: 'atx', // Use # for headings
   codeBlockStyle: 'fenced', // Use ``` for code blocks
   bulletListMarker: '-', // Use - for bullets
+  blankReplacement: function (content, node, options) {
+    if (node.nodeName === 'LI') {
+      const parentNodeName = node.parentNode ? node.parentNode.nodeName : '';
+      const prefix = parentNodeName === 'OL' ? '1. ' : '- ';
+      return prefix + '\n';
+    }
+    return node.isBlock ? '\n\n' : '';
+  }
 });
 
 // Use the GFM plugin to handle tables, strikethrough, and task lists
@@ -57,7 +65,10 @@ turndownService.keep((node) => {
 export const markdownToHtml = (markdown: string): string => {
   if (!markdown) return '';
   // Inject &nbsp; for empty task lists to prevent Tiptap crash
-  const processedMarkdown = markdown.replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 &nbsp;');
+  const processedMarkdown = markdown
+    .replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 &nbsp;')
+    .replace(/^(\s*-)\s*$/gm, '$1 &nbsp;')
+    .replace(/^(\s*\d+\.)\s*$/gm, '$1 &nbsp;');
   // marked.parse returns a string or Promise<string>. synchronous by default unless async is enabled.
   // We cast to string because we are not using async features of marked.
   return marked.parse(processedMarkdown) as string;
