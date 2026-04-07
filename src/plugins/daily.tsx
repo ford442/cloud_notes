@@ -17,7 +17,6 @@ export const DailyNotesPlugin: Plugin = {
 
         if (existingNote) {
            ctx.navigateTo(existingNote.id);
-           await ctx.alert(`You already have a daily note for today! Opened: ${existingNote.name}`);
            return;
         }
 
