@@ -7,13 +7,13 @@ const turndownService = new TurndownService({
   headingStyle: 'atx', // Use # for headings
   codeBlockStyle: 'fenced', // Use ``` for code blocks
   bulletListMarker: '-', // Use - for bullets
-  blankReplacement: function (content, node, options) {
+  blankReplacement: function (_content, node, _options) {
     if (node.nodeName === 'LI') {
       const parentNodeName = node.parentNode ? node.parentNode.nodeName : '';
       const prefix = parentNodeName === 'OL' ? '1. ' : '- ';
       return prefix + '\n';
     }
-    return node.isBlock ? '\n\n' : '';
+    return (node as any).isBlock ? '\n\n' : '';
   }
 });
 
@@ -84,12 +84,12 @@ const tiptapRenderer = {
       for (const t of token.tokens) {
         if (t.type === 'text') {
            // @ts-ignore
-           let parsed = this.parser.parseInline([t]).trim();
+           let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
            parsed = parsed.replace(/\u200B/g, '').trim();
            pContent += parsed;
         } else if (t.type === 'paragraph') {
            // @ts-ignore
-           let parsed = this.parser.parseInline(t.tokens).trim();
+           let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
            parsed = parsed.replace(/\u200B/g, '').trim();
            pContent += parsed;
         } else if (t.type === 'list') {
@@ -100,6 +100,11 @@ const tiptapRenderer = {
            restContent += this.parser.parse([t]);
         }
       }
+
+      if (!pContent && !restContent) {
+          pContent = '&nbsp;';
+      }
+
       return `<li data-type="taskItem" data-checked="${isChecked}"><p>${pContent}</p>${restContent}</li>\n`;
     }
     return false; // fallback to default
