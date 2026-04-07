@@ -59,6 +59,55 @@ turndownService.keep((node) => {
   return node.nodeName === 'IFRAME' || (node.nodeName === 'DIV' && node.getAttribute('data-type') === 'prompt-section');
 });
 
+const tiptapRenderer = {
+  checkbox() {
+    return '';
+  },
+  list(token: any) {
+    const isTaskList = token.items && token.items.some((item: any) => item.task);
+    if (isTaskList) {
+      let body = '';
+      for (let i = 0; i < token.items.length; i++) {
+        // @ts-ignore - this is bound to the renderer context
+        body += this.listitem(token.items[i]);
+      }
+      return `<ul data-type="taskList">\n${body}</ul>\n`;
+    }
+    return false; // fallback to default
+  },
+  listitem(token: any) {
+    if (token.task) {
+      const isChecked = token.checked ? 'true' : 'false';
+      let pContent = '';
+      let restContent = '';
+
+      for (const t of token.tokens) {
+        if (t.type === 'text') {
+           // @ts-ignore
+           let parsed = this.parser.parseInline([t]).trim();
+           parsed = parsed.replace(/\u200B/g, '').trim();
+           pContent += parsed;
+        } else if (t.type === 'paragraph') {
+           // @ts-ignore
+           let parsed = this.parser.parseInline(t.tokens).trim();
+           parsed = parsed.replace(/\u200B/g, '').trim();
+           pContent += parsed;
+        } else if (t.type === 'list') {
+           // @ts-ignore
+           restContent += this.list(t);
+        } else {
+           // @ts-ignore
+           restContent += this.parser.parse([t]);
+        }
+      }
+      return `<li data-type="taskItem" data-checked="${isChecked}"><p>${pContent}</p>${restContent}</li>\n`;
+    }
+    return false; // fallback to default
+  }
+};
+
+marked.use({ renderer: tiptapRenderer });
+
 /**
  * Converts Markdown string to HTML string
  */
