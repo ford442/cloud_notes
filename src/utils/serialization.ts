@@ -76,38 +76,38 @@ const tiptapRenderer = {
     return false; // fallback to default
   },
   listitem(token: any) {
+    let pContent = '';
+    let restContent = '';
+
+    for (const t of token.tokens) {
+      if (t.type === 'text') {
+         // @ts-ignore
+         let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
+         parsed = parsed.replace(/\u200B/g, '').trim();
+         pContent += parsed;
+      } else if (t.type === 'paragraph') {
+         // @ts-ignore
+         let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
+         parsed = parsed.replace(/\u200B/g, '').trim();
+         pContent += parsed;
+      } else if (t.type === 'list') {
+         // @ts-ignore
+         restContent += this.list(t);
+      } else {
+         // @ts-ignore
+         restContent += this.parser.parse([t]);
+      }
+    }
+
+    if (!pContent && !restContent) {
+        pContent = '&nbsp;';
+    }
+
     if (token.task) {
       const isChecked = token.checked ? 'true' : 'false';
-      let pContent = '';
-      let restContent = '';
-
-      for (const t of token.tokens) {
-        if (t.type === 'text') {
-           // @ts-ignore
-           let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
-           parsed = parsed.replace(/\u200B/g, '').trim();
-           pContent += parsed;
-        } else if (t.type === 'paragraph') {
-           // @ts-ignore
-           let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
-           parsed = parsed.replace(/\u200B/g, '').trim();
-           pContent += parsed;
-        } else if (t.type === 'list') {
-           // @ts-ignore
-           restContent += this.list(t);
-        } else {
-           // @ts-ignore
-           restContent += this.parser.parse([t]);
-        }
-      }
-
-      if (!pContent && !restContent) {
-          pContent = '&nbsp;';
-      }
-
       return `<li data-type="taskItem" data-checked="${isChecked}"><p>${pContent}</p>${restContent}</li>\n`;
     }
-    return false; // fallback to default
+    return `<li><p>${pContent}</p>${restContent}</li>\n`;
   }
 };
 
