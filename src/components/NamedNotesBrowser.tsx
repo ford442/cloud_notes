@@ -76,6 +76,8 @@ export function NamedNotesBrowser() {
     setIsSaving(false);
   };
 
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const handleLoad = async (name: string) => {
     if (loadedContents[name] !== undefined) {
       // Toggle off
@@ -97,6 +99,8 @@ export function NamedNotesBrowser() {
   };
 
   const handleDelete = async (name: string) => {
+    if (!window.confirm(`Delete note "${name}"? This cannot be undone.`)) return;
+    setDeleteError(null);
     const ok = await StorageService.deleteNamedNote(name);
     if (ok) {
       setNotes(prev => prev.filter(n => n.name !== name));
@@ -105,6 +109,8 @@ export function NamedNotesBrowser() {
         delete next[name];
         return next;
       });
+    } else {
+      setDeleteError(`Failed to delete "${name}". Please try again.`);
     }
   };
 
@@ -158,6 +164,10 @@ export function NamedNotesBrowser() {
           </button>
         </div>
 
+        {deleteError && (
+          <p className="text-sm text-red-500 dark:text-red-400">{deleteError}</p>
+        )}
+
         {isLoading && notes.length === 0 && (
           <div className="flex items-center justify-center py-8">
             <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
@@ -184,7 +194,7 @@ export function NamedNotesBrowser() {
               <div className="flex items-center gap-2 flex-shrink-0">
                 {/* Open in rain_edit */}
                 <a
-                  href={`${RAIN_EDIT_URL}/?note=${encodeURIComponent(note.name)}`}
+                  href={`${RAIN_EDIT_URL.replace(/\/$/, '')}/?note=${encodeURIComponent(note.name)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-sm transition-all"
