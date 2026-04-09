@@ -301,6 +301,57 @@ export const StorageService = {
     }
   },
 
+  // ── Named Notes API ──────────────────────────────────────────────────────────
+
+  async listNamedNotes(): Promise<Array<{ name: string; updated_at: string; size: number }>> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notes/list`);
+      if (!res.ok) throw new Error(`listNamedNotes failed: ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('[API] listNamedNotes failed', e);
+      return [];
+    }
+  },
+
+  async loadNamedNote(name: string): Promise<{ name: string; content: string; updated_at: string } | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(name)}`);
+      if (!res.ok) throw new Error(`loadNamedNote(${name}) failed: ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('[API] loadNamedNote failed', e);
+      return null;
+    }
+  },
+
+  async saveNamedNote(name: string, content: string): Promise<{ success: boolean; name: string; size: number; updated_at: string } | null> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(name)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) throw new Error(`saveNamedNote(${name}) failed: ${res.status}`);
+      return await res.json();
+    } catch (e) {
+      console.warn('[API] saveNamedNote failed', e);
+      return null;
+    }
+  },
+
+  async deleteNamedNote(name: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(name)}`, {
+        method: 'DELETE',
+      });
+      return res.ok;
+    } catch (e) {
+      console.warn('[API] deleteNamedNote failed', e);
+      return false;
+    }
+  },
+
   async uploadFile(file: File, author: string, description: string = ""): Promise<{ success: boolean; id?: string }> {
     try {
       const formData = new FormData();
