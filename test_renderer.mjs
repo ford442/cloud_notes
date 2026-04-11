@@ -1,13 +1,11 @@
-import { Marked } from 'marked';
+import { marked } from 'marked';
 
-const markedInstance = new Marked();
-
-const renderer = {
-  checkbox(token) {
+const tiptapRenderer = {
+  checkbox() {
     return '';
   },
   list(token) {
-    const isTaskList = token.items && token.items.some(item => item.task);
+    const isTaskList = token.items && token.items.some((item) => item.task);
     if (isTaskList) {
       let body = '';
       for (let i = 0; i < token.items.length; i++) {
@@ -18,37 +16,63 @@ const renderer = {
     return false;
   },
   listitem(token) {
+    let pContent = '';
+    let restContent = '';
+
+    for (const t of token.tokens) {
+      if (t.type === 'text') {
+         let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
+         parsed = parsed.replace(/\u200B/g, '').trim();
+         pContent += parsed;
+      } else if (t.type === 'paragraph') {
+         let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
+         parsed = parsed.replace(/\u200B/g, '').trim();
+         pContent += parsed;
+      } else if (t.type === 'list') {
+         restContent += this.list(t);
+      } else {
+         restContent += this.parser.parse([t]);
+      }
+    }
+
+    console.log("pContent:", JSON.stringify(pContent));
+    console.log("restContent:", JSON.stringify(restContent));
+
+    if (!pContent?.trim() && !restContent?.trim()) {
+        pContent = '&nbsp;';
+    } else if (!pContent && !restContent) {
+        // old logic
+    }
+
     if (token.task) {
       const isChecked = token.checked ? 'true' : 'false';
-
-      let pContent = '';
-      let restContent = '';
-
-      for (const t of token.tokens) {
-        if (t.type === 'text') {
-           // We might need to manually parse the text tokens to handle nested inline tokens
-           let parsed = this.parser.parseInline([t]).trim();
-           parsed = parsed.replace(/\u200B/g, '').trim();
-           pContent += parsed;
-        } else if (t.type === 'paragraph') {
-           // If it's already a paragraph, extract its contents
-           let parsed = this.parser.parseInline(t.tokens).trim();
-           parsed = parsed.replace(/\u200B/g, '').trim();
-           pContent += parsed;
-        } else if (t.type === 'list') {
-           restContent += this.list(t);
-        } else {
-           restContent += this.parser.parse([t]);
-        }
-      }
-
       return `<li data-type="taskItem" data-checked="${isChecked}"><p>${pContent}</p>${restContent}</li>\n`;
     }
-    return false;
+    return `<li><p>${pContent}</p>${restContent}</li>\n`;
   }
 };
 
-markedInstance.use({ renderer });
+marked.use({ renderer: tiptapRenderer });
 
-const markdown = "- [ ] Task\n  - [x] Child task\n- [ ] Another task\n- [ ] ";
-console.log(markedInstance.parse(markdown.replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 \u200B')));
+const template = `
+# 📅 Daily Journal: 2024-05-20
+
+## 🎯 Top Priorities
+- [ ]
+- [ ]
+- [ ]
+
+## 📝 Notes
+-
+
+## 🧠 Reflections
+-
+        `.trim();
+
+const processedMarkdown = template
+    .replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 &nbsp;')
+    .replace(/^(\s*-)\s*$/gm, '$1 &nbsp;')
+    .replace(/^(\s*\d+\.)\s*$/gm, '$1 &nbsp;');
+
+console.log(marked.parse(processedMarkdown));
+

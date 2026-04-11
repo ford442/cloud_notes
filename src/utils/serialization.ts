@@ -68,7 +68,7 @@ const tiptapRenderer = {
     if (isTaskList) {
       let body = '';
       for (let i = 0; i < token.items.length; i++) {
-        // @ts-ignore - this is bound to the renderer context
+        // @ts-expect-error - this is bound to the renderer context
         body += this.listitem(token.items[i]);
       }
       return `<ul data-type="taskList">\n${body}</ul>\n`;
@@ -81,25 +81,25 @@ const tiptapRenderer = {
 
     for (const t of token.tokens) {
       if (t.type === 'text') {
-         // @ts-ignore
+         // @ts-expect-error
          let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
          parsed = parsed.replace(/\u200B/g, '').trim();
          pContent += parsed;
       } else if (t.type === 'paragraph') {
-         // @ts-ignore
+         // @ts-expect-error
          let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
          parsed = parsed.replace(/\u200B/g, '').trim();
          pContent += parsed;
       } else if (t.type === 'list') {
-         // @ts-ignore
+         // @ts-expect-error
          restContent += this.list(t);
       } else {
-         // @ts-ignore
+         // @ts-expect-error
          restContent += this.parser.parse([t]);
       }
     }
 
-    if (!pContent && !restContent) {
+    if (!pContent?.trim() && !restContent?.trim()) {
         pContent = '&nbsp;';
     }
 
