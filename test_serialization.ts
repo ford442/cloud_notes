@@ -9,7 +9,7 @@ const tiptapRenderer = {
     if (isTaskList) {
       let body = '';
       for (let i = 0; i < token.items.length; i++) {
-        // @ts-ignore - this is bound to the renderer context
+        // @ts-expect-error - this is bound to the renderer context
         body += this.listitem(token.items[i]);
       }
       return `<ul data-type="taskList">\n${body}</ul>\n`;
@@ -22,20 +22,20 @@ const tiptapRenderer = {
 
     for (const t of token.tokens) {
       if (t.type === 'text') {
-         // @ts-ignore
+         // @ts-expect-error - this is bound to the renderer context
          let parsed = t.tokens ? this.parser.parseInline(t.tokens) : this.parser.parseInline([t]);
          parsed = parsed.replace(/\u200B/g, ''); // Do not trim here to preserve &nbsp; spaces
          pContent += parsed;
       } else if (t.type === 'paragraph') {
-         // @ts-ignore
+         // @ts-expect-error - this is bound to the renderer context
          let parsed = t.tokens ? this.parser.parseInline(t.tokens) : this.parser.parseInline([t]);
          parsed = parsed.replace(/\u200B/g, ''); // Do not trim here to preserve spaces
          pContent += parsed;
       } else if (t.type === 'list') {
-         // @ts-ignore
+         // @ts-expect-error - this is bound to the renderer context
          restContent += this.list(t);
       } else {
-         // @ts-ignore
+         // @ts-expect-error - this is bound to the renderer context
          restContent += this.parser.parse([t]);
       }
     }

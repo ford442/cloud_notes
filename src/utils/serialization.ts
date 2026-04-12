@@ -63,39 +63,34 @@ const tiptapRenderer = {
   checkbox() {
     return '';
   },
-  list(token: any) {
+  list(this: any, token: any) {
     const isTaskList = token.items && token.items.some((item: any) => item.task);
     if (isTaskList) {
       let body = '';
       for (let i = 0; i < token.items.length; i++) {
-        // @ts-expect-error - this is bound to the renderer context
-        body += this.listitem(token.items[i]);
+        body += (this as any).listitem(token.items[i]);
       }
       return `<ul data-type="taskList">\n${body}</ul>\n`;
     }
     return false; // fallback to default
   },
-  listitem(token: any) {
+  listitem(this: any, token: any) {
     let pContent = '';
     let restContent = '';
 
     for (const t of token.tokens) {
       if (t.type === 'text') {
-         // @ts-expect-error
-         let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
+         let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : (this as any).parser.parseInline([t]).trim();
          parsed = parsed.replace(/\u200B/g, '').trim();
          pContent += parsed;
       } else if (t.type === 'paragraph') {
-         // @ts-expect-error
-         let parsed = t.tokens ? this.parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
+         let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : (this as any).parser.parseInline([t]).trim();
          parsed = parsed.replace(/\u200B/g, '').trim();
          pContent += parsed;
       } else if (t.type === 'list') {
-         // @ts-expect-error
-         restContent += this.list(t);
+         restContent += (this as any).list(t);
       } else {
-         // @ts-expect-error
-         restContent += this.parser.parse([t]);
+         restContent += (this as any).parser.parse([t]);
       }
     }
 
