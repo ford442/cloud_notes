@@ -1,18 +1,33 @@
 // src/services/api.ts
+// Cloud Notes API Service - Integrated with Contabo Storage Manager
 
 import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OPS } from '../utils/db';
 import { EncryptionService } from '../utils/encryption';
 import { createPackedDescription } from '../utils/metadata';
 
+// Storage Manager API endpoint
 export const API_BASE_URL = localStorage.getItem('api_url') || "https://storage.noahcohn.com";
 
-// The Bridge: If the user is still using the legacy HF Space, map `/api/notes` back to `/api/songs`
-const getApiPath = (path: string): string => {
-    if (API_BASE_URL.includes('ford442') || API_BASE_URL.includes('hf.space')) {
-        return path.replace('/api/notes', '/api/songs');
-    }
-    return path;
-};
+// Webhook configuration for storage manager integration
+const WEBHOOK_ENDPOINT = `${API_BASE_URL}/webhook/notes`;
+
+// HMAC signature for webhook authentication (if configured)
+async function generateWebhookSignature(payload: string): Promise<string | null> {
+    const secret = localStorage.getItem('webhook_secret');
+    if (!secret) return null;
+    
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+        'raw',
+        encoder.encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
+    const hashArray = Array.from(new Uint8Array(signature));
+    return 'sha256=' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 // 1. EXPANDED: Now handles creates, updates, and deletes
 interface PendingOp {
@@ -135,16 +150,32 @@ export const StorageService = {
 
   async getNotes(skipCacheUpdate = false): Promise<CloudItemMeta[]> {
     try {
-      const res = await fetch(`${API_BASE_URL}${getApiPath('/api/notes')}?type=note`);
+      // Fetch from storage manager's files endpoint - look for note JSON files
+      const res = await fetch(`${API_BASE_URL}/files/notes/`);
       if (!res.ok) throw new Error("Failed to fetch notes");
-      const notes = await res.json();
+      
+      // Parse directory listing or fetch note list from dedicated endpoint
+      const notesRes = await fetch(`${API_BASE_URL}/api/notes/list`);
+      if (!notesRes.ok) throw new Error("Failed to fetch notes list");
+      
+      const notes = await notesRes.json();
+      
+      // Transform to CloudItemMeta format
+      const metaList: CloudItemMeta[] = notes.map((n: any) => ({
+        id: n.name,
+        name: n.name,
+        author: 'User',
+        date: n.updated_at,
+        type: 'note',
+        description: ''
+      }));
 
       if (!skipCacheUpdate) {
-        db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, notes).catch(e =>
+        db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, metaList).catch(e =>
           console.warn('[Cache] Failed to update notes list', e)
         );
       }
-      return notes;
+      return metaList;
     } catch (e) {
       console.warn("[Network] Offline or API unreachable. Falling back to cache.", e);
       return this.getCachedNotes();
@@ -153,16 +184,25 @@ export const StorageService = {
 
   async getNoteContent(id: string): Promise<Note> {
     try {
-      const res = await fetch(`${API_BASE_URL}${getApiPath(`/api/notes/${id}`)}?type=note`);
+      // Fetch from storage manager's named notes endpoint
+      const res = await fetch(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(id)}`);
       if (!res.ok) throw new Error("Failed to load note");
       const data = await res.json();
       
-      const decryptedContent = await EncryptionService.decrypt(data.content || '');
+      // Content may be encrypted or plain markdown
+      const content = data.content || '';
+      const isEncrypted = content.startsWith('ENC:v1:');
+      const decryptedContent = isEncrypted 
+        ? await EncryptionService.decrypt(content)
+        : content;
+      
       const note: Note = {
-        ...data,
+        id: data.name,
+        title: data.name,
         content: decryptedContent,
-        subject: data.subject || "General",
-        section: data.section || "Inbox"
+        subject: "General",
+        section: "Inbox",
+        tags: ""
       };
 
       db.set(STORE_NOTES_CONTENT, id, note).catch(console.warn);
@@ -175,6 +215,13 @@ export const StorageService = {
     }
   },
 
+  // Storage Manager Integration
+  // ===========================
+  // The cloud_notes app integrates with contabo_storage_manager via webhooks.
+  // Notes are sent to /webhook/notes endpoint and stored as timestamped JSON files.
+  // For simple named notes (markdown), use the named notes API below.
+  
+  // Legacy payload format (kept for reference/compatibility)
   async _preparePayload(note: Note, author: string) {
       const packedDesc = createPackedDescription(note);
       const encryptedContent = await EncryptionService.encrypt(note.content);
@@ -189,30 +236,76 @@ export const StorageService = {
       };
   },
 
-  // Pure network call for Creates
-  async _networkSaveNote(note: Note, author: string): Promise<{ success: boolean; id?: string }> {
-      const payload = await this._preparePayload(note, author);
-      const res = await fetch(`${API_BASE_URL}${getApiPath('/api/notes')}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (!res.ok) throw new Error(await res.text());
-      const data = await res.json();
-      return { success: true, id: data.id };
+  // Create payload for storage manager webhook
+  async _createWebhookPayload(note: Note, author: string, action: 'create' | 'update'): Promise<object> {
+      const packedDesc = createPackedDescription(note);
+      const encryptedContent = await EncryptionService.encrypt(note.content);
+      
+      return {
+        source: 'cloud_notes',
+        event: action === 'create' ? 'note.created' : 'note.updated',
+        timestamp: new Date().toISOString(),
+        data: {
+          id: note.id || crypto.randomUUID(),
+          title: note.title,
+          content: encryptedContent,
+          subject: note.subject || 'General',
+          section: note.section || 'Inbox',
+          tags: note.tags || '',
+          author: author,
+          description: packedDesc,
+          updatedAt: note.updatedAt || new Date().toISOString()
+        }
+      };
   },
 
-  // Pure network call for Updates
-  async _networkUpdateNote(id: string, note: Note, author: string): Promise<{ success: boolean; id?: string }> {
-      const payload = await this._preparePayload(note, author);
-      const res = await fetch(`${API_BASE_URL}${getApiPath(`/api/notes/${id}`)}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+  // Pure network call for Creates via webhook
+  async _networkSaveNote(note: Note, author: string): Promise<{ success: boolean; id?: string }> {
+      const payload = await this._createWebhookPayload(note, author, 'create');
+      const payloadStr = JSON.stringify(payload);
+      
+      const headers: Record<string, string> = { 
+        'Content-Type': 'application/json' 
+      };
+      
+      const signature = await generateWebhookSignature(payloadStr);
+      if (signature) {
+        headers['X-Hub-Signature-256'] = signature;
+      }
+      
+      const res = await fetch(WEBHOOK_ENDPOINT, {
+        method: 'POST',
+        headers,
+        body: payloadStr
       });
+      
       if (!res.ok) throw new Error(await res.text());
-      await res.json();
-      return { success: true, id: id };
+      const data = await res.json();
+      return { success: true, id: data.files?.[0] || payload.data.id };
+  },
+
+  // Pure network call for Updates via webhook
+  async _networkUpdateNote(id: string, note: Note, author: string): Promise<{ success: boolean; id?: string }> {
+      const payload = await this._createWebhookPayload({ ...note, id }, author, 'update');
+      const payloadStr = JSON.stringify(payload);
+      
+      const headers: Record<string, string> = { 
+        'Content-Type': 'application/json' 
+      };
+      
+      const signature = await generateWebhookSignature(payloadStr);
+      if (signature) {
+        headers['X-Hub-Signature-256'] = signature;
+      }
+      
+      const res = await fetch(WEBHOOK_ENDPOINT, {
+        method: 'POST',
+        headers,
+        body: payloadStr
+      });
+      
+      if (!res.ok) throw new Error(await res.text());
+      return { success: true, id };
   },
 
   // Public Update (Handles Offline Queuing)
