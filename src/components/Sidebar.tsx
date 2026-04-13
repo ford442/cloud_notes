@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import Fuse from 'fuse.js'
 import type { CloudItemMeta } from '../services/api'
+import { useToast } from './Toast'
 
 interface SidebarProps {
   notes: CloudItemMeta[];
@@ -10,6 +11,7 @@ interface SidebarProps {
   isLoading: boolean;
   onMoveNote?: (id: string, newSubject: string, newSection: string) => void;
   onSearchOpen?: () => void;
+  onVpsSync?: (onProgress?: (message: string) => void) => Promise<{ pulled: number; pushed: number; errors: string[] }>;
 }
 
 // Icons
@@ -34,10 +36,12 @@ const parseMeta = (desc: string) => {
   return { subject: parts[0] || 'General', section: parts[1] || 'Inbox' };
 };
 
-export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote, onSearchOpen }: SidebarProps) => {
+export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote, onSearchOpen, onVpsSync }: SidebarProps) => {
+  const { addToast } = useToast();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState('');
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const toggle = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -237,9 +241,42 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
       {/* Footer Status */}
       <div className="p-4 border-t border-slate-200/50 dark:border-slate-700/50 bg-slate-100/30 dark:bg-slate-900/30 text-xs text-slate-500 dark:text-slate-400 flex justify-between font-medium rounded-b-2xl transition-colors">
         <span>{filteredNotes.length} {filteredNotes.length === 1 ? 'Item' : 'Items'}</span>
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-green-500 dark:bg-green-400 rounded-full"></div>
-          <span>Synced</span>
+        <div className="flex items-center gap-3">
+          {onVpsSync && (
+            <button
+              onClick={async () => {
+                if (isSyncing) return;
+                setIsSyncing(true);
+                try {
+                  await onVpsSync();
+                } catch (e) {
+                  console.error(e);
+                  addToast('Sync failed', 'error');
+                } finally {
+                  setIsSyncing(false);
+                }
+              }}
+              disabled={isSyncing}
+              className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 disabled:opacity-50 transition-colors"
+              title="Sync with VPS"
+            >
+              {isSyncing ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                  <span>Syncing…</span>
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  <span>Sync</span>
+                </>
+              )}
+            </button>
+          )}
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-amber-500 dark:bg-amber-400 animate-pulse' : 'bg-green-500 dark:bg-green-400'}`}></div>
+            <span>{isSyncing ? 'Syncing…' : 'Synced'}</span>
+          </div>
         </div>
       </div>
     </div>

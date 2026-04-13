@@ -4,6 +4,7 @@
 import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OPS } from '../utils/db';
 import { EncryptionService } from '../utils/encryption';
 import { createPackedDescription } from '../utils/metadata';
+import { vpsStorageAPI } from './vpsStorageAPI';
 
 // Storage Manager API endpoint
 export const API_BASE_URL = localStorage.getItem('api_url') || "https://storage.noahcohn.com";
@@ -441,6 +442,84 @@ export const StorageService = {
       console.warn('[API] deleteNamedNote failed', e);
       return false;
     }
+  },
+
+  async syncWithVps(
+    onProgress?: (message: string) => void
+  ): Promise<{ pulled: number; pushed: number; errors: string[] }> {
+    const result = { pulled: 0, pushed: 0, errors: [] as string[] };
+
+    try {
+      onProgress?.('Fetching VPS notes...');
+      const vpsNotes = await vpsStorageAPI.listNotes();
+      const localEntries = await db.getAll<Note>(STORE_NOTES_CONTENT);
+      const localNotes = new Map(localEntries.map(e => [e.key, e.value]));
+      const localMetaList = await this.getCachedNotes();
+      const localMetaMap = new Map(localMetaList.map(m => [m.id, m]));
+
+      const allNames = new Set([
+        ...vpsNotes.map(n => n.name),
+        ...Array.from(localNotes.keys()),
+      ]);
+
+      for (const name of allNames) {
+        const vpsNote = vpsNotes.find(n => n.name === name);
+        const localNote = localNotes.get(name);
+        const vpsTime = vpsNote ? new Date(vpsNote.updated_at).getTime() : 0;
+        const localTime = localNote?.updatedAt ? new Date(localNote.updatedAt).getTime() : 0;
+
+        try {
+          if (vpsNote && (!localNote || vpsTime > localTime)) {
+            onProgress?.(`Pulling "${name}"...`);
+            const remote = await vpsStorageAPI.readNote(name);
+            const updatedNote: Note = {
+              id: name,
+              title: name,
+              content: remote.content,
+              subject: localNote?.subject || 'General',
+              section: localNote?.section || 'Inbox',
+              tags: localNote?.tags || '',
+              updatedAt: remote.updated_at,
+            };
+            await db.set(STORE_NOTES_CONTENT, name, updatedNote);
+
+            const packedDesc = createPackedDescription(updatedNote);
+            const meta: CloudItemMeta = {
+              id: name,
+              name,
+              author: localNote?.subject || 'User',
+              date: remote.updated_at,
+              type: 'note',
+              description: packedDesc,
+            };
+
+            if (localMetaMap.has(name)) {
+              const newList = localMetaList.map(m => (m.id === name ? meta : m));
+              await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, newList);
+            } else {
+              await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [meta, ...localMetaList]);
+              localMetaList.unshift(meta);
+            }
+            localMetaMap.set(name, meta);
+            result.pulled++;
+          } else if (localNote && (!vpsNote || localTime > vpsTime)) {
+            onProgress?.(`Pushing "${name}"...`);
+            await vpsStorageAPI.writeNote(name, localNote.content);
+            result.pushed++;
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          result.errors.push(`"${name}": ${msg}`);
+          console.warn(`[Sync] Failed to sync "${name}":`, err);
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      result.errors.push(`Sync failed: ${msg}`);
+      console.error('[Sync] Overall sync failed:', err);
+    }
+
+    return result;
   },
 
   async uploadFile(file: File, author: string, description: string = ""): Promise<{ success: boolean; id?: string }> {

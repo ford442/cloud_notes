@@ -9,13 +9,14 @@ interface SettingsModalProps {
   setAuthorName: (name: string) => void;
   theme: 'light' | 'dark';
   setTheme: (theme: 'light' | 'dark') => void;
+  onVpsSync?: (onProgress?: (message: string) => void) => Promise<{ pulled: number; pushed: number; errors: string[] }>;
 }
 
 import { SemanticService } from '../services/semantic';
 
 const Tabs = ['General', 'Security', 'Integrations', 'Data'];
 
-export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, theme, setTheme }: SettingsModalProps) => {
+export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, theme, setTheme, onVpsSync }: SettingsModalProps) => {
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('General');
   const [readwiseToken, setReadwiseToken] = useState('');
@@ -24,6 +25,8 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
   const [isReindexing, setIsReindexing] = useState(false);
   const [reindexProgress, setReindexProgress] = useState('');
   const [apiUrl, setApiUrl] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -71,6 +74,22 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
       } finally {
           setIsReindexing(false);
       }
+  };
+
+  const handleSync = async () => {
+    if (!onVpsSync || isSyncing) return;
+    setIsSyncing(true);
+    setSyncStatus('Starting sync...');
+    try {
+      await onVpsSync((msg) => setSyncStatus(msg));
+      setSyncStatus('Done');
+    } catch (e) {
+      console.error(e);
+      setSyncStatus('Failed');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setSyncStatus(''), 3000);
+    }
   };
 
   if (!isOpen) return null;
@@ -219,6 +238,44 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
                             <div className="flex flex-col">
                               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Status</span>
                               <span className="text-sm font-medium text-slate-700 dark:text-slate-300 font-mono">{reindexProgress}</span>
+                            </div>
+                        )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-6 mt-6 flex items-start gap-4">
+                  <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">VPS Sync</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
+                      Bidirectionally sync your local notes with the VPS storage manager (rain_edit). Newer notes overwrite older ones in both directions.
+                    </p>
+
+                    <div className="flex items-center gap-4">
+                        <button
+                          onClick={handleSync}
+                          disabled={isSyncing || !onVpsSync}
+                          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {isSyncing ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                                Syncing...
+                              </>
+                          ) : (
+                              <>
+                                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                Sync Notes Now
+                              </>
+                          )}
+                        </button>
+                        {syncStatus && (
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Status</span>
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 font-mono">{syncStatus}</span>
                             </div>
                         )}
                     </div>

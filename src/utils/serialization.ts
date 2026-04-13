@@ -109,7 +109,8 @@ const tiptapRenderer = {
 marked.use({ renderer: tiptapRenderer });
 
 /**
- * Converts Markdown string to HTML string
+ * Converts Markdown string to HTML string for the Tiptap editor.
+ * Used when loading content from the VPS (raw markdown -> editor HTML).
  */
 export const markdownToHtml = (markdown: string): string => {
   if (!markdown) return '';
@@ -124,9 +125,23 @@ export const markdownToHtml = (markdown: string): string => {
 };
 
 /**
- * Converts HTML string to Markdown string
+ * Converts HTML string to clean GitHub-Flavored Markdown.
+ * Used by the BlockEditor on every change (Tiptap HTML -> markdown)
+ * and when pushing documents to the VPS sync endpoint.
  */
 export const htmlToMarkdown = (html: string): string => {
   if (!html) return '';
   return turndownService.turndown(html);
 };
+
+/**
+ * Alias for htmlToMarkdown, explicitly naming the VPS sync serialization path.
+ * Serializes Tiptap/internal HTML state into clean GFM markdown.
+ */
+export const serializeEditorContent = htmlToMarkdown;
+
+/**
+ * Alias for markdownToHtml, explicitly naming the VPS sync parsing path.
+ * Parses raw markdown from the VPS back into editor-compatible HTML.
+ */
+export const parseMarkdownToEditor = markdownToHtml;

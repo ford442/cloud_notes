@@ -223,6 +223,10 @@ function App() {
     
     setIsSaving(true)
     
+    // Stamp updatedAt so sync comparisons are reliable
+    const noteToSave = { ...currentNote, updatedAt: new Date().toISOString() };
+    setCurrentNote(noteToSave);
+    
     // Check if we are updating an existing note or creating a new one
     // Logic:
     // 1. If we have a selectedId AND the title matches the original title -> Update (PUT)
@@ -235,14 +239,14 @@ function App() {
     if (selectedId) {
        const originalNote = notes.find(n => n.id === selectedId);
        // If title matches original name, we update
-       if (originalNote && originalNote.name === currentNote.title) {
+       if (originalNote && originalNote.name === noteToSave.title) {
            isUpdate = true;
        }
     }
 
     if (isUpdate && selectedId) {
         // UPDATE EXISTING
-        const res = await StorageService.updateNote(selectedId, currentNote, authorName);
+        const res = await StorageService.updateNote(selectedId, noteToSave, authorName);
         if (res.success) {
             savedId = selectedId;
             success = true;
@@ -250,7 +254,7 @@ function App() {
         }
     } else {
         // CREATE NEW
-        const res = await StorageService.saveNote(currentNote, authorName);
+        const res = await StorageService.saveNote(noteToSave, authorName);
         if (res.success && res.id) {
             savedId = res.id;
             success = true;
@@ -261,11 +265,11 @@ function App() {
     if (success) {
       // Optimistic Update: Update list state immediately
       if (savedId) {
-          const packedDesc = createPackedDescription(currentNote);
+          const packedDesc = createPackedDescription(noteToSave);
 
           const newItem: CloudItemMeta = {
              id: savedId,
-             name: currentNote.title,
+             name: noteToSave.title,
              type: 'note',
              author: authorName,
              date: new Date().toISOString(),
@@ -306,7 +310,7 @@ function App() {
           db.get<any[]>(STORE_HISTORY, savedId).then((history) => {
              const newHistory = [...(history || []), {
                  timestamp: Date.now(),
-                 content: currentNote.content,
+                 content: noteToSave.content,
                  author: authorName
              }].slice(-50); // Keep last 50
              db.set(STORE_HISTORY, savedId, newHistory);
@@ -317,6 +321,25 @@ function App() {
     }
     setIsSaving(false)
   }
+
+  const handleVpsSync = async (onProgress?: (message: string) => void) => {
+    try {
+      const res = await StorageService.syncWithVps(onProgress);
+      if (res.errors.length > 0) {
+        addToast(`Sync completed with ${res.errors.length} errors`, 'error');
+      } else {
+        addToast(`Synced: ${res.pulled} pulled, ${res.pushed} pushed`, 'success');
+      }
+      // Refresh sidebar list after sync
+      const fresh = await StorageService.getCachedNotes();
+      setNotes(fresh);
+      return res;
+    } catch (e) {
+      addToast('Sync failed unexpectedly', 'error');
+      console.error(e);
+      return { pulled: 0, pushed: 0, errors: ['Unexpected error'] };
+    }
+  };
 
   const handleAutoTag = async () => {
     if (!currentNote.content.trim()) return addToast("Write some content first!", "info");
@@ -440,6 +463,7 @@ function App() {
              setAuthorName={setAuthorName}
              theme={theme}
              setTheme={(t) => setTheme(t as 'light' | 'dark')}
+             onVpsSync={handleVpsSync}
            />
         )}
 
@@ -499,6 +523,7 @@ function App() {
             isLoading={isLoading}
             onMoveNote={handleMoveNote}
             onSearchOpen={() => setIsSearchOpen(true)}
+            onVpsSync={handleVpsSync}
           />
         </div>
 
