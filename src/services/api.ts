@@ -150,11 +150,7 @@ export const StorageService = {
 
   async getNotes(skipCacheUpdate = false): Promise<CloudItemMeta[]> {
     try {
-      // Fetch from storage manager's files endpoint - look for note JSON files
-      const res = await fetch(`${API_BASE_URL}/files/notes/`);
-      if (!res.ok) throw new Error("Failed to fetch notes");
-      
-      // Parse directory listing or fetch note list from dedicated endpoint
+      // Fetch note list from storage manager's named notes endpoint
       const notesRes = await fetch(`${API_BASE_URL}/api/notes/list`);
       if (!notesRes.ok) throw new Error("Failed to fetch notes list");
       
