@@ -237,16 +237,17 @@ export const StorageService = {
   },
 
   // Create payload for storage manager webhook
-  async _createWebhookPayload(note: Note, author: string, action: 'create' | 'update'): Promise<object> {
+  async _createWebhookPayload(note: Note, author: string, action: 'create' | 'update') {
       const packedDesc = createPackedDescription(note);
       const encryptedContent = await EncryptionService.encrypt(note.content);
+      const noteId = note.id || crypto.randomUUID();
       
       return {
         source: 'cloud_notes',
         event: action === 'create' ? 'note.created' : 'note.updated',
         timestamp: new Date().toISOString(),
         data: {
-          id: note.id || crypto.randomUUID(),
+          id: noteId,
           title: note.title,
           content: encryptedContent,
           subject: note.subject || 'General',
@@ -255,7 +256,8 @@ export const StorageService = {
           author: author,
           description: packedDesc,
           updatedAt: note.updatedAt || new Date().toISOString()
-        }
+        },
+        noteId // Return for reference
       };
   },
 
@@ -281,7 +283,7 @@ export const StorageService = {
       
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      return { success: true, id: data.files?.[0] || payload.data.id };
+      return { success: true, id: data.files?.[0] || payload.noteId };
   },
 
   // Pure network call for Updates via webhook
