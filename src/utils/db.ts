@@ -110,4 +110,8 @@ export const CACHE_KEYS = {
   ALL_NOTES: 'all_notes_meta',
 };
 
+export const getPendingOps = async (): Promise<{ key: string; value: any }[]> => {
+  return db.getAll(STORE_PENDING_OPS);
+};
+
 export { STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_EMBEDDINGS, STORE_PENDING_OPS, STORE_HISTORY };

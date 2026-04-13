@@ -1,7 +1,7 @@
 // src/services/api.ts
 // Cloud Notes API Service - Integrated with Contabo Storage Manager
 
-import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OPS } from '../utils/db';
+import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OPS, getPendingOps } from '../utils/db';
 import { EncryptionService } from '../utils/encryption';
 import { createPackedDescription } from '../utils/metadata';
 import { vpsStorageAPI } from './vpsStorageAPI';
@@ -158,7 +158,7 @@ export const StorageService = {
       const notes = await notesRes.json();
       
       // Transform to CloudItemMeta format
-      const metaList: CloudItemMeta[] = notes.map((n: any) => ({
+      let metaList: CloudItemMeta[] = notes.map((n: any) => ({
         id: n.name,
         name: n.name,
         author: 'User',
@@ -166,6 +166,33 @@ export const StorageService = {
         type: 'note',
         description: ''
       }));
+
+      // Fetch pending operations and merge them with server state
+      const pendingOps = await getPendingOps();
+      pendingOps.sort((a, b) => a.value.timestamp - b.value.timestamp);
+      for (const { value: op } of pendingOps) {
+        const pending = op as PendingOp;
+        if (pending.type === 'create' && pending.note) {
+          const packedDesc = createPackedDescription(pending.note);
+          metaList.push({
+            id: pending.noteId,
+            name: pending.note.title,
+            author: pending.author || 'User',
+            date: new Date(pending.timestamp).toISOString(),
+            type: 'note',
+            description: packedDesc
+          });
+        } else if (pending.type === 'update' && pending.note) {
+          const packedDesc = createPackedDescription(pending.note);
+          metaList = metaList.map(item =>
+            item.id === pending.noteId
+              ? { ...item, name: pending.note.title, description: packedDesc, date: new Date(pending.timestamp).toISOString() }
+              : item
+          );
+        } else if (pending.type === 'delete') {
+          metaList = metaList.filter(item => item.id !== pending.noteId);
+        }
+      }
 
       if (!skipCacheUpdate) {
         db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, metaList).catch(e =>
@@ -181,6 +208,15 @@ export const StorageService = {
 
   async getNoteContent(id: string): Promise<Note> {
     try {
+      // Check pending ops first to prioritize local truth
+      const pendingOps = await getPendingOps();
+      for (const { value: op } of pendingOps) {
+        const pending = op as PendingOp;
+        if (pending.noteId === id && (pending.type === 'create' || pending.type === 'update') && pending.note) {
+          return pending.note;
+        }
+      }
+
       // Fetch from storage manager's named notes endpoint
       const res = await fetch(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(id)}`);
       if (!res.ok) throw new Error("Failed to load note");
