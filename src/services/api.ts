@@ -9,27 +9,6 @@ import { vpsStorageAPI } from './vpsStorageAPI';
 // Storage Manager API endpoint
 export const API_BASE_URL = localStorage.getItem('api_url') || "https://storage.noahcohn.com";
 
-// Webhook configuration for storage manager integration
-const WEBHOOK_ENDPOINT = `${API_BASE_URL}/webhook/notes`;
-
-// HMAC signature for webhook authentication (if configured)
-async function generateWebhookSignature(payload: string): Promise<string | null> {
-    const secret = localStorage.getItem('webhook_secret');
-    if (!secret) return null;
-    
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-        'raw',
-        encoder.encode(secret),
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign']
-    );
-    const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
-    const hashArray = Array.from(new Uint8Array(signature));
-    return 'sha256=' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
 // 1. EXPANDED: Now handles creates, updates, and deletes
 interface PendingOp {
   id: string;
@@ -296,7 +275,7 @@ export const StorageService = {
   },
 
   // Pure network call for Creates
-  async _networkSaveNote(note: Note, author: string): Promise<{ success: boolean; id?: string }> {
+  async _networkSaveNote(note: Note, _author: string): Promise<{ success: boolean; id?: string }> {
       const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(note.title)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -309,7 +288,7 @@ export const StorageService = {
   },
 
   // Pure network call for Updates
-  async _networkUpdateNote(id: string, note: Note, author: string): Promise<{ success: boolean; id?: string }> {
+  async _networkUpdateNote(id: string, note: Note, _author: string): Promise<{ success: boolean; id?: string }> {
       const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(id)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
