@@ -295,51 +295,27 @@ export const StorageService = {
       };
   },
 
-  // Pure network call for Creates via webhook
+  // Pure network call for Creates
   async _networkSaveNote(note: Note, author: string): Promise<{ success: boolean; id?: string }> {
-      const payload = await this._createWebhookPayload(note, author, 'create');
-      const payloadStr = JSON.stringify(payload);
-      
-      const headers: Record<string, string> = { 
-        'Content-Type': 'application/json' 
-      };
-      
-      const signature = await generateWebhookSignature(payloadStr);
-      if (signature) {
-        headers['X-Hub-Signature-256'] = signature;
-      }
-      
-      const res = await fetch(WEBHOOK_ENDPOINT, {
+      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(note.title)}`, {
         method: 'POST',
-        headers,
-        body: payloadStr
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: note.content })
       });
-      
+
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
-      return { success: true, id: data.files?.[0] || payload.noteId };
+      return { success: true, id: data.name || note.title };
   },
 
-  // Pure network call for Updates via webhook
+  // Pure network call for Updates
   async _networkUpdateNote(id: string, note: Note, author: string): Promise<{ success: boolean; id?: string }> {
-      const payload = await this._createWebhookPayload({ ...note, id }, author, 'update');
-      const payloadStr = JSON.stringify(payload);
-      
-      const headers: Record<string, string> = { 
-        'Content-Type': 'application/json' 
-      };
-      
-      const signature = await generateWebhookSignature(payloadStr);
-      if (signature) {
-        headers['X-Hub-Signature-256'] = signature;
-      }
-      
-      const res = await fetch(WEBHOOK_ENDPOINT, {
+      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(id)}`, {
         method: 'POST',
-        headers,
-        body: payloadStr
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: note.content })
       });
-      
+
       if (!res.ok) throw new Error(await res.text());
       return { success: true, id };
   },
