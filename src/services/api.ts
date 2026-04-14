@@ -183,10 +183,11 @@ export const StorageService = {
             description: packedDesc
           });
         } else if (pending.type === 'update' && pending.note) {
-          const packedDesc = createPackedDescription(pending.note);
+          const note = pending.note;
+          const packedDesc = createPackedDescription(note);
           metaList = metaList.map(item =>
             item.id === pending.noteId
-              ? { ...item, name: pending.note.title, description: packedDesc, date: new Date(pending.timestamp).toISOString() }
+              ? { ...item, name: note.title, description: packedDesc, date: new Date(pending.timestamp).toISOString() }
               : item
           );
         } else if (pending.type === 'delete') {
