@@ -44,3 +44,8 @@ The issue seems to stem from how Tiptap/ProseMirror parses the empty space or ch
 
 **Current Workaround:**
 The "Open Daily Note" global action in `src/plugins/daily.tsx` has been temporarily disabled with an alert instructing the user to use the `/daily template` slash command instead, which works perfectly.
+
+### Investigation Notes
+*   I attempted to reproduce the `ctx.createNote()` crash mentioned above but could not. The `markdownToHtml` serialization logic explicitly handles empty `taskItem` and `listItem` rendering by replacing empty list items with `<p>&nbsp;</p>` specifically to prevent this Tiptap `RangeError` (which occurs when ProseMirror tries to parse an empty HTML node `<li></li>` or `<li><p></p></li>`).
+*   The workaround mentioned ("Open Daily Note global action has been temporarily disabled with an alert") is not present in the current `src/plugins/daily.tsx` source code. It calls `ctx.createNote()` directly, and it successfully renders without crashing in local verification.
+*   The error string explicitly refers to `listItem` (which corresponds to regular bullet lists in Tiptap's StarterKit), whereas `taskItem` corresponds to task lists. Both are protected by the `&nbsp;` workaround in `src/utils/serialization.ts`.
