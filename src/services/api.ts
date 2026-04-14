@@ -6,6 +6,15 @@ import { EncryptionService } from '../utils/encryption';
 import { createPackedDescription } from '../utils/metadata';
 import { vpsStorageAPI } from './vpsStorageAPI';
 
+function slugify(title: string): string {
+    return title
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_]+/g, '-')
+        .replace(/-+/g, '-');
+}
+
 // Storage Manager API endpoint
 export const API_BASE_URL = localStorage.getItem('api_url') || "https://storage.noahcohn.com";
 
@@ -276,7 +285,8 @@ export const StorageService = {
 
   // Pure network call for Creates
   async _networkSaveNote(note: Note, _author: string): Promise<{ success: boolean; id?: string }> {
-      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(note.title)}`, {
+      const noteName = slugify(note.title);
+      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: note.content })
@@ -289,7 +299,8 @@ export const StorageService = {
 
   // Pure network call for Updates
   async _networkUpdateNote(id: string, note: Note, _author: string): Promise<{ success: boolean; id?: string }> {
-      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(id)}`, {
+      const noteName = slugify(id);
+      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: note.content })
