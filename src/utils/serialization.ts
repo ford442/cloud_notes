@@ -85,7 +85,7 @@ const tiptapRenderer = {
            parsed = parsed.replace(/\u200B/g, '').trim();
            pContent += parsed;
         } else if (t.type === 'paragraph') {
-           let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
+           let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : (this as any).parser.parseInline([t]).trim();
            parsed = parsed.replace(/\u200B/g, '').trim();
            pContent += parsed;
         } else if (t.type === 'list') {
