@@ -78,19 +78,21 @@ const tiptapRenderer = {
     let pContent = '';
     let restContent = '';
 
-    for (const t of token.tokens) {
-      if (t.type === 'text') {
-         let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : (this as any).parser.parseInline([t]).trim();
-         parsed = parsed.replace(/\u200B/g, '').trim();
-         pContent += parsed;
-      } else if (t.type === 'paragraph') {
-         let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : (this as any).parser.parseInline([t]).trim();
-         parsed = parsed.replace(/\u200B/g, '').trim();
-         pContent += parsed;
-      } else if (t.type === 'list') {
-         restContent += (this as any).list(t);
-      } else {
-         restContent += (this as any).parser.parse([t]);
+    if (token.tokens) {
+      for (const t of token.tokens) {
+        if (t.type === 'text') {
+           let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : (this as any).parser.parseInline([t]).trim();
+           parsed = parsed.replace(/\u200B/g, '').trim();
+           pContent += parsed;
+        } else if (t.type === 'paragraph') {
+           let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : this.parser.parseInline([t]).trim();
+           parsed = parsed.replace(/\u200B/g, '').trim();
+           pContent += parsed;
+        } else if (t.type === 'list') {
+           restContent += (this as any).list(t);
+        } else {
+           restContent += (this as any).parser.parse([t]);
+        }
       }
     }
 
