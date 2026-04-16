@@ -65,25 +65,25 @@ export const AIBubbleMenu = ({ editor }: AIBubbleMenuProps) => {
         <>
           <div className="flex p-1 border-b border-slate-100 dark:border-slate-700/50">
             <button
-              onClick={() => handleAIAction('improve')}
+              onMouseDown={(e) => e.preventDefault()} onClick={() => handleAIAction('improve')}
               className="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-700 dark:text-slate-200 transition-colors flex items-center gap-2"
             >
               <span className="text-purple-500">✨</span> Improve
             </button>
             <button
-              onClick={() => handleAIAction('fix')}
+              onMouseDown={(e) => e.preventDefault()} onClick={() => handleAIAction('fix')}
               className="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-700 dark:text-slate-200 transition-colors"
             >
               Fix
             </button>
             <button
-              onClick={() => handleAIAction('shorter')}
+              onMouseDown={(e) => e.preventDefault()} onClick={() => handleAIAction('shorter')}
               className="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-700 dark:text-slate-200 transition-colors"
             >
               Shorter
             </button>
             <button
-              onClick={() => handleAIAction('longer')}
+              onMouseDown={(e) => e.preventDefault()} onClick={() => handleAIAction('longer')}
               className="px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md text-slate-700 dark:text-slate-200 transition-colors"
             >
               Longer
@@ -103,7 +103,7 @@ export const AIBubbleMenu = ({ editor }: AIBubbleMenuProps) => {
               className="flex-1 bg-transparent border border-slate-200 dark:border-slate-600 rounded px-2 py-1 outline-none focus:border-purple-500 transition-colors text-slate-700 dark:text-slate-200 placeholder:text-slate-400"
             />
             <button
-              onClick={() => {
+              onMouseDown={(e) => e.preventDefault()} onClick={() => {
                 if (prompt.trim()) handleAIAction('custom')
               }}
               disabled={!prompt.trim()}
