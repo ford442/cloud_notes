@@ -83,10 +83,38 @@ export const StorageService = {
       // Sort by timestamp to replay history exactly as it happened
       ops.sort((a, b) => a.value.timestamp - b.value.timestamp);
 
+      // Group operations by note ID to batch updates
+      const latestOpsMap = new Map<string, { keys: string[], op: PendingOp }>();
+
+      for (const item of ops) {
+         const { key, value: op } = item;
+         const existing = latestOpsMap.get(op.noteId);
+         if (!existing) {
+             latestOpsMap.set(op.noteId, { keys: [key], op });
+         } else {
+             // Combine operations: if it's a create followed by update, treat it as create with new content
+             if (existing.op.type === 'create' && op.type === 'update') {
+                 latestOpsMap.set(op.noteId, {
+                     keys: [...existing.keys, key],
+                     op: { ...op, type: 'create', id: existing.op.id }
+                 });
+             } else if (op.type === 'delete') {
+                 // If deleted, override all previous
+                 latestOpsMap.set(op.noteId, { keys: [...existing.keys, key], op });
+             } else {
+                 // Multiple updates, just keep the latest
+                 latestOpsMap.set(op.noteId, { keys: [...existing.keys, key], op });
+             }
+         }
+      }
+
+      const consolidatedOps = Array.from(latestOpsMap.values());
+      consolidatedOps.sort((a, b) => a.op.timestamp - b.op.timestamp);
+
       // Map to track temporary offline IDs resolving to real server IDs
       const idMap = new Map<string, string>();
 
-      for (const { key, value: op } of ops) {
+      for (const { keys, op } of consolidatedOps) {
         try {
           let success = false;
 
@@ -111,22 +139,24 @@ export const StorageService = {
           }
           // Note: Ready for offline DELETE when you implement delete UI
           else if (op.type === 'delete') {
-             // await this._networkDeleteNote(targetId);
-             success = true;
+             const res = await this._networkDeleteNote(targetId);
+             success = res;
           }
 
           if (success) {
-            await db.del(STORE_PENDING_OPS, key);
+            for (const k of keys) {
+              await db.del(STORE_PENDING_OPS, k);
+            }
           } else {
-            console.warn(`[Sync Engine] Op ${key} failed, keeping in queue for next retry.`);
+            console.warn(`[Sync Engine] Op ${keys.join(', ')} failed, keeping in queue for next retry.`);
           }
         } catch (e) {
-          console.error(`[Sync Engine] Failed to process op ${key}`, e);
+          console.error(`[Sync Engine] Failed to process op ${keys.join(', ')}`, e);
         }
       }
 
       // If we synced things successfully, refresh the global cache
-      if (ops.length > 0) {
+      if (consolidatedOps.length > 0) {
           this.getNotes(false).catch(console.warn);
       }
 
@@ -258,6 +288,42 @@ export const StorageService = {
       };
   },
 
+  async _generateHmacSignature(payloadStr: string): Promise<string> {
+    const secret = localStorage.getItem('webhook_secret');
+    if (!secret) return '';
+
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+
+    // Web Crypto API to generate HMAC SHA-256
+    const crypto = window.crypto || (window as any).msCrypto;
+    if (!crypto || !crypto.subtle) return '';
+
+    try {
+      const key = await crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      );
+
+      const signatureBuffer = await crypto.subtle.sign(
+        'HMAC',
+        key,
+        encoder.encode(payloadStr)
+      );
+
+      // Convert buffer to hex string
+      const hashArray = Array.from(new Uint8Array(signatureBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+      return hashHex;
+    } catch (e) {
+      console.warn("Failed to generate HMAC signature", e);
+      return '';
+    }
+  },
+
   // Create payload for storage manager webhook
   async _createWebhookPayload(note: Note, author: string, action: 'create' | 'update') {
       const packedDesc = createPackedDescription(note);
@@ -295,6 +361,36 @@ export const StorageService = {
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       return { success: true, id: data.name || note.title };
+  },
+
+  async _networkDeleteNote(id: string): Promise<boolean> {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      const payload = {
+        source: 'cloud_notes',
+        event: 'note.deleted',
+        timestamp: new Date().toISOString(),
+        noteId: id,
+        data: { id }
+      };
+
+      const payloadStr = JSON.stringify(payload);
+
+      const signature = await this._generateHmacSignature(payloadStr);
+      if (signature) {
+        headers['X-Signature-256'] = signature;
+      }
+
+      const res = await fetch(`${API_BASE_URL}/webhook/notes`, {
+        method: 'POST',
+        headers,
+        body: payloadStr
+      });
+
+      if (!res.ok) throw new Error(await res.text());
+      return true;
   },
 
   // Pure network call for Updates
