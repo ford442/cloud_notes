@@ -324,6 +324,30 @@ export const StorageService = {
     }
   },
 
+  // Bridge Pattern: Dispatches the structured payload asynchronously
+  async _dispatchWebhook(note: Note, author: string, action: 'create' | 'update'): Promise<void> {
+      try {
+          const payload = await this._createWebhookPayload(note, author, action);
+          const payloadStr = JSON.stringify(payload);
+          const signature = await this._generateHmacSignature(payloadStr);
+
+          const headers: Record<string, string> = {
+              'Content-Type': 'application/json'
+          };
+          if (signature) headers['X-Signature-256'] = signature;
+
+          // Fire and forget - we do not await this fetch so it doesn't block the UI
+          fetch(`${API_BASE_URL}/webhook/notes`, {
+              method: 'POST',
+              headers,
+              body: payloadStr
+          }).catch(e => console.warn(`[Webhook Bridge] Failed to dispatch ${action} webhook:`, e));
+
+      } catch (e) {
+          console.error('[Webhook Bridge] Error preparing payload:', e);
+      }
+  },
+
   // Create payload for storage manager webhook
   async _createWebhookPayload(note: Note, author: string, action: 'create' | 'update') {
       const packedDesc = createPackedDescription(note);
@@ -350,8 +374,10 @@ export const StorageService = {
   },
 
   // Pure network call for Creates
-  async _networkSaveNote(note: Note, _author: string): Promise<{ success: boolean; id?: string }> {
+  async _networkSaveNote(note: Note, author: string): Promise<{ success: boolean; id?: string }> {
       const noteName = slugify(note.title);
+
+      // 1. Maintain Legacy API call (Synchronous truth)
       const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -360,6 +386,10 @@ export const StorageService = {
 
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
+
+      // 2. Bridge Pattern: Dispatch Webhook (Asynchronous shadow-write)
+      this._dispatchWebhook(note, author, 'create');
+
       return { success: true, id: data.name || note.title };
   },
 
@@ -394,8 +424,10 @@ export const StorageService = {
   },
 
   // Pure network call for Updates
-  async _networkUpdateNote(id: string, note: Note, _author: string): Promise<{ success: boolean; id?: string }> {
+  async _networkUpdateNote(id: string, note: Note, author: string): Promise<{ success: boolean; id?: string }> {
       const noteName = slugify(id);
+
+      // 1. Maintain Legacy API call (Synchronous truth)
       const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -403,6 +435,10 @@ export const StorageService = {
       });
 
       if (!res.ok) throw new Error(await res.text());
+
+      // 2. Bridge Pattern: Dispatch Webhook (Asynchronous shadow-write)
+      this._dispatchWebhook({ ...note, id }, author, 'update');
+
       return { success: true, id };
   },
 
