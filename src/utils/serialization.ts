@@ -52,11 +52,22 @@ turndownService.addRule('tiptapTaskItem', {
 });
 
 
+// Custom Rule for Tiptap Prompt Section
+// Preserves the div wrapper and its attributes while converting the interior to Markdown
+turndownService.addRule('promptSection', {
+  filter: (node) => {
+    return node.nodeName === 'DIV' && node.getAttribute('data-type') === 'prompt-section';
+  },
+  replacement: (content, node) => {
+    const maxLength = (node as HTMLElement).getAttribute('data-max-length') || '2000';
+    return `\n<div data-type="prompt-section" data-max-length="${maxLength}">\n${content}\n</div>\n`;
+  }
+});
+
 // Keep iframe tags to support YouTube embeds and other rich content
 // We removed 'div' from keep because Tiptap wraps task items in divs which caused them to be serialized as HTML instead of Markdown.
-// Instead, we use a specific keep filter for divs with data-type="prompt-section"
 turndownService.keep((node) => {
-  return node.nodeName === 'IFRAME' || (node.nodeName === 'DIV' && node.getAttribute('data-type') === 'prompt-section');
+  return node.nodeName === 'IFRAME';
 });
 
 const tiptapRenderer = {
