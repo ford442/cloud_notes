@@ -12,6 +12,7 @@ const GraphView = lazy(() => import('./components/GraphView').then(m => ({ defau
 const FlashcardView = lazy(() => import('./components/FlashcardView').then(m => ({ default: m.FlashcardView })))
 const TaskView = lazy(() => import('./components/TaskView').then(m => ({ default: m.TaskView })))
 const NamedNotesBrowser = lazy(() => import('./components/NamedNotesBrowser').then(m => ({ default: m.NamedNotesBrowser })))
+const MusicLibraryView = lazy(() => import('./components/MusicLibraryView').then(m => ({ default: m.MusicLibraryView })))
 
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
@@ -19,6 +20,7 @@ import { CommandPalette } from './components/CommandPalette'
 import { SearchModal } from './components/SearchModal'
 import { PluginRegistry } from './services/plugin'
 import { CorePlugins } from './plugins/core'
+import { MusicPlugin } from './plugins/music'
 import { ToastProvider, useToast } from './components/Toast'
 import { SemanticService } from './services/semantic'
 import { SettingsModal } from './components/SettingsModal'
@@ -30,6 +32,7 @@ import { HistoryModal } from './components/HistoryModal'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
+PluginRegistry.register(MusicPlugin);
 
 // Wrapper to provide toast context
 function AppWrapper() {
@@ -85,7 +88,7 @@ function App() {
   }, []);
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes'>('rich')
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music'>('rich')
 
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
@@ -117,7 +120,7 @@ function App() {
       });
     });
     PluginRegistry.setModeSetter((mode) => {
-       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes'].includes(mode)) {
+       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music'].includes(mode)) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setEditorMode(mode as any);
        } else {
@@ -547,7 +550,7 @@ function App() {
           )}
 
           {/* Header Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex-1 flex items-center gap-4 min-w-[300px]">
                  <input
@@ -632,6 +635,12 @@ function App() {
                   >
                     Cloud Notes
                   </button>
+                  <button
+                    onClick={() => setEditorMode('music')}
+                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'music' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    Music
+                  </button>
                 </div>
 
                 {/* Theme Toggle */}
@@ -709,6 +718,8 @@ function App() {
                 />
               ) : editorMode === 'named-notes' ? (
                 <NamedNotesBrowser />
+              ) : editorMode === 'music' ? (
+                <MusicLibraryView onClose={() => setEditorMode('rich')} />
               ) : editorMode === 'simple' ? (
                 <Editor
                   value={currentNote.content}
@@ -757,7 +768,7 @@ function App() {
           </div>
 
           {/* Footer Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">

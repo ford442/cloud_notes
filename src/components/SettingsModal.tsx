@@ -25,6 +25,7 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
   const [isReindexing, setIsReindexing] = useState(false);
   const [reindexProgress, setReindexProgress] = useState('');
   const [apiUrl, setApiUrl] = useState('');
+  const [flacApiUrl, setFlacApiUrl] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState('');
 
@@ -34,6 +35,7 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
       setEncryptionKey(EncryptionService.getOrInitPassword());
       setShowKey(false);
       setApiUrl(localStorage.getItem('api_url') || 'https://storage.noahcohn.com');
+      setFlacApiUrl(localStorage.getItem('flac_api_url') || '');
     }
   }, [isOpen]);
 
@@ -347,6 +349,28 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
                 >
                   Save Token
                 </button>
+              </div>
+
+              <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">FLAC Player API URL</label>
+                <input
+                  type="url"
+                  value={flacApiUrl}
+                  onChange={e => setFlacApiUrl(e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  placeholder="https://your-flac-player-backend.com"
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  URL of your FLAC Player backend for music library management.
+                </p>
+                <div className="flex justify-end mt-3">
+                  <button
+                    onClick={() => { localStorage.setItem('flac_api_url', flacApiUrl); addToast('FLAC API URL saved', 'success'); }}
+                    className="px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
+                  >
+                    Save URL
+                  </button>
+                </div>
               </div>
 
               <div className="border-t border-slate-200 dark:border-slate-700 pt-6">
