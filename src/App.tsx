@@ -221,6 +221,24 @@ function App() {
     })
   }
 
+
+  const handleDelete = async () => {
+    if (!selectedId) return;
+    if (!window.confirm("Are you sure you want to delete this note?")) return;
+
+    setIsSaving(true);
+    try {
+      await StorageService.deleteNote(selectedId);
+      addToast("Note deleted", "success");
+      handleNew();
+      refreshList();
+    } catch (e) {
+      addToast("Failed to delete note", "error");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   const handleSave = async () => {
     if (!currentNote.title.trim()) return addToast("Title required", "error")
     
@@ -652,6 +670,15 @@ function App() {
                   <option value="light">Light</option>
                   <option value="dark">Dark</option>
                 </select>
+
+
+                <button
+                  onClick={handleDelete}
+                  disabled={isSaving || !selectedId}
+                  className="px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50"
+                >
+                  Delete
+                </button>
 
                 <button
                   onClick={handleSave}
