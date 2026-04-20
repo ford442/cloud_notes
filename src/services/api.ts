@@ -528,6 +528,37 @@ export const StorageService = {
     }
   },
 
+
+  // Public Delete (Handles Offline Queuing)
+  async deleteNote(id: string): Promise<boolean> {
+    try {
+      if (!id) throw new Error("ID required for delete");
+
+      // 1. Optimistic Cache Update
+      await db.del(STORE_NOTES_CONTENT, id);
+      const currentList = await this.getCachedNotes();
+      const updatedList = currentList.filter(item => item.id !== id);
+      await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, updatedList);
+
+      // 2. If clearly offline, throw to trigger queue immediately
+      if (!navigator.onLine) throw new Error("Offline");
+
+      // 3. Attempt Network Call
+      return await this._networkDeleteNote(id);
+
+    } catch (e) {
+      console.log('[Sync Engine] Queueing offline delete for', id);
+      const op: PendingOp = {
+        id: crypto.randomUUID(),
+        type: 'delete',
+        noteId: id,
+        timestamp: Date.now()
+      };
+      await db.set(STORE_PENDING_OPS, `${op.timestamp}-${op.id}`, op);
+      return true; // Return mock success to keep UI happy
+    }
+  },
+
   // ── Named Notes API ──────────────────────────────────────────────────────────
 
   async listNamedNotes(): Promise<Array<{ name: string; updated_at: string; size: number }>> {
