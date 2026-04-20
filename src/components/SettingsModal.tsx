@@ -51,6 +51,19 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
     addToast('Readwise token saved', 'success');
   };
 
+  const handleSaveFlacUrl = () => {
+    const cleanUrl = flacApiUrl.replace(/\/$/, '');
+    localStorage.setItem('flac_api_url', cleanUrl);
+    addToast('FLAC API URL saved', 'success');
+  };
+
+  const handleUseStorageApiForFlac = () => {
+    const storageUrl = apiUrl.replace(/\/$/, '');
+    setFlacApiUrl(storageUrl);
+    localStorage.setItem('flac_api_url', storageUrl);
+    addToast('FLAC API URL set to match Storage API', 'success');
+  };
+
   const handleUpdateKey = () => {
     if (!encryptionKey.trim()) return addToast('Key cannot be empty', 'error');
     if (confirm('Warning: changing the encryption key will make existing encrypted notes unreadable. Are you sure?')) {
@@ -362,10 +375,18 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
                 />
                 <p className="text-xs text-slate-400 mt-1">
                   URL of your FLAC Player backend for music library management.
+                  {apiUrl && apiUrl !== flacApiUrl && (
+                    <button
+                      onClick={handleUseStorageApiForFlac}
+                      className="ml-2 text-blue-500 hover:underline"
+                    >
+                      Use same host as Storage API
+                    </button>
+                  )}
                 </p>
                 <div className="flex justify-end mt-3">
                   <button
-                    onClick={() => { localStorage.setItem('flac_api_url', flacApiUrl); addToast('FLAC API URL saved', 'success'); }}
+                    onClick={handleSaveFlacUrl}
                     className="px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
                   >
                     Save URL

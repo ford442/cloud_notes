@@ -1,3 +1,8 @@
+# DEPRECATED: This GCS backend is obsolete since moving to the VPS.
+# The cloud_notes app now uses contabo_storage_manager (packages/python-bridge)
+# for both notes storage and FLAC music library management.
+# Keep this file for reference only — do not deploy it alongside the VPS backend.
+
 import os
 import json
 import uuid
