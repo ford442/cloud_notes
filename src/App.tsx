@@ -13,6 +13,7 @@ const FlashcardView = lazy(() => import('./components/FlashcardView').then(m => 
 const TaskView = lazy(() => import('./components/TaskView').then(m => ({ default: m.TaskView })))
 const NamedNotesBrowser = lazy(() => import('./components/NamedNotesBrowser').then(m => ({ default: m.NamedNotesBrowser })))
 const MusicLibraryView = lazy(() => import('./components/MusicLibraryView').then(m => ({ default: m.MusicLibraryView })))
+const PlaylistView = lazy(() => import('./components/PlaylistView').then(m => ({ default: m.PlaylistView })))
 
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
@@ -88,7 +89,7 @@ function App() {
   }, []);
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music'>('rich')
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists'>('rich')
 
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
@@ -568,7 +569,7 @@ function App() {
           )}
 
           {/* Header Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex-1 flex items-center gap-4 min-w-[300px]">
                  <input
@@ -745,8 +746,38 @@ function App() {
                 />
               ) : editorMode === 'named-notes' ? (
                 <NamedNotesBrowser />
-              ) : editorMode === 'music' ? (
-                <MusicLibraryView onClose={() => setEditorMode('rich')} />
+              ) : editorMode === 'music' || editorMode === 'playlists' ? (
+                <div className="h-full flex flex-col">
+                  <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                    <button
+                      onClick={() => setEditorMode('music')}
+                      className={`px-4 py-2 font-medium transition-colors ${
+                        editorMode === 'music'
+                          ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Library
+                    </button>
+                    <button
+                      onClick={() => setEditorMode('playlists')}
+                      className={`px-4 py-2 font-medium transition-colors ${
+                        editorMode === 'playlists'
+                          ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Playlists
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-auto">
+                    {editorMode === 'music' ? (
+                      <MusicLibraryView onClose={() => setEditorMode('rich')} />
+                    ) : (
+                      <PlaylistView onClose={() => setEditorMode('rich')} />
+                    )}
+                  </div>
+                </div>
               ) : editorMode === 'simple' ? (
                 <Editor
                   value={currentNote.content}
@@ -795,7 +826,7 @@ function App() {
           </div>
 
           {/* Footer Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
