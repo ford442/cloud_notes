@@ -16,6 +16,26 @@ import { SemanticService } from '../services/semantic';
 
 const Tabs = ['General', 'Security', 'Integrations', 'Data'];
 
+function normalizeFlacApiUrl(rawUrl: string): string {
+  const trimmed = rawUrl?.trim().replace(/\/+$|\/$/, '') || '';
+  if (!trimmed) {
+    return '';
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const cleanedPath = url.pathname.replace(/\/+$|\/$/, '');
+    if (cleanedPath.toLowerCase().endsWith('/flac-player')) {
+      url.pathname = '';
+      url.search = '';
+      url.hash = '';
+    }
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return trimmed;
+  }
+}
+
 export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, theme, setTheme, onVpsSync }: SettingsModalProps) => {
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('General');
@@ -35,7 +55,7 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
       setEncryptionKey(EncryptionService.getOrInitPassword());
       setShowKey(false);
       setApiUrl(localStorage.getItem('api_url') || 'https://storage.noahcohn.com');
-      setFlacApiUrl(localStorage.getItem('flac_api_url') || '');
+      setFlacApiUrl(normalizeFlacApiUrl(localStorage.getItem('flac_api_url') || ''));
     }
   }, [isOpen]);
 
@@ -52,13 +72,15 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
   };
 
   const handleSaveFlacUrl = () => {
-    const cleanUrl = flacApiUrl.replace(/\/$/, '');
+    const cleanUrl = normalizeFlacApiUrl(flacApiUrl);
+    if (!cleanUrl) return addToast('FLAC API URL cannot be empty', 'error');
+    setFlacApiUrl(cleanUrl);
     localStorage.setItem('flac_api_url', cleanUrl);
     addToast('FLAC API URL saved', 'success');
   };
 
   const handleUseStorageApiForFlac = () => {
-    const storageUrl = apiUrl.replace(/\/$/, '');
+    const storageUrl = normalizeFlacApiUrl(apiUrl);
     setFlacApiUrl(storageUrl);
     localStorage.setItem('flac_api_url', storageUrl);
     addToast('FLAC API URL set to match Storage API', 'success');
@@ -375,6 +397,7 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
                 />
                 <p className="text-xs text-slate-400 mt-1">
                   URL of your FLAC Player backend for music library management.
+                  Use the backend host root (for example <code>https://test.1ink.us</code>), not the UI path <code>/flac-player</code>.
                   {apiUrl && apiUrl !== flacApiUrl && (
                     <button
                       onClick={handleUseStorageApiForFlac}

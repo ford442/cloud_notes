@@ -14,8 +14,31 @@ interface MusicLibraryViewProps {
   onClose: () => void;
 }
 
+function normalizeFlacApiUrl(rawUrl: string): string {
+  const trimmed = rawUrl?.trim().replace(/\/+$|\/$/, '') || '';
+  if (!trimmed) {
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/flac-player')) {
+      return window.location.origin;
+    }
+    return '';
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const cleanedPath = url.pathname.replace(/\/+$|\/$/, '');
+    if (cleanedPath.toLowerCase().endsWith('/flac-player')) {
+      url.pathname = '';
+      url.search = '';
+      url.hash = '';
+    }
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    return trimmed;
+  }
+}
+
 function getFlacApiUrl(): string {
-  return (localStorage.getItem('flac_api_url') || '').replace(/\/$/, '');
+  return normalizeFlacApiUrl(localStorage.getItem('flac_api_url') || '');
 }
 
 export const MusicLibraryView = ({ onClose }: MusicLibraryViewProps) => {
