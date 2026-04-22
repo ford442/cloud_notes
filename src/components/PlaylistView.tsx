@@ -50,7 +50,8 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
   const [showSongSelector, setShowSongSelector] = useState(false);
   const { addToast } = useToast();
 
-  const flacApiUrl = normalizeFlacApiUrl(localStorage.getItem('flac_api_url') || '');
+  const rawFlac = localStorage.getItem('flac_api_url');
+  const flacApiUrl = normalizeFlacApiUrl(rawFlac || localStorage.getItem('api_url') || 'https://storage.noahcohn.com');
 
   useEffect(() => {
     if (flacApiUrl) {

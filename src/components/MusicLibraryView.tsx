@@ -38,7 +38,9 @@ function normalizeFlacApiUrl(rawUrl: string): string {
 }
 
 function getFlacApiUrl(): string {
-  return normalizeFlacApiUrl(localStorage.getItem('flac_api_url') || '');
+  const saved = localStorage.getItem('flac_api_url');
+  if (saved) return normalizeFlacApiUrl(saved);
+  return normalizeFlacApiUrl(localStorage.getItem('api_url') || 'https://storage.noahcohn.com');
 }
 
 export const MusicLibraryView = ({ onClose }: MusicLibraryViewProps) => {
