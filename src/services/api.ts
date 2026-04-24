@@ -113,6 +113,11 @@ export const StorageService = {
 
       // Map to track temporary offline IDs resolving to real server IDs
       const idMap = new Map<string, string>();
+      const successfulOps: PendingOp[] = [];
+
+      // We do not want the legacy network methods to fire individual webhooks
+      // because we will fire one batch webhook at the end (or individual if only 1 op).
+      const skipWebhook = true;
 
       for (const { keys, op } of consolidatedOps) {
         try {
@@ -122,7 +127,7 @@ export const StorageService = {
           const targetId = idMap.get(op.noteId) || op.noteId;
 
           if (op.type === 'create' && op.note) {
-            const res = await this._networkSaveNote(op.note, op.author || "User");
+            const res = await this._networkSaveNote(op.note, op.author || "User", skipWebhook);
             if (res.success && res.id) {
               idMap.set(op.noteId, res.id); // Map the temp ID to the real ID!
 
@@ -134,16 +139,16 @@ export const StorageService = {
             }
           }
           else if (op.type === 'update' && op.note) {
-            const res = await this._networkUpdateNote(targetId, op.note, op.author || "User");
+            const res = await this._networkUpdateNote(targetId, op.note, op.author || "User", skipWebhook);
             success = res.success;
           }
-          // Note: Ready for offline DELETE when you implement delete UI
           else if (op.type === 'delete') {
-             const res = await this._networkDeleteNote(targetId);
+             const res = await this._networkDeleteNote(targetId, skipWebhook);
              success = res;
           }
 
           if (success) {
+            successfulOps.push(op);
             for (const k of keys) {
               await db.del(STORE_PENDING_OPS, k);
             }
@@ -153,6 +158,19 @@ export const StorageService = {
         } catch (e) {
           console.error(`[Sync Engine] Failed to process op ${keys.join(', ')}`, e);
         }
+      }
+
+      // Batch sync
+      if (successfulOps.length > 1) {
+          this._dispatchBatchWebhook(successfulOps, idMap);
+      } else if (successfulOps.length === 1) {
+          const singleOp = successfulOps[0];
+          const realId = idMap.get(singleOp.noteId) || singleOp.noteId;
+          if (singleOp.type === 'delete') {
+              this._networkDeleteNote(realId, false); // fire individual webhook
+          } else if (singleOp.note) {
+              this._dispatchWebhook({ ...singleOp.note, id: realId }, singleOp.author || "User", singleOp.type);
+          }
       }
 
       // If we synced things successfully, refresh the global cache
@@ -325,6 +343,56 @@ export const StorageService = {
   },
 
   // Bridge Pattern: Dispatches the structured payload asynchronously
+  async _dispatchBatchWebhook(ops: PendingOp[], idMap: Map<string, string>): Promise<void> {
+      try {
+          const payload = {
+            source: 'cloud_notes',
+            event: 'batch.sync',
+            timestamp: new Date().toISOString(),
+            data: await Promise.all(ops.map(async op => {
+              const realId = idMap.get(op.noteId) || op.noteId;
+              if (op.type === 'delete') {
+                return { type: 'delete', noteId: realId };
+              }
+              const packedDesc = createPackedDescription(op.note!);
+              const encryptedContent = await EncryptionService.encrypt(op.note!.content);
+              return {
+                type: op.type,
+                noteId: realId,
+                data: {
+                  id: realId,
+                  title: op.note!.title,
+                  content: encryptedContent,
+                  subject: op.note!.subject || 'General',
+                  section: op.note!.section || 'Inbox',
+                  tags: op.note!.tags || '',
+                  author: op.author || 'User',
+                  description: packedDesc,
+                  updatedAt: op.note!.updatedAt || new Date().toISOString()
+                }
+              };
+            }))
+          };
+
+          const payloadStr = JSON.stringify(payload);
+          const signature = await this._generateHmacSignature(payloadStr);
+
+          const headers: Record<string, string> = {
+              'Content-Type': 'application/json'
+          };
+          if (signature) headers['X-Signature-256'] = signature;
+
+          fetch(`${API_BASE_URL}/webhook/notes`, {
+              method: 'POST',
+              headers,
+              body: payloadStr
+          }).catch(e => console.warn(`[Webhook Bridge] Failed to dispatch batch webhook:`, e));
+
+      } catch (e) {
+          console.error('[Webhook Bridge] Error preparing batch payload:', e);
+      }
+  },
+
   async _dispatchWebhook(note: Note, author: string, action: 'create' | 'update'): Promise<void> {
       try {
           const payload = await this._createWebhookPayload(note, author, action);
@@ -374,7 +442,7 @@ export const StorageService = {
   },
 
   // Pure network call for Creates
-  async _networkSaveNote(note: Note, author: string): Promise<{ success: boolean; id?: string }> {
+  async _networkSaveNote(note: Note, author: string, skipWebhook = false): Promise<{ success: boolean; id?: string }> {
       const noteName = slugify(note.title);
 
       // 1. Maintain Legacy API call (Synchronous truth)
@@ -388,12 +456,12 @@ export const StorageService = {
       const data = await res.json();
 
       // 2. Bridge Pattern: Dispatch Webhook (Asynchronous shadow-write)
-      this._dispatchWebhook(note, author, 'create');
+      if (!skipWebhook) this._dispatchWebhook(note, author, 'create');
 
       return { success: true, id: data.name || note.title };
   },
 
-  async _networkDeleteNote(id: string): Promise<boolean> {
+  async _networkDeleteNote(id: string, skipWebhook = false): Promise<boolean> {
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
@@ -413,18 +481,20 @@ export const StorageService = {
         headers['X-Signature-256'] = signature;
       }
 
-      const res = await fetch(`${API_BASE_URL}/webhook/notes`, {
-        method: 'POST',
-        headers,
-        body: payloadStr
-      });
+      if (!skipWebhook) {
+        const res = await fetch(`${API_BASE_URL}/webhook/notes`, {
+          method: 'POST',
+          headers,
+          body: payloadStr
+        });
+        if (!res.ok) throw new Error(await res.text());
+      }
 
-      if (!res.ok) throw new Error(await res.text());
       return true;
   },
 
   // Pure network call for Updates
-  async _networkUpdateNote(id: string, note: Note, author: string): Promise<{ success: boolean; id?: string }> {
+  async _networkUpdateNote(id: string, note: Note, author: string, skipWebhook = false): Promise<{ success: boolean; id?: string }> {
       const noteName = slugify(id);
 
       // 1. Maintain Legacy API call (Synchronous truth)
@@ -437,7 +507,7 @@ export const StorageService = {
       if (!res.ok) throw new Error(await res.text());
 
       // 2. Bridge Pattern: Dispatch Webhook (Asynchronous shadow-write)
-      this._dispatchWebhook({ ...note, id }, author, 'update');
+      if (!skipWebhook) this._dispatchWebhook({ ...note, id }, author, 'update');
 
       return { success: true, id };
   },

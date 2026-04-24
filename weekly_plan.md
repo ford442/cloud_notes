@@ -29,9 +29,9 @@ cloud_notes app → POST /webhook/notes → Storage Manager
 
 ### Next Steps:
 - [ ] Test the integration with live storage manager
-- [ ] Add webhook secret configuration UI in cloud_notes settings
-- [ ] Implement note deletion webhook handler
-- [ ] Add batch sync for offline operations
+- [x] Add webhook secret configuration UI in cloud_notes settings
+- [x] Implement note deletion webhook handler
+- [x] Add batch sync for offline operations
 
 ## ✅ DONE: Tiptap `listItem` hydration error on `createNote`
 - Fix implemented in `src/utils/serialization.ts` (empty content -> `&nbsp;` injection).
