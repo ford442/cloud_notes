@@ -29,6 +29,8 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
   const [flacApiUrl, setFlacApiUrl] = useState('');
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncStatus, setSyncStatus] = useState('');
+  const [isRescanningPresets, setIsRescanningPresets] = useState(false);
+  const [presetScanStatus, setPresetScanStatus] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -107,6 +109,29 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
     } finally {
       setIsSyncing(false);
       setTimeout(() => setSyncStatus(''), 3000);
+    }
+  };
+
+  const handleRescanPresets = async () => {
+    if (isRescanningPresets) return;
+    setIsRescanningPresets(true);
+    setPresetScanStatus('Starting scan...');
+    try {
+      const baseUrl = apiUrl.replace(/\/$/, '');
+      const res = await fetch(`${baseUrl}/api/presets/rescan`, { method: 'POST' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const counts = data.dirs || {};
+      const total = Object.values(counts).reduce((a: number, b: unknown) => a + (b as number), 0);
+      setPresetScanStatus(`${total} presets indexed`);
+      addToast('Preset scan complete', 'success');
+    } catch (e) {
+      console.error(e);
+      setPresetScanStatus('Failed');
+      addToast('Preset scan failed', 'error');
+    } finally {
+      setIsRescanningPresets(false);
+      setTimeout(() => setPresetScanStatus(''), 5000);
     }
   };
 
@@ -294,6 +319,44 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
                             <div className="flex flex-col">
                               <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Status</span>
                               <span className="text-sm font-medium text-slate-700 dark:text-slate-300 font-mono">{syncStatus}</span>
+                            </div>
+                        )}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-6 mt-6 flex items-start gap-4">
+                  <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-600 dark:text-purple-400">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">Project-M Presets</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">
+                      Rebuild the cached preset index on the storage manager server. This indexes the milk, milkLRG, milkMED, milkSML, and custom_milk directories so the Project-M WASM app can load random presets without scanning.
+                    </p>
+
+                    <div className="flex items-center gap-4">
+                        <button
+                          onClick={handleRescanPresets}
+                          disabled={isRescanningPresets}
+                          className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-lg transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {isRescanningPresets ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
+                                Scanning...
+                              </>
+                          ) : (
+                              <>
+                                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                                Rescan Presets on Server
+                              </>
+                          )}
+                        </button>
+                        {presetScanStatus && (
+                            <div className="flex flex-col">
+                              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-0.5">Status</span>
+                              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 font-mono">{presetScanStatus}</span>
                             </div>
                         )}
                     </div>
