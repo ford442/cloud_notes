@@ -121,7 +121,7 @@ function App() {
       });
     });
     PluginRegistry.setModeSetter((mode) => {
-       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music'].includes(mode)) {
+       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists'].includes(mode)) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setEditorMode(mode as any);
        } else {

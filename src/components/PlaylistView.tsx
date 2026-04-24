@@ -1,41 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useToast } from './Toast';
-
-interface Song {
-  id: string;
-  title: string;
-  author: string;
-  rating?: number;
-  tags?: string[];
-  play_count?: number;
-}
-
-interface Playlist {
-  id: string;
-  title: string;
-  description?: string;
-  track_ids: string[];
-  created_at: string;
-  updated_at: string;
-}
+import { getFlacApiUrl } from '../utils/flac';
+import type { Song, Playlist } from '../utils/flac';
 
 interface PlaylistViewProps {
   onClose: () => void;
-}
-
-function normalizeFlacApiUrl(rawUrl: string): string {
-  const trimmed = rawUrl?.trim().replace(/\/+$|\/$/, '') || '';
-  if (!trimmed) return '';
-  try {
-    const url = new URL(trimmed);
-    const cleanedPath = url.pathname.replace(/\/+$|\/$/, '');
-    if (cleanedPath.toLowerCase().endsWith('/flac-player')) {
-      url.pathname = '';
-    }
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return trimmed;
-  }
 }
 
 export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
@@ -48,10 +17,11 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
   const [editForm, setEditForm] = useState<Partial<Playlist>>({});
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null);
   const [showSongSelector, setShowSongSelector] = useState(false);
+  const [addSongSearch, setAddSongSearch] = useState('');
+  const [playlistSearch, setPlaylistSearch] = useState('');
   const { addToast } = useToast();
 
-  const rawFlac = localStorage.getItem('flac_api_url');
-  const flacApiUrl = normalizeFlacApiUrl(rawFlac || localStorage.getItem('api_url') || 'https://storage.noahcohn.com');
+  const flacApiUrl = getFlacApiUrl();
 
   useEffect(() => {
     if (flacApiUrl) {
@@ -190,6 +160,8 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
 
   const removeSongFromPlaylist = async (playlistId: string, songId: string) => {
     if (!flacApiUrl) return;
+    if (!confirm('Remove this song from the playlist?')) return;
+
     const playlist = playlists.find(p => p.id === playlistId);
     if (!playlist) return;
 
@@ -370,10 +342,20 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
               </div>
 
               {showSongSelector && (
-                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-green-500 overflow-y-auto max-h-48">
-                  <div className="space-y-2">
+                <div className="bg-white dark:bg-slate-800 rounded-lg p-4 border-2 border-green-500 overflow-y-auto max-h-64 flex flex-col gap-3">
+                  <input
+                    type="text"
+                    placeholder="Search songs to add..."
+                    value={addSongSearch}
+                    onChange={(e) => setAddSongSearch(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-green-500/20"
+                  />
+                  <div className="space-y-2 overflow-y-auto flex-1">
                     {songs
                       .filter(s => !selectedPlaylist.track_ids.includes(s.id))
+                      .filter(s => !addSongSearch.trim() ||
+                                   s.title.toLowerCase().includes(addSongSearch.toLowerCase()) ||
+                                   s.author.toLowerCase().includes(addSongSearch.toLowerCase()))
                       .map(song => (
                         <div
                           key={song.id}
@@ -391,32 +373,62 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
                 </div>
               )}
 
-              <div className="flex-1 overflow-auto bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
-                {playlistSongs.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-32 text-slate-400">
-                    <div className="text-3xl mb-2">🎵</div>
-                    <p>No songs in this playlist</p>
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                    {playlistSongs.map((song, idx) => (
-                      <div key={song.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
-                        <div className="flex-1">
-                          <div className="text-sm font-medium text-slate-900 dark:text-white">
-                            {idx + 1}. {song.title}
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">{song.author}</div>
-                        </div>
-                        <button
-                          onClick={() => removeSongFromPlaylist(selectedPlaylist.id, song.id)}
-                          className="px-2 py-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-sm"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
+              <div className="flex-1 flex flex-col bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                {playlistSongs.length > 0 && (
+                  <div className="p-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
+                    <input
+                      type="text"
+                      placeholder="Filter songs in playlist..."
+                      value={playlistSearch}
+                      onChange={(e) => setPlaylistSearch(e.target.value)}
+                      className="w-full px-3 py-1.5 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
                   </div>
                 )}
+                <div className="flex-1 overflow-auto">
+                  {playlistSongs.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-32 text-slate-400">
+                      <div className="text-3xl mb-2">🎵</div>
+                      <p>No songs in this playlist</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y divide-slate-200 dark:divide-slate-700">
+                      {playlistSongs
+                        .filter(s => !playlistSearch.trim() ||
+                                     s.title.toLowerCase().includes(playlistSearch.toLowerCase()) ||
+                                     s.author.toLowerCase().includes(playlistSearch.toLowerCase()))
+                        .map((song, idx) => (
+                        <div key={song.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-slate-900 dark:text-white">
+                              {idx + 1}. {song.title}
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400">{song.author}</div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`${flacApiUrl}/api/music/${song.id}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2 py-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded text-sm flex items-center gap-1"
+                              title="Play"
+                            >
+                              <svg width="14" height="14" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4 4l12 6-12 6V4z" />
+                              </svg>
+                            </a>
+                            <button
+                              onClick={() => removeSongFromPlaylist(selectedPlaylist.id, song.id)}
+                              className="px-2 py-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded text-sm"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </>
