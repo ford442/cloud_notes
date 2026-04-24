@@ -13,28 +13,9 @@ interface SettingsModalProps {
 }
 
 import { SemanticService } from '../services/semantic';
+import { normalizeFlacApiUrl } from '../utils/flac';
 
 const Tabs = ['General', 'Security', 'Integrations', 'Data'];
-
-function normalizeFlacApiUrl(rawUrl: string): string {
-  const trimmed = rawUrl?.trim().replace(/\/+$|\/$/, '') || '';
-  if (!trimmed) {
-    return '';
-  }
-
-  try {
-    const url = new URL(trimmed);
-    const cleanedPath = url.pathname.replace(/\/+$|\/$/, '');
-    if (cleanedPath.toLowerCase().endsWith('/flac-player')) {
-      url.pathname = '';
-      url.search = '';
-      url.hash = '';
-    }
-    return url.toString().replace(/\/$/, '');
-  } catch {
-    return trimmed;
-  }
-}
 
 export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, theme, setTheme, onVpsSync }: SettingsModalProps) => {
   const { addToast } = useToast();
