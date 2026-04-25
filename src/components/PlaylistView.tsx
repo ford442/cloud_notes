@@ -37,7 +37,7 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
       const res = await fetch(`${flacApiUrl}/api/playlists`);
       if (res.ok) {
         const data = await res.json();
-        setPlaylists(Array.isArray(data) ? data : []);
+        setPlaylists(Array.isArray(data) ? data.map(p => ({ ...p, track_ids: p.track_ids || [] })) : []);
       } else {
         addToast('Failed to fetch playlists', 'error');
       }
@@ -105,7 +105,7 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
 
       if (res.ok) {
         const updated = await res.json();
-        setPlaylists(playlists.map(p => p.id === id ? updated : p));
+        setPlaylists(playlists.map(p => p.id === id ? { ...updated, track_ids: updated.track_ids || [] } : p));
         setEditingId(null);
         addToast('Playlist updated successfully', 'success');
       } else {
@@ -149,7 +149,7 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
 
       if (res.ok) {
         const updated = await res.json();
-        setPlaylists(playlists.map(p => p.id === playlistId ? updated : p));
+        setPlaylists(playlists.map(p => p.id === playlistId ? { ...updated, track_ids: updated.track_ids || [] } : p));
         addToast('Song added to playlist', 'success');
       }
     } catch (error) {
@@ -175,7 +175,7 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
 
       if (res.ok) {
         const updated = await res.json();
-        setPlaylists(playlists.map(p => p.id === playlistId ? updated : p));
+        setPlaylists(playlists.map(p => p.id === playlistId ? { ...updated, track_ids: updated.track_ids || [] } : p));
         addToast('Song removed from playlist', 'success');
       }
     } catch (error) {
@@ -354,8 +354,8 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
                     {songs
                       .filter(s => !selectedPlaylist.track_ids.includes(s.id))
                       .filter(s => !addSongSearch.trim() ||
-                                   s.title.toLowerCase().includes(addSongSearch.toLowerCase()) ||
-                                   s.author.toLowerCase().includes(addSongSearch.toLowerCase()))
+                                   s.title?.toLowerCase().includes(addSongSearch.toLowerCase()) ||
+                                   s.author?.toLowerCase().includes(addSongSearch.toLowerCase()))
                       .map(song => (
                         <div
                           key={song.id}
@@ -395,8 +395,8 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
                     <div className="divide-y divide-slate-200 dark:divide-slate-700">
                       {playlistSongs
                         .filter(s => !playlistSearch.trim() ||
-                                     s.title.toLowerCase().includes(playlistSearch.toLowerCase()) ||
-                                     s.author.toLowerCase().includes(playlistSearch.toLowerCase()))
+                                     s.title?.toLowerCase().includes(playlistSearch.toLowerCase()) ||
+                                     s.author?.toLowerCase().includes(playlistSearch.toLowerCase()))
                         .map((song, idx) => (
                         <div key={song.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
                           <div className="flex-1">

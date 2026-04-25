@@ -51,9 +51,9 @@ export const MusicLibraryView = ({ onClose }: MusicLibraryViewProps) => {
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(song =>
-        song.title.toLowerCase().includes(query) ||
-        song.author.toLowerCase().includes(query) ||
-        song.tags?.some(tag => tag.toLowerCase().includes(query))
+        song.title?.toLowerCase().includes(query) ||
+        song.author?.toLowerCase().includes(query) ||
+        song.tags?.some(tag => tag?.toLowerCase().includes(query))
       );
     }
 
