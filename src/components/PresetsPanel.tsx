@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useToast } from './Toast';
 import { presetsAPI, PRESET_DIRS } from '../services/presetsAPI';
 import type { PresetDirName, PresetDirInfo, PresetFileMeta } from '../services/presetsAPI';
 
@@ -21,6 +22,7 @@ function formatDate(iso: string): string {
 }
 
 export const PresetsPanel = ({ onClose }: PresetsPanelProps) => {
+  const { addToast } = useToast();
   const [dirs, setDirs] = useState<PresetDirInfo[]>([]);
   const [dirsLoading, setDirsLoading] = useState(true);
   const [dirsError, setDirsError] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export const PresetsPanel = ({ onClose }: PresetsPanelProps) => {
       const merged: PresetDirInfo[] = PRESET_DIRS.map(name => map.get(name) ?? { name, count: 0, updated_at: null });
       setDirs(merged);
     } catch (e) {
-      setDirsError(e instanceof Error ? e.message : 'Failed to load preset directories');
+      const msg = e instanceof Error ? e.message : 'Failed to load preset directories'; setDirsError(msg); addToast(msg, 'error');
     } finally {
       setDirsLoading(false);
     }
@@ -65,9 +67,9 @@ export const PresetsPanel = ({ onClose }: PresetsPanelProps) => {
     setFilesLoading(true);
     try {
       const data = await presetsAPI.listFiles(name);
-      setFiles(data);
+      setFiles(Array.isArray(data) ? data : []);
     } catch (e) {
-      setFilesError(e instanceof Error ? e.message : 'Failed to load files');
+      const msg = e instanceof Error ? e.message : 'Failed to load files'; setFilesError(msg); addToast(msg, 'error');
     } finally {
       setFilesLoading(false);
     }
@@ -89,7 +91,7 @@ export const PresetsPanel = ({ onClose }: PresetsPanelProps) => {
       const content = await presetsAPI.getFile(selectedDir, filename);
       setFileContent(content);
     } catch (e) {
-      setFileError(e instanceof Error ? e.message : 'Failed to load file');
+      const msg = e instanceof Error ? e.message : 'Failed to load file'; setFileError(msg); addToast(msg, 'error');
     } finally {
       setFileLoading(false);
     }

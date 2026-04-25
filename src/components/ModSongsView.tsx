@@ -95,10 +95,10 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
     const q = searchQuery.toLowerCase();
     return mods.filter(
       m =>
-        m.title.toLowerCase().includes(q) ||
-        m.author.toLowerCase().includes(q) ||
-        m.filename.toLowerCase().includes(q) ||
-        m.tags?.some(t => t.toLowerCase().includes(q))
+        m.title?.toLowerCase().includes(q) ||
+        m.author?.toLowerCase().includes(q) ||
+        m.filename?.toLowerCase().includes(q) ||
+        m.tags?.some(t => t?.toLowerCase().includes(q))
     );
   }, [mods, searchQuery]);
 
