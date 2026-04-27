@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { StorageService } from '../services/api';
+import { PluginRegistry } from '../services/plugin';
 
 const RAIN_EDIT_URL = 'https://rain-edit.noahcohn.com'; // configurable
 
@@ -99,7 +100,7 @@ export function NamedNotesBrowser() {
   };
 
   const handleDelete = async (name: string) => {
-    if (!window.confirm(`Delete note "${name}"? This cannot be undone.`)) return;
+    if (!(await PluginRegistry.confirm(`Delete note "${name}"? This cannot be undone.`))) return;
     setDeleteError(null);
     const ok = await StorageService.deleteNamedNote(name);
     if (ok) {

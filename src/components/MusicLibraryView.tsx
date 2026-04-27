@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useToast } from './Toast';
 import { getFlacApiUrl } from '../utils/flac';
 import type { Song } from '../utils/flac';
+import { PluginRegistry } from '../services/plugin';
 
 interface MusicLibraryViewProps {
   onClose: () => void;
@@ -134,7 +135,7 @@ export const MusicLibraryView = ({ onClose }: MusicLibraryViewProps) => {
 
   const deleteSong = async (id: string) => {
     if (!flacApiUrl) return;
-    if (!confirm('Are you sure you want to delete this track?')) return;
+    if (!(await PluginRegistry.confirm('Are you sure you want to delete this track?'))) return;
     try {
       const res = await fetch(`${flacApiUrl}/api/songs/${id}`, { method: 'DELETE' });
       if (res.ok) {

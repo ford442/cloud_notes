@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { EncryptionService } from '../utils/encryption';
 import { useToast } from './Toast';
+import { PluginRegistry } from '../services/plugin';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -69,9 +70,9 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
     addToast('FLAC API URL set to match Storage API', 'success');
   };
 
-  const handleUpdateKey = () => {
+  const handleUpdateKey = async () => {
     if (!encryptionKey.trim()) return addToast('Key cannot be empty', 'error');
-    if (confirm('Warning: changing the encryption key will make existing encrypted notes unreadable. Are you sure?')) {
+    if (await PluginRegistry.confirm('Warning: changing the encryption key will make existing encrypted notes unreadable. Are you sure?')) {
         EncryptionService.setPassword(encryptionKey);
         addToast('Encryption key updated. Please reload.', 'success');
         setTimeout(() => window.location.reload(), 1500);

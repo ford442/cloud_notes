@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useToast } from './Toast';
 import { getFlacApiUrl } from '../utils/flac';
 import type { Song, Playlist } from '../utils/flac';
+import { PluginRegistry } from '../services/plugin';
 
 interface PlaylistViewProps {
   onClose: () => void;
@@ -118,7 +119,7 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
   };
 
   const deletePlaylist = async (id: string) => {
-    if (!flacApiUrl || !confirm('Delete this playlist?')) return;
+    if (!flacApiUrl || !(await PluginRegistry.confirm('Delete this playlist?'))) return;
     try {
       const res = await fetch(`${flacApiUrl}/api/playlists/${id}`, { method: 'DELETE' });
       if (res.ok) {
@@ -160,7 +161,7 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
 
   const removeSongFromPlaylist = async (playlistId: string, songId: string) => {
     if (!flacApiUrl) return;
-    if (!confirm('Remove this song from the playlist?')) return;
+    if (!(await PluginRegistry.confirm('Remove this song from the playlist?'))) return;
 
     const playlist = playlists.find(p => p.id === playlistId);
     if (!playlist) return;
