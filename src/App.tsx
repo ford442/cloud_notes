@@ -227,7 +227,7 @@ function App() {
 
   const handleDelete = async () => {
     if (!selectedId) return;
-    if (!window.confirm("Are you sure you want to delete this note?")) return;
+    if (!(await PluginRegistry.confirm("Are you sure you want to delete this note?"))) return;
 
     setIsSaving(true);
     try {

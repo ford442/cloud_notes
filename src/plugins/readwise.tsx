@@ -47,13 +47,13 @@ export const ReadwisePlugin: Plugin = {
       perform: async () => {
         const token = localStorage.getItem('readwise_token');
         if (!token) {
-          alert('Please configure your Readwise Access Token in Settings first.');
+          await ctx.alert('Please configure your Readwise Access Token in Settings first.');
           return;
         }
 
         const authorName = localStorage.getItem('author_name') || 'Readwise';
 
-        if (!confirm('Start syncing highlights from Readwise? This might take a few seconds.')) return;
+        if (!(await ctx.confirm('Start syncing highlights from Readwise? This might take a few seconds.'))) return;
 
         try {
           // Fetch from Readwise
@@ -125,11 +125,11 @@ export const ReadwisePlugin: Plugin = {
              }
           }
 
-          alert(`Sync Complete!\nCreated: ${created}\nUpdated: ${updated}\n\nPlease reload the page to see the new notes.`);
+          await ctx.alert(`Sync Complete!\nCreated: ${created}\nUpdated: ${updated}\n\nPlease reload the page to see the new notes.`);
 
         } catch (e) {
           console.error(e);
-          alert('Sync Failed. Check console for details. (Likely CORS issue or Invalid Token)');
+          await ctx.alert('Sync Failed. Check console for details. (Likely CORS issue or Invalid Token)');
         }
       }
     });

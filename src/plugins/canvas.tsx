@@ -10,9 +10,9 @@ export const CanvasToolsPlugin: Plugin = {
       title: 'Add Timestamp to Canvas',
       section: 'Canvas',
       icon: <span className="text-lg">⏰</span>,
-      perform: () => {
+      perform: async () => {
         const api = ctx.getCanvasAPI();
-        if (!api) return alert('Canvas is not active. Switch to Canvas mode.');
+        if (!api) return ctx.alert('Canvas is not active. Switch to Canvas mode.');
 
         const timestamp = new Date().toLocaleString();
         const appState = api.getAppState();
@@ -71,11 +71,11 @@ export const CanvasToolsPlugin: Plugin = {
       title: 'Clear Canvas',
       section: 'Canvas',
       icon: <span className="text-lg">🗑️</span>,
-      perform: () => {
+      perform: async () => {
         const api = ctx.getCanvasAPI();
-        if (!api) return alert('Canvas is not active.');
+        if (!api) return ctx.alert('Canvas is not active.');
 
-        if (confirm('Are you sure you want to clear the canvas?')) {
+        if (await ctx.confirm('Are you sure you want to clear the canvas?')) {
             api.resetScene();
         }
       }
@@ -86,12 +86,12 @@ export const CanvasToolsPlugin: Plugin = {
       title: 'Sync Note Text to Canvas',
       section: 'Canvas',
       icon: <span className="text-lg">📝</span>,
-      perform: () => {
+      perform: async () => {
         const api = ctx.getCanvasAPI();
-        if (!api) return alert('Canvas is not active. Switch to Canvas mode.');
+        if (!api) return ctx.alert('Canvas is not active. Switch to Canvas mode.');
 
         const note = ctx.getCurrentNote();
-        if (!note || !note.content) return alert('No text to sync.');
+        if (!note || !note.content) return ctx.alert('No text to sync.');
 
         const content = note.content;
         const appState = api.getAppState();
@@ -153,12 +153,12 @@ export const CanvasToolsPlugin: Plugin = {
       icon: <span className="text-lg">🖼️</span>,
       perform: async () => {
         const api = ctx.getCanvasAPI();
-        if (!api) return alert('Canvas is not active. Switch to Canvas mode.');
+        if (!api) return ctx.alert('Canvas is not active. Switch to Canvas mode.');
 
         try {
           const elements = api.getSceneElements();
           if (!elements || elements.length === 0) {
-            return alert('Canvas is empty.');
+            return ctx.alert('Canvas is empty.');
           }
 
           const blob = await exportToBlob({
@@ -183,7 +183,7 @@ export const CanvasToolsPlugin: Plugin = {
           URL.revokeObjectURL(url);
         } catch (e) {
           console.error(e);
-          alert('Failed to export canvas.');
+          await ctx.alert('Failed to export canvas.');
         }
       }
     });
