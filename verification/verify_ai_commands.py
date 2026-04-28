@@ -16,13 +16,19 @@ def verify_ai_commands():
         # Wait for editor to load
         page.wait_for_selector(".ProseMirror")
 
+        # Explicitly wait for loading indicators to disappear
+        page.wait_for_selector(".animate-spin", state="hidden")
+
         # Click in editor
         editor = page.locator(".ProseMirror")
         editor.click()
 
         # Type '/' to open menu
         editor.type("/")
-        time.sleep(2) # Wait for animation and console log
+
+        # Wait for the suggestion menu to exist and be visible
+        page.wait_for_selector('[data-tippy-root]', timeout=5000)
+        time.sleep(1) # Wait for animation and console log
 
         # Take screenshot of the menu
         if not os.path.exists("verification"):
@@ -31,7 +37,7 @@ def verify_ai_commands():
         page.screenshot(path="verification/slash_menu.png")
 
         # Verify "Smart Meeting" exists
-        smart_meeting = page.get_by_text("Smart Meeting")
+        smart_meeting = page.locator("button:has-text('Smart Meeting')")
         count = smart_meeting.count()
         if count > 0:
             print(f"SUCCESS: 'Smart Meeting' command found ({count} times).")
@@ -39,7 +45,7 @@ def verify_ai_commands():
             print("FAILURE: 'Smart Meeting' command NOT found.")
 
         # Verify "Ask AI" exists
-        ask_ai = page.get_by_text("Ask AI")
+        ask_ai = page.locator("button:has-text('Ask AI')")
         if ask_ai.count() > 0:
             print("SUCCESS: 'Ask AI' command found.")
         else:
