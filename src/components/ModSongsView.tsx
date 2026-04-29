@@ -49,7 +49,7 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
   const fetchMods = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${modsApiUrl}/api/mods`);
+      const res = await fetch(`${modsApiUrl}/api/songs?type=pattern`);
       if (res.ok) {
         const data = await res.json();
         setMods(Array.isArray(data) ? data : []);
@@ -67,7 +67,7 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch(`${modsApiUrl}/api/mods/scan`);
+      const res = await fetch(`${modsApiUrl}/api/admin/sync`, { method: 'POST' });
       if (res.ok) {
         const result = await res.json();
         addToast(
@@ -122,7 +122,7 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
 
   const saveEdit = async (id: string) => {
     try {
-      const res = await fetch(`${modsApiUrl}/api/mods/${id}`, {
+      const res = await fetch(`${modsApiUrl}/api/songs/${id}?type=pattern`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

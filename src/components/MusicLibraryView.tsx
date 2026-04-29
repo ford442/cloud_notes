@@ -28,7 +28,7 @@ export const MusicLibraryView = ({ onClose }: MusicLibraryViewProps) => {
     }
     setLoading(true);
     try {
-      const res = await fetch(`${flacApiUrl}/api/songs?limit=500`);
+      const res = await fetch(`${flacApiUrl}/api/songs?type=song&limit=500`);
       if (res.ok) {
         const data = await res.json();
         setSongs(Array.isArray(data) ? data : []);
@@ -109,7 +109,7 @@ export const MusicLibraryView = ({ onClose }: MusicLibraryViewProps) => {
   const saveEdit = async (id: string) => {
     if (!flacApiUrl) return;
     try {
-      const res = await fetch(`${flacApiUrl}/api/songs/${id}`, {
+      const res = await fetch(`${flacApiUrl}/api/songs/${id}?type=song`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -137,7 +137,7 @@ export const MusicLibraryView = ({ onClose }: MusicLibraryViewProps) => {
     if (!flacApiUrl) return;
     if (!(await PluginRegistry.confirm('Are you sure you want to delete this track?'))) return;
     try {
-      const res = await fetch(`${flacApiUrl}/api/songs/${id}`, { method: 'DELETE' });
+      const res = await fetch(`${flacApiUrl}/api/songs/${id}?type=song`, { method: 'DELETE' });
       if (res.ok) {
         setSongs(songs.filter(s => s.id !== id));
         addToast('Song deleted', 'success');
