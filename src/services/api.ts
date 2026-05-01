@@ -462,6 +462,14 @@ export const StorageService = {
   },
 
   async _networkDeleteNote(id: string, skipWebhook = false): Promise<boolean> {
+      const noteName = slugify(id);
+
+      // 1. Maintain Legacy API call (Synchronous truth)
+      const deleteRes = await fetch(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(noteName)}`, {
+        method: 'DELETE'
+      });
+      if (!deleteRes.ok) throw new Error(await deleteRes.text());
+
       const headers: Record<string, string> = {
         'Content-Type': 'application/json'
       };
