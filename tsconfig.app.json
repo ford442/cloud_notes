@@ -10,6 +10,12 @@
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@tiptap/core": ["node_modules/@tiptap/core/dist/index.d.ts"],
+      "@tiptap/extension-table": ["node_modules/@tiptap/extension-table/dist/index.d.ts"],
+      "tippy.js": ["node_modules/tippy.js/index.d.ts"]
+    },
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
