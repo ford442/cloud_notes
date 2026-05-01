@@ -1,4 +1,4 @@
-import { Editor } from '@tiptap/react'
+import { Editor } from '@tiptap/core'
 import { useEffect, useState, useRef } from 'react'
 import { BlockActionMenu } from './BlockActionMenu'
 

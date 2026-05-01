@@ -3,6 +3,8 @@ import { AIService } from '../services/ai';
 import { SemanticService } from '../services/semantic';
 import { StorageService } from '../services/api';
 import { markdownToHtml } from '../utils/serialization';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
+import type { Mark } from '@tiptap/pm/model';
 
 export const AIPlugin: Plugin = {
   id: 'ai-features',
@@ -58,7 +60,7 @@ export const AIPlugin: Plugin = {
                  let from = -1;
                  let to = -1;
 
-                 doc.descendants((node, pos) => {
+                 doc.descendants((node: ProseMirrorNode, pos: number) => {
                     if (node.isText && node.text && node.text.includes(placeholder)) {
                         from = pos + node.text.indexOf(placeholder);
                         to = from + placeholder.length;
@@ -82,7 +84,7 @@ export const AIPlugin: Plugin = {
                  const doc = editor.state.doc;
                  let from = -1;
                  let to = -1;
-                 doc.descendants((node, pos) => {
+                 doc.descendants((node: ProseMirrorNode, pos: number) => {
                     if (node.isText && node.text && node.text.includes(placeholder)) {
                         from = pos + node.text.indexOf(placeholder);
                         to = from + placeholder.length;
@@ -116,7 +118,7 @@ export const AIPlugin: Plugin = {
           const formattedSummary = `\n> **Summary:** ${summary}\n`;
 
           let pos = -1;
-          editor.state.doc.descendants((node, position) => {
+          editor.state.doc.descendants((node: ProseMirrorNode, position: number) => {
             if (node.isText && node.text?.includes(placeholder)) {
               pos = position + node.text.indexOf(placeholder);
               return false;
@@ -132,7 +134,7 @@ export const AIPlugin: Plugin = {
         } catch (e) {
           console.error(e);
           let pos = -1;
-          editor.state.doc.descendants((node, position) => {
+          editor.state.doc.descendants((node: ProseMirrorNode, position: number) => {
             if (node.isText && node.text?.includes(placeholder)) {
               pos = position + node.text.indexOf(placeholder);
               return false;
@@ -169,7 +171,7 @@ export const AIPlugin: Plugin = {
           const result = await AIService.generateText(context);
 
           let pos = -1;
-          editor.state.doc.descendants((node, position) => {
+          editor.state.doc.descendants((node: ProseMirrorNode, position: number) => {
             if (node.isText && node.text?.includes(placeholder)) {
               pos = position + node.text.indexOf(placeholder);
               return false;
@@ -187,7 +189,7 @@ export const AIPlugin: Plugin = {
         } catch (e) {
           console.error(e);
           let pos = -1;
-          editor.state.doc.descendants((node, position) => {
+          editor.state.doc.descendants((node: ProseMirrorNode, position: number) => {
             if (node.isText && node.text?.includes(placeholder)) {
               pos = position + node.text.indexOf(placeholder);
               return false;
@@ -238,7 +240,7 @@ export const AIPlugin: Plugin = {
 
             const regex = new RegExp(`\\b${escapeRegExp(key)}\\b`, 'gi');
 
-            editor.state.doc.descendants((node, pos) => {
+            editor.state.doc.descendants((node: ProseMirrorNode, pos: number) => {
                 if (!node.isText) return;
                 const text = node.text;
                 if (!text) return;
@@ -248,7 +250,7 @@ export const AIPlugin: Plugin = {
                     const start = pos + match.index;
                     const end = start + match[0].length;
 
-                    const hasLink = node.marks.some(m => m.type.name === 'link');
+                    const hasLink = node.marks.some((m: Mark) => m.type.name === 'link');
                     if (hasLink) continue;
 
                     transactions = transactions.addMark(start, end, editor.schema.marks.link.create({ href: id }));

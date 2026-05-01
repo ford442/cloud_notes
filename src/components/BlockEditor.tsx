@@ -1,4 +1,5 @@
-import { useEditor, EditorContent, Extension } from '@tiptap/react'
+import { useEditor, EditorContent } from '@tiptap/react'
+import { Extension } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
@@ -14,6 +15,9 @@ import Collaboration from '@tiptap/extension-collaboration'
 import * as Y from 'yjs'
 import { IndexeddbPersistence } from 'y-indexeddb'
 import { useEffect, useRef, useState } from 'react'
+import type { Editor as TiptapEditor } from '@tiptap/core'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
+import type { EditorView } from '@tiptap/pm/view'
 import { markdownToHtml, htmlToMarkdown } from '../utils/serialization'
 import { SlashCommand, getSlashSuggestionOptions } from './editor/slash-command'
 import { NoteLink, getNoteLinkSuggestionOptions } from './editor/note-link'
@@ -39,7 +43,7 @@ interface BlockEditorProps {
 }
 
 // Helper to handle image uploads and placeholder management
-const handleImageUpload = (view: any, file: File, pos: number) => {
+const handleImageUpload = (view: EditorView, file: File, pos: number) => {
   // Insert placeholder
   const id = Math.random().toString(36).substring(7);
   const placeholder = `[Uploading Image ${id}...]`;
@@ -59,7 +63,7 @@ const handleImageUpload = (view: any, file: File, pos: number) => {
 
       // Find placeholder position
       let targetPos = -1;
-      view.state.doc.descendants((node: any, position: number) => {
+      view.state.doc.descendants((node: ProseMirrorNode, position: number) => {
         if (node.isText && node.text?.includes(placeholder)) {
           targetPos = position + node.text.indexOf(placeholder);
           return false;
@@ -78,7 +82,7 @@ const handleImageUpload = (view: any, file: File, pos: number) => {
     console.error("Image upload failed", e);
     // Remove placeholder on error
     let targetPos = -1;
-    view.state.doc.descendants((node: any, position: number) => {
+    view.state.doc.descendants((node: ProseMirrorNode, position: number) => {
       if (node.isText && node.text?.includes(placeholder)) {
         targetPos = position + node.text.indexOf(placeholder);
         return false;
@@ -156,8 +160,6 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       PromptSectionExtension,
       StarterKit.configure({
         // Disable extensions that clash with our custom ones if needed
-        // @ts-expect-error - history is not in the type definition but might be needed for older versions or use undoRedo
-        history: false,
       }),
       ...(ydoc ? [Collaboration.configure({
         document: ydoc,
@@ -195,7 +197,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       NoteLink.configure({
         suggestion: {
            ...getNoteLinkSuggestionOptions([]),
-           items: ({ query }) => {
+           items: ({ query }: { query: string }) => {
               // Override items to use the ref
               const items = notesRef.current;
               return items.filter((item) => {
@@ -213,7 +215,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       WikiLink.configure({
         suggestion: {
            ...getWikiLinkSuggestionOptions([]),
-           items: ({ query }) => {
+           items: ({ query }: { query: string }) => {
               const items = notesRef.current;
               const results = items.filter((item) => {
                 const parts = (item.description || '').split(' ::: ');
@@ -244,7 +246,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       attributes: {
         class: 'prose prose-slate dark:prose-invert max-w-3xl mx-auto focus:outline-none min-h-[500px] p-10',
       },
-      handleDrop: (view, event) => {
+      handleDrop: (view: EditorView, event: DragEvent) => {
         // 1. Handle Image Drop
         if (event.dataTransfer?.files?.length) {
            const file = event.dataTransfer.files[0];
@@ -290,11 +292,11 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         }
         return false;
       },
-      handlePaste: (view, event) => {
-        const items = Array.from(event.clipboardData?.items || []);
+      handlePaste: (view: EditorView, event: ClipboardEvent) => {
+        const items = Array.from(event.clipboardData?.items || []) as DataTransferItem[];
 
         // 1. Audio Paste
-        const audioItem = items.find(item => item.type.startsWith('audio/'));
+        const audioItem = items.find((item: DataTransferItem) => item.type.startsWith('audio/'));
         if (audioItem) {
             const file = audioItem.getAsFile();
             if (file) {
@@ -309,7 +311,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
                          const url = `${API_BASE_URL}/api/samples/${res.id}`;
 
                          let pos = -1;
-                         view.state.doc.descendants((node, position) => {
+                         view.state.doc.descendants((node: ProseMirrorNode, position: number) => {
                              if (node.isText && node.text?.includes(placeholder)) {
                                  pos = position + node.text.indexOf(placeholder);
                                  return false;
@@ -328,7 +330,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         }
 
         // 2. Image Paste
-        const imageItem = items.find(item => item.type.startsWith('image/'));
+        const imageItem = items.find((item: DataTransferItem) => item.type.startsWith('image/'));
         if (imageItem) {
             const file = imageItem.getAsFile();
             if (file) {
@@ -401,7 +403,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
 
         return false;
       },
-      handleClick: (_view, _pos, event) => {
+      handleClick: (_view: EditorView, _pos: number, event: MouseEvent) => {
         const link = (event.target as HTMLElement).closest('a');
         if (link && link.getAttribute('href')) {
           const href = link.getAttribute('href');
@@ -416,7 +418,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         return false;
       }
     },
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor }: { editor: TiptapEditor }) => {
       const html = editor.getHTML();
       const markdown = htmlToMarkdown(html);
       onChange(markdown);

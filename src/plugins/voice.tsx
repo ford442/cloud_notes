@@ -2,6 +2,7 @@ import type { Plugin } from '../services/plugin';
 import { StorageService, API_BASE_URL } from '../services/api';
 import { AIService } from '../services/ai';
 import { markdownToHtml } from '../utils/serialization';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 
 export const VoicePlugin: Plugin = {
   id: 'voice-memos',
@@ -42,7 +43,7 @@ export const VoicePlugin: Plugin = {
 
                 // Update placeholder to Uploading
                 let pos = -1;
-                editor.state.doc.descendants((node, position) => {
+                editor.state.doc.descendants((node: ProseMirrorNode, position: number) => {
                     if (node.isText && node.text?.includes(placeholder)) {
                         pos = position + node.text.indexOf(placeholder);
                         return false;
@@ -62,7 +63,7 @@ export const VoicePlugin: Plugin = {
 
                 // Find uploading placeholder
                  pos = -1;
-                editor.state.doc.descendants((node, position) => {
+                editor.state.doc.descendants((node: ProseMirrorNode, position: number) => {
                     if (node.isText && node.text?.includes(uploadingPlaceholder)) {
                         pos = position + node.text.indexOf(uploadingPlaceholder);
                         return false;
@@ -103,7 +104,7 @@ export const VoicePlugin: Plugin = {
                         // Find transcript placeholder and replace safely
                         let tPos = -1;
                         let tNodeSize = 0;
-                        editor.state.doc.descendants((node, position) => {
+                        editor.state.doc.descendants((node: ProseMirrorNode, position: number) => {
                             if (node.isText && node.text?.includes(transcriptText)) {
                                 tPos = position + node.text.indexOf(transcriptText);
                                 tNodeSize = transcriptText.length;
@@ -130,7 +131,7 @@ export const VoicePlugin: Plugin = {
                         // Clean up placeholder
                         let tPos = -1;
                         let tNodeSize = 0;
-                        editor.state.doc.descendants((node, position) => {
+                        editor.state.doc.descendants((node: ProseMirrorNode, position: number) => {
                             if (node.isText && node.text?.includes('Transcribing audio')) {
                                 tPos = position + node.text.indexOf(node.text);
                                 tNodeSize = node.text.length;

@@ -38,8 +38,8 @@ export const PromptSectionExtension = Node.create({
     return {
       maxLength: {
         default: 2000,
-        parseHTML: element => parseInt(element.getAttribute('data-max-length') || '2000', 10),
-        renderHTML: attributes => {
+        parseHTML: (element: HTMLElement) => parseInt(element.getAttribute('data-max-length') || '2000', 10),
+        renderHTML: (attributes: Record<string, unknown>) => {
           if (!attributes.maxLength) {
             return {};
           }
@@ -59,7 +59,7 @@ export const PromptSectionExtension = Node.create({
     ];
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, unknown> }) {
     return ['div', mergeAttributes(HTMLAttributes, { 'data-type': 'prompt-section' }), 0];
   },
 

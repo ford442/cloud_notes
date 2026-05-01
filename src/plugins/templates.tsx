@@ -2,6 +2,7 @@ import type { Plugin, PluginContext } from '../services/plugin';
 import { StorageService } from '../services/api';
 import { AIService } from '../services/ai';
 import { markdownToHtml } from '../utils/serialization';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 
 // Helper to handle variables in templates
 const processTemplate = async (content: string, ctx: PluginContext): Promise<string | null> => {
@@ -122,7 +123,7 @@ ${placeholder}
                 let from = -1;
                 let to = -1;
 
-                doc.descendants((node, pos) => {
+                doc.descendants((node: ProseMirrorNode, pos: number) => {
                     if (node.isText && node.text && node.text.includes(placeholder)) {
                         from = pos + node.text.indexOf(placeholder);
                         to = from + placeholder.length;
@@ -141,7 +142,7 @@ ${placeholder}
                  const doc = editor.state.doc;
                  let from = -1;
                  let to = -1;
-                 doc.descendants((node, pos) => {
+                 doc.descendants((node: ProseMirrorNode, pos: number) => {
                     if (node.isText && node.text && node.text.includes(placeholder)) {
                         from = pos + node.text.indexOf(placeholder);
                         to = from + placeholder.length;
@@ -197,7 +198,7 @@ ${placeholder}
           let from = -1;
           let to = -1;
 
-          doc.descendants((node, pos) => {
+          doc.descendants((node: ProseMirrorNode, pos: number) => {
              if (node.isText && node.text && node.text.includes(placeholder)) {
                  from = pos + node.text.indexOf(placeholder);
                  to = from + placeholder.length;
@@ -216,7 +217,7 @@ ${placeholder}
           const doc = editor.state.doc;
           let from = -1;
           let to = -1;
-          doc.descendants((node, pos) => {
+          doc.descendants((node: ProseMirrorNode, pos: number) => {
              if (node.isText && node.text && node.text.includes(placeholder)) {
                  from = pos + node.text.indexOf(placeholder);
                  to = from + placeholder.length;

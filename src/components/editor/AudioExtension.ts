@@ -26,7 +26,7 @@ export const AudioExtension = Node.create({
     ]
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, unknown> }) {
     return ['audio', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes)]
   },
 })

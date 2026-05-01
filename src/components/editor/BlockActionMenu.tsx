@@ -1,4 +1,4 @@
-import { Editor } from '@tiptap/react';
+import { Editor } from '@tiptap/core';
 import { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 
 interface BlockActionMenuProps {

@@ -1,5 +1,5 @@
 import { BubbleMenu } from '@tiptap/react/menus'
-import type { Editor } from '@tiptap/react'
+import type { Editor } from '@tiptap/core'
 import type { EditorState } from '@tiptap/pm/state'
 import { useState } from 'react'
 import { AIService } from '../../services/ai'

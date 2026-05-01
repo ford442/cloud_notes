@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core'
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
 import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
 import { Excalidraw } from '@excalidraw/excalidraw'
 import "@excalidraw/excalidraw/index.css"
@@ -116,7 +117,7 @@ export const ExcalidrawExtension = Node.create({
       {
         tag: 'pre',
         preserveWhitespace: 'full',
-        getAttrs: (node) => {
+        getAttrs: (node: HTMLElement) => {
             if (node instanceof HTMLElement) {
                 const code = node.querySelector('code.language-excalidraw');
                 if (code) {
@@ -129,7 +130,7 @@ export const ExcalidrawExtension = Node.create({
     ]
   },
 
-  renderHTML({ node }) {
+  renderHTML({ node }: { node: ProseMirrorNode }) {
     return [
       'pre',
       mergeAttributes(this.options.HTMLAttributes),
