@@ -3,6 +3,7 @@ import Fuse from 'fuse.js';
 import type { FuseResultMatch } from 'fuse.js';
 import { db, STORE_NOTES_CONTENT } from '../utils/db';
 import type { Note } from '../services/api';
+import { SemanticService } from '../services/semantic';
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -13,12 +14,15 @@ interface SearchModalProps {
 interface SearchResult {
   item: Note;
   matches?: readonly FuseResultMatch[];
+  isSemantic?: boolean;
 }
 
 export const SearchModal = ({ isOpen, onClose, onNavigate }: SearchModalProps) => {
   const [query, setQuery] = useState('');
   const [notes, setNotes] = useState<Note[]>([]);
+  const [semanticResults, setSemanticResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSearchingSemantic, setIsSearchingSemantic] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -41,6 +45,7 @@ export const SearchModal = ({ isOpen, onClose, onNavigate }: SearchModalProps) =
       setTimeout(() => {
         inputRef.current?.focus();
         setQuery('');
+        setSemanticResults([]);
         setSelectedIndex(0);
       }, 50);
     }
@@ -56,10 +61,58 @@ export const SearchModal = ({ isOpen, onClose, onNavigate }: SearchModalProps) =
     });
   }, [notes]);
 
-  const results = useMemo<SearchResult[]>(() => {
+  const fuzzyResults = useMemo<SearchResult[]>(() => {
     if (!query.trim()) return [];
     return fuse.search(query).slice(0, 20);
   }, [query, fuse]);
+
+  useEffect(() => {
+    let isActive = true;
+    if (!query.trim()) {
+      setSemanticResults([]);
+      setIsSearchingSemantic(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearchingSemantic(true);
+      try {
+        const similar = await SemanticService.findSimilar(query, undefined, 5);
+        if (!isActive) return;
+
+        const fuzzyIds = new Set(fuzzyResults.map(r => r.item.id));
+
+        const newSemanticResults = similar
+          .filter(s => !fuzzyIds.has(s.id))
+          .map(s => {
+             const note = notes.find(n => n.id === s.id);
+             if (!note) return null;
+             return {
+               item: note,
+               isSemantic: true
+             } as SearchResult;
+          })
+          .filter((s): s is SearchResult => s !== null);
+
+        setSemanticResults(newSemanticResults);
+      } catch (e) {
+        console.error('Semantic search failed in SearchModal', e);
+      } finally {
+        if (isActive) {
+           setIsSearchingSemantic(false);
+        }
+      }
+    }, 500);
+
+    return () => {
+      isActive = false;
+      clearTimeout(timer);
+    };
+  }, [query, notes, fuzzyResults]);
+
+  const results = useMemo(() => {
+    return [...fuzzyResults, ...semanticResults];
+  }, [fuzzyResults, semanticResults]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -146,7 +199,7 @@ export const SearchModal = ({ isOpen, onClose, onNavigate }: SearchModalProps) =
               setSelectedIndex(0);
             }}
           />
-          {isLoading && (
+          {(isLoading || isSearchingSemantic) && (
             <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
           )}
           <div className="text-xs font-medium text-slate-400 border border-slate-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</div>
@@ -185,15 +238,22 @@ export const SearchModal = ({ isOpen, onClose, onNavigate }: SearchModalProps) =
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                        <div className={`font-semibold ${index === selectedIndex ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-200'}`}>
+                        <div className={`font-semibold ${index === selectedIndex ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-200'} flex items-center gap-2`}>
                            {result.item.title || 'Untitled Note'}
+                           {result.isSemantic && (
+                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50">✨ Semantic Match</span>
+                           )}
                         </div>
                         <div className="text-xs text-slate-400 uppercase tracking-wider font-medium">
                            {result.item.subject} / {result.item.section}
                         </div>
                     </div>
 
-                    {contentMatch ? renderSnippet(contentMatch) : titleMatch ? renderSnippet(titleMatch) : null}
+                    {result.isSemantic && !contentMatch && !titleMatch ? (
+                      <span className="text-sm text-slate-500 dark:text-slate-400 block truncate">
+                        {result.item.content.substring(0, 100)}...
+                      </span>
+                    ) : contentMatch ? renderSnippet(contentMatch) : titleMatch ? renderSnippet(titleMatch) : null}
                   </button>
                );
             })
