@@ -115,6 +115,7 @@ function App() {
     PluginRegistry.setAllNotesGetter(() => notesRef.current);
     PluginRegistry.setNoteUpdater((updates) => setCurrentNote(prev => ({ ...prev, ...updates })));
     PluginRegistry.setNavigator((id) => handleSelectNote(id));
+    PluginRegistry.setNoteDeleter(async (id: string) => { await handleDelete(id); });
     PluginRegistry.setNoteCreator((updates) => {
       setSelectedId(null);
       setCurrentNote({
@@ -225,15 +226,19 @@ function App() {
   }
 
 
-  const handleDelete = async () => {
-    if (!selectedId) return;
+  const handleDelete = async (id?: string) => {
+    // If it's a click event, `id` might be the event object, so ensure it's a string
+    const targetId = typeof id === 'string' ? id : selectedId;
+    if (!targetId) return;
     if (!(await PluginRegistry.confirm("Are you sure you want to delete this note?"))) return;
 
     setIsSaving(true);
     try {
-      await StorageService.deleteNote(selectedId);
+      await StorageService.deleteNote(targetId);
       addToast("Note deleted", "success");
-      handleNew();
+      if (selectedId === targetId) {
+        handleNew();
+      }
       refreshList();
     } catch (e) {
       addToast("Failed to delete note", "error");
@@ -682,7 +687,7 @@ function App() {
 
 
                 <button
-                  onClick={handleDelete}
+                  onClick={() => handleDelete()}
                   disabled={isSaving || !selectedId}
                   className="px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50"
                 >
