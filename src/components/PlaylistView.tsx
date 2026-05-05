@@ -352,11 +352,15 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
                     className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-green-500/20"
                   />
                   <div className="space-y-2 overflow-y-auto flex-1">
-                    {songs
-                      .filter(s => !selectedPlaylist.track_ids.includes(s.id))
-                      .filter(s => !addSongSearch.trim() ||
-                                   s.title?.toLowerCase().includes(addSongSearch.toLowerCase()) ||
-                                   s.author?.toLowerCase().includes(addSongSearch.toLowerCase()))
+                    {(songs || [])
+                      .filter(s => !(selectedPlaylist.track_ids || []).includes(s.id))
+                      .filter(s => {
+                        if (!addSongSearch.trim()) return true;
+                        const query = addSongSearch.toLowerCase();
+                        return s.title?.toLowerCase().includes(query) ||
+                               s.author?.toLowerCase().includes(query) ||
+                               (s.tags || []).some(t => t?.toLowerCase().includes(query));
+                      })
                       .map(song => (
                         <div
                           key={song.id}
@@ -394,10 +398,14 @@ export const PlaylistView = ({ onClose }: PlaylistViewProps) => {
                     </div>
                   ) : (
                     <div className="divide-y divide-slate-200 dark:divide-slate-700">
-                      {playlistSongs
-                        .filter(s => !playlistSearch.trim() ||
-                                     s.title?.toLowerCase().includes(playlistSearch.toLowerCase()) ||
-                                     s.author?.toLowerCase().includes(playlistSearch.toLowerCase()))
+                      {(playlistSongs || [])
+                        .filter(s => {
+                           if (!playlistSearch.trim()) return true;
+                           const query = playlistSearch.toLowerCase();
+                           return s.title?.toLowerCase().includes(query) ||
+                                  s.author?.toLowerCase().includes(query) ||
+                                  (s.tags || []).some(t => t?.toLowerCase().includes(query));
+                        })
                         .map((song, idx) => (
                         <div key={song.id} className="p-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-700/50">
                           <div className="flex-1">

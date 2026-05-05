@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useToast } from './Toast';
 import { API_BASE_URL } from '../services/api';
+import { PluginRegistry } from '../services/plugin';
 
 interface ModEntry {
   id: string;
@@ -91,14 +92,14 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
   }, [fetchMods]);
 
   const filteredMods = useMemo(() => {
-    if (!searchQuery.trim()) return mods;
+    if (!searchQuery.trim()) return mods || [];
     const q = searchQuery.toLowerCase();
-    return mods.filter(
+    return (mods || []).filter(
       m =>
         m.title?.toLowerCase().includes(q) ||
         m.author?.toLowerCase().includes(q) ||
         m.filename?.toLowerCase().includes(q) ||
-        m.tags?.some(t => t?.toLowerCase().includes(q))
+        (m.tags || []).some(t => t?.toLowerCase().includes(q))
     );
   }, [mods, searchQuery]);
 
@@ -144,6 +145,23 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
     } catch (err) {
       console.error('Save edit failed:', err);
       addToast('Failed to update MOD', 'error');
+    }
+  };
+
+  const deleteMod = async (id: string) => {
+    if (!modsApiUrl) return;
+    if (!(await PluginRegistry.confirm('Are you sure you want to delete this track?'))) return;
+    try {
+      const res = await fetch(`${modsApiUrl}/api/songs/${id}?type=pattern`, { method: 'DELETE' });
+      if (res.ok) {
+        setMods(mods.filter(m => m.id !== id));
+        addToast('MOD deleted', 'success');
+      } else {
+        addToast('Failed to delete MOD', 'error');
+      }
+    } catch (error) {
+      console.error('Failed to delete MOD:', error);
+      addToast('Failed to delete MOD', 'error');
     }
   };
 
@@ -396,7 +414,7 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
                       <td className="p-4 text-right">
                         <button
                           onClick={() => startEdit(mod)}
-                          className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 text-sm font-medium"
+                          className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:text-blue-700 text-sm font-medium mr-3"
                         >
                           <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path
@@ -407,6 +425,15 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
                             />
                           </svg>
                           Edit
+                        </button>
+                        <button
+                          onClick={() => deleteMod(mod.id)}
+                          className="inline-flex items-center gap-1 text-red-500 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 text-sm font-medium"
+                        >
+                          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete
                         </button>
                       </td>
                     </>
