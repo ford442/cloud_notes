@@ -48,13 +48,13 @@ export const MusicLibraryView = ({ onClose }: MusicLibraryViewProps) => {
   }, [fetchSongs]);
 
   const filteredSongs = useMemo(() => {
-    let result = songs;
+    let result = songs || [];
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       result = result.filter(song =>
         song.title?.toLowerCase().includes(query) ||
         song.author?.toLowerCase().includes(query) ||
-        song.tags?.some(tag => tag?.toLowerCase().includes(query))
+        (song.tags || []).some(tag => tag?.toLowerCase().includes(query))
       );
     }
 
