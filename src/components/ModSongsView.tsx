@@ -50,7 +50,7 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
   const fetchMods = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${modsApiUrl}/api/songs?type=pattern`);
+      const res = await fetch(`${modsApiUrl}/api/mods`);
       if (res.ok) {
         const data = await res.json();
         setMods(Array.isArray(data) ? data : []);
@@ -68,7 +68,7 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
   const handleSync = async () => {
     setSyncing(true);
     try {
-      const res = await fetch(`${modsApiUrl}/api/admin/sync`, { method: 'POST' });
+      const res = await fetch(`${modsApiUrl}/api/mods/scan`, { method: 'GET' });
       if (res.ok) {
         const result = await res.json();
         addToast(
@@ -123,7 +123,7 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
 
   const saveEdit = async (id: string) => {
     try {
-      const res = await fetch(`${modsApiUrl}/api/songs/${id}?type=pattern`, {
+      const res = await fetch(`${modsApiUrl}/api/mods/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -152,7 +152,7 @@ export const ModSongsView = ({ onClose }: ModSongsViewProps) => {
     if (!modsApiUrl) return;
     if (!(await PluginRegistry.confirm('Are you sure you want to delete this track?'))) return;
     try {
-      const res = await fetch(`${modsApiUrl}/api/songs/${id}?type=pattern`, { method: 'DELETE' });
+      const res = await fetch(`${modsApiUrl}/api/mods/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setMods(mods.filter(m => m.id !== id));
         addToast('MOD deleted', 'success');
