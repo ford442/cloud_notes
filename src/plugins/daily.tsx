@@ -61,12 +61,7 @@ export const DailyNotesPlugin: Plugin = {
       searchTerms: ['daily', 'journal', 'today', 'template'],
       icon: <span className="text-lg">📅</span>,
       section: 'Templates',
-      command: async ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).run();
-
-        // Small delay to ensure the slash command menu closes cleanly before inserting content
-        await new Promise(resolve => setTimeout(resolve, 50));
-
+      command: ({ editor, range }) => {
         const today = new Date();
         const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
 
@@ -85,7 +80,7 @@ export const DailyNotesPlugin: Plugin = {
 -
         `.trim();
 
-        editor.chain().focus().insertContent(markdownToHtml(template)).run();
+        editor.chain().focus().deleteRange(range).insertContent(markdownToHtml(template)).run();
       }
     });
   }
