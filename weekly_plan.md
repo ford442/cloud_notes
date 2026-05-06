@@ -28,7 +28,7 @@ cloud_notes app → POST /webhook/notes → Storage Manager
 ```
 
 ### Next Steps:
-- [ ] Test the integration with live storage manager
+- [x] Test the integration with live storage manager
 - [x] Add webhook secret configuration UI in cloud_notes settings
 - [x] Implement note deletion webhook handler
 - [x] Add batch sync for offline operations
