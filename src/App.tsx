@@ -700,30 +700,39 @@ function App() {
                 </select>
 
 
-                <button
-                  onClick={() => handleDelete()}
-                  disabled={isSaving || !selectedId}
-                  className="px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50"
-                >
-                  Delete
-                </button>
-
-                <button
-                  onClick={handleSave}
-                  disabled={isSaving}
-                  className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg ${
-                    isSaving
-                      ? 'bg-amber-600/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                      : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-blue-500/25'
-                  }`}
-                >
-                  {isSaving ? (
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
-                      Saving...
+                <div className="flex items-center gap-3">
+                  {isLoading && (
+                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium animate-pulse bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      Syncing...
                     </div>
-                  ) : 'Save Note'}
-                </button>
+                  )}
+
+                  <button
+                    onClick={() => handleDelete()}
+                    disabled={isSaving || !selectedId}
+                    className="px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50"
+                  >
+                    Delete
+                  </button>
+
+                  <button
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg ${
+                      isSaving
+                        ? 'bg-amber-600/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-blue-500/25'
+                    }`}
+                  >
+                    {isSaving ? (
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                        Saving...
+                      </div>
+                    ) : 'Save Note'}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -837,12 +846,12 @@ function App() {
               )}
               </Suspense>
 
-              {(isLoading || isAiLoading) && (
+              {isAiLoading && (
                 <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-20">
                   <div className="flex flex-col items-center gap-4">
                     <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                     <div className="text-blue-500 dark:text-blue-400 font-medium">
-                      {isAiLoading ? aiStatus : 'Loading Content...'}
+                      {aiStatus || 'AI is thinking...'}
                     </div>
                   </div>
                 </div>

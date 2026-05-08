@@ -215,9 +215,9 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                               }}
                               onClick={() => onSelect(note.id)}
                               className={`
-                                group flex items-center gap-3 px-3 py-2 rounded-xl text-sm cursor-pointer transition-all relative
+                                group flex items-center gap-3 px-3 py-2 rounded-xl text-sm cursor-pointer transition-all duration-200 hover:translate-x-1 relative
                                 ${selectedId === note.id 
-                                  ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                                  ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium scale-[1.01]'
                                   : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/20'
                                 }
                               `}
