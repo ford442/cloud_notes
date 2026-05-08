@@ -21,6 +21,7 @@ import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
 import { CommandPalette } from './components/CommandPalette'
 import { SearchModal } from './components/SearchModal'
+import { ChatModal } from './components/ChatModal'
 import { PluginRegistry } from './services/plugin'
 import { CorePlugins } from './plugins/core'
 import { MusicPlugin } from './plugins/music'
@@ -58,6 +59,7 @@ function App() {
   // Command Palette
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isHistoryOpen, setIsHistoryOpen] = useState(false)
   const [isFocusMode, setIsFocusMode] = useState(false)
@@ -151,7 +153,10 @@ function App() {
   // Global Command Palette Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'K' && e.shiftKey) {
+        e.preventDefault()
+        setIsChatOpen(prev => !prev)
+      } else if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault()
         setIsCmdPaletteOpen(prev => !prev)
       }
@@ -536,8 +541,17 @@ function App() {
         />
 
         {/* Search Modal */}
-        <SearchModal
-          isOpen={isSearchOpen}
+        <ChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        onNavigate={(id) => {
+            setIsChatOpen(false);
+            setSelectedId(id);
+        }}
+      />
+
+      <SearchModal
+        isOpen={isSearchOpen}
           onClose={() => setIsSearchOpen(false)}
           onNavigate={handleSelectNote}
         />

@@ -59,4 +59,7 @@ export const AIService = {
 
   transcribeAudio: (audioData: Float32Array, onProgress?: (msg: string) => void) =>
     request<string>('transcribeAudio', audioData, onProgress),
+
+  askQuestion: (query: string, context: string, onProgress?: (msg: string) => void) =>
+    request<string>('ragQuery', { query, context }, onProgress),
 };

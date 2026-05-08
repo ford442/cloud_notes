@@ -15,6 +15,8 @@ const pipelines = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   generator: null as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  chatGenerator: null as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   transcriber: null as any,
 };
 
@@ -36,6 +38,8 @@ self.addEventListener('message', async (e) => {
        await handleGetEmbedding(id, payload);
     } else if (type === 'generateText') {
        await handleGenerateText(id, payload);
+    } else if (type === 'ragQuery') {
+       await handleRagQuery(id, payload);
     } else if (type === 'transcribeAudio') {
        await handleTranscribeAudio(id, payload);
     } else {
@@ -71,6 +75,16 @@ async function getExtractor() {
         pipelines.extractor = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
     }
     return pipelines.extractor;
+}
+
+async function getChatGenerator(onProgress?: (msg: string) => void) {
+    if (!pipelines.chatGenerator) {
+        if (onProgress) onProgress('Loading chat model (first time only, ~300MB)...');
+        // @ts-ignore
+        pipelines.chatGenerator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat');
+    }
+    // @ts-ignore
+    return pipelines.chatGenerator;
 }
 
 async function getGenerator() {
@@ -187,6 +201,45 @@ async function handleTranscribeAudio(id: string, audioData: Float32Array) {
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         self.postMessage({ id, status: 'complete', data: (output as any).text || '' });
+    } catch (e) {
+        throw new Error(e instanceof Error ? e.message : String(e));
+    }
+}
+
+async function handleRagQuery(id: string, { query, context }: { query: string, context: string }) {
+    if (!query.trim()) {
+        self.postMessage({ id, status: 'complete', data: '' });
+        return;
+    }
+
+    const reportProgress = (msg: string) => self.postMessage({ id, status: 'progress', data: msg });
+
+    try {
+        const generator = await getChatGenerator(reportProgress);
+        reportProgress('Analyzing notes...');
+
+        // Construct ChatML prompt format for Qwen
+        const prompt = `<|im_start|>system\nYou are a helpful AI assistant built into a note-taking app. Answer the user's question STRICTLY based on the provided Context. If the context does not contain the answer, say "I cannot find the answer in your notes." Be concise.<|im_end|>\n<|im_start|>user\nContext:\n${context}\n\nQuestion: ${query}<|im_end|>\n<|im_start|>assistant\n`;
+
+        const output = await generator(prompt, {
+            max_new_tokens: 200,
+            temperature: 0.3, // Low temp for more factual answers
+            do_sample: true,
+            repetition_penalty: 1.1,
+        });
+
+        const fullText = output[0]?.generated_text || '';
+
+        // Extract only the assistant's response
+        let result = fullText;
+        if (fullText.includes('<|im_start|>assistant\n')) {
+            result = fullText.split('<|im_start|>assistant\n')[1];
+        }
+
+        // Clean up any trailing end tokens
+        result = result.replace(/<\|im_end\|>/g, '').trim();
+
+        self.postMessage({ id, status: 'complete', data: result });
     } catch (e) {
         throw new Error(e instanceof Error ? e.message : String(e));
     }
