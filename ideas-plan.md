@@ -344,3 +344,18 @@ Since you've built an API, you're already thinking about this. Here's how to mak
 **Push the Boundary:** Experiment with Vector Search and Real-time Collaboration (Yjs).
 
 Building the "ultimate" app is a marathon. Focus on nailing one core workflow, make it faster and more reliable than anyone else's, and then expand. Good luck!
+
+---
+
+## 10. Completed Migrations
+
+### Contabo Storage Migration
+The `cloud_notes` application has successfully migrated its primary storage backend from the Hugging Face space to a self-hosted Contabo VPS (`https://storage.noahcohn.com`).
+
+**Why We Migrated:**
+- **Performance & Reliability:** Moving to a dedicated VPS provides more consistent uptime, faster response times, and eliminates cold starts.
+- **Data Integrity & Security:** Hosting the storage backend on a personal VPS allows for full control over the data lifecycle, better security configurations, and direct integration with webhook signatures (HMAC) for authenticated requests.
+
+**Technical Highlights:**
+- **Webhook Integration (Dual-Write Bridge):** The migration implements a Dual-Write Bridge Pattern in `src/services/api.ts` to ensure data continuity. The legacy synchronous saves to `/api/notes/write/` are maintained, while an asynchronous payload is dispatched to `/webhook/notes`.
+- **Offline Sync Queuing:** The app maintains offline capabilities by queuing operations in IndexedDB (`STORE_PENDING_OPS`), and batches dispatches via `_dispatchBatchWebhook` upon reconnection.
