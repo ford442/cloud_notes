@@ -25,13 +25,13 @@ def verify_command_palette():
             page.evaluate("() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true, bubbles: true })); }")
 
             # Wait for the Command Palette to appear
-            page.wait_for_selector('input[placeholder="Type a command or search..."]', timeout=5000)
+            page.wait_for_selector('input[placeholder="Type to search notes, commands, or ask AI..."]', timeout=5000)
 
             # Take a screenshot of the default state
             page.screenshot(path="verification/cmd_palette_default.png")
 
             # Type something to show results
-            page.locator('input[placeholder="Type a command or search..."]').fill("task")
+            page.locator('input[placeholder="Type to search notes, commands, or ask AI..."]').fill("task")
 
             # Wait for search results
             page.wait_for_timeout(1000)
