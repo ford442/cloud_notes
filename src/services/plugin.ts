@@ -17,8 +17,8 @@ export interface PluginContext {
   registerAction: (action: ActionItem) => void;
   getCurrentNote: () => Note | null;
   getAllNotes: () => CloudItemMeta[];
-  updateNote: (updates: Partial<Note>) => void;
-  createNote: (note: Partial<Note>) => void;
+  updateNote: (updates: Partial<Note>) => Promise<void>;
+  createNote: (note: Partial<Note>) => Promise<void>;
   deleteNote: (id: string) => Promise<void>;
   navigateTo: (id: string) => void;
   getCanvasAPI: () => ExcalidrawImperativeAPI | null;
@@ -44,8 +44,8 @@ class PluginRegistryService {
   // Callbacks provided by App
   private noteGetter: () => Note | null = () => null;
   private allNotesGetter: () => CloudItemMeta[] = () => [];
-  private noteUpdater: (updates: Partial<Note>) => void = () => {};
-  private noteCreator: (note: Partial<Note>) => void = () => {};
+  private noteUpdater: (updates: Partial<Note>) => Promise<void> | void = () => {};
+  private noteCreator: (note: Partial<Note>) => Promise<void> | void = () => {};
   private noteDeleter: (id: string) => Promise<void> = async () => {};
   private navigator: (id: string) => void = () => {};
   private modeSetter: (mode: string) => void = () => {};
@@ -79,11 +79,11 @@ class PluginRegistryService {
     this.allNotesGetter = getter;
   }
 
-  setNoteUpdater(updater: (updates: Partial<Note>) => void) {
+  setNoteUpdater(updater: (updates: Partial<Note>) => Promise<void> | void) {
     this.noteUpdater = updater;
   }
 
-  setNoteCreator(creator: (note: Partial<Note>) => void) {
+  setNoteCreator(creator: (note: Partial<Note>) => Promise<void> | void) {
     this.noteCreator = creator;
   }
 
@@ -133,8 +133,8 @@ class PluginRegistryService {
       },
       getCurrentNote: () => this.noteGetter(),
       getAllNotes: () => this.allNotesGetter(),
-      updateNote: (updates: Partial<Note>) => this.noteUpdater(updates),
-      createNote: (note) => this.noteCreator(note),
+      updateNote: async (updates: Partial<Note>) => { await this.noteUpdater(updates); },
+      createNote: async (note) => { await this.noteCreator(note); },
       deleteNote: (id) => this.noteDeleter(id),
       navigateTo: (id) => this.navigator(id),
       getCanvasAPI: () => this.canvasAPI,
