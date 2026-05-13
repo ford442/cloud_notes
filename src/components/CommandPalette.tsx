@@ -49,14 +49,29 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
 
   // Combine actions and notes into one searchable list
   const allItems = useMemo(() => {
-    const noteItems: ActionItem[] = notes.map(note => ({
-      id: note.id,
-      title: note.name,
-      section: 'Notes',
-      icon: <NoteIcon />,
-      perform: () => onNavigate(note.id),
-      keywords: [note.description] // Search in description too
-    }));
+    const noteItems: ActionItem[] = notes.map(note => {
+      // Parse description for better display
+      const parts = note.description?.split(' ::: ') || [];
+      const tags = parts[2] ? parts[2].split(',').filter(Boolean) : [];
+      let snippet = tags.length > 0 ? tags.join(', ') : (note.description || '');
+
+      // Attempt to clean snippet
+      if (snippet && snippet.length > 50) {
+          snippet = snippet.substring(0, 50) + '...';
+      }
+
+      return {
+        id: note.id,
+        title: note.name,
+        section: 'Notes',
+        icon: <NoteIcon />,
+        perform: () => onNavigate(note.id),
+        keywords: [note.description || ''],
+        // Store snippet and date for rendering
+        snippet: snippet,
+        date: note.date
+      } as ActionItem & { snippet: string, date: string };
+    });
 
     // Actions come first, then notes
     return [...actions, ...noteItems];
@@ -108,15 +123,25 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
         semanticItems = similar.map(s => {
           const note = notes.find(n => n.id === s.id);
           if (!note) return null;
+
+          const parts = note.description?.split(' ::: ') || [];
+          const tags = parts[2] ? parts[2].split(',').filter(Boolean) : [];
+          let snippet = tags.length > 0 ? tags.join(', ') : (note.description || '');
+          if (snippet && snippet.length > 50) {
+              snippet = snippet.substring(0, 50) + '...';
+          }
+
            return {
             id: note.id,
             title: note.name,
             section: 'Semantic',
             icon: <span className="text-lg">✨</span>,
             perform: () => onNavigate(note.id),
-            keywords: [note.description]
-          } as ActionItem;
-        }).filter((item): item is ActionItem => item !== null);
+            keywords: [note.description || ''],
+            snippet: snippet,
+            date: note.date
+          } as ActionItem & { snippet: string, date: string };
+        }).filter((item): item is (ActionItem & { snippet: string, date: string }) => item !== null) as ActionItem[];
       } catch (e) {
         console.warn('Semantic search failed', e);
       }
@@ -134,7 +159,24 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
         }
       }
 
-      setResults(merged.slice(0, 50));
+      // Sort the final results to group by section (Semantic first, then Commands, then Notes)
+      const sectionOrder = ['Semantic', 'Commands', 'Actions', 'Notes', 'Integrations'];
+
+      const sortedMerged = merged.sort((a, b) => {
+          const aSection = a.section || 'Other';
+          const bSection = b.section || 'Other';
+
+          let aIndex = sectionOrder.indexOf(aSection);
+          let bIndex = sectionOrder.indexOf(bSection);
+
+          if (aIndex === -1) aIndex = 99;
+          if (bIndex === -1) bIndex = 99;
+
+          if (aIndex !== bIndex) return aIndex - bIndex;
+          return a.title.localeCompare(b.title);
+      });
+
+      setResults(sortedMerged.slice(0, 50));
       setIsSearching(false);
     }, 300); // 300ms Debounce
 
@@ -190,7 +232,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
           <input
             ref={inputRef}
             className="flex-1 bg-transparent text-xl font-medium text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500/80 outline-none transition-all duration-200"
-            placeholder="Type a command or search..."
+            placeholder="Type to search notes, commands, or ask AI..."
             value={query}
             onChange={e => {
               setQuery(e.target.value);
@@ -216,46 +258,65 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
               <span className="text-sm font-medium tracking-wide">No connections found</span>
             </div>
           ) : (
-            results.map((item, index) => (
-              <button
-                key={`${item.section}-${item.id}`}
-                onClick={() => {
-                  item.perform();
-                  onClose();
-                }}
-                className={`group w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-all duration-150 ease-out outline-none ${
-                  index === selectedIndex
-                    ? 'bg-indigo-50/80 dark:bg-indigo-500/10 text-indigo-900 dark:text-indigo-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ring-1 ring-indigo-200 dark:ring-indigo-500/30 scale-[1.01]'
-                    : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
-                }`}
-              >
-                <div className={`p-2.5 rounded-lg shadow-sm transition-colors duration-200 ${
-                  index === selectedIndex
-                    ? 'bg-white dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/20'
-                    : 'bg-slate-100/80 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-transparent'
-                }`}>
-                  {item.icon || <ActionIcon />}
-                </div>
+            results.map((item, index) => {
+              const isSectionStart = index === 0 || item.section !== results[index - 1].section;
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const extendedItem = item as any; // To access our injected properties safely
 
-                <div className="flex-1 min-w-0">
-                  <div className={`text-[15px] truncate transition-all duration-200 ${
-                    index === selectedIndex ? 'font-semibold' : 'font-medium'
-                  }`}>
-                    {item.title}
-                  </div>
-                  <div className="text-xs text-slate-400 dark:text-slate-500 truncate flex items-center gap-2 mt-0.5">
-                    {item.section === 'Semantic' && (
-                        <span className="text-amber-500/90 font-bold text-[9px] uppercase tracking-widest border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-sm">Related</span>
-                    )}
-                    <span className="font-medium">{item.section === 'Notes' || item.section === 'Semantic' ? 'Jump to Note' : 'Command'}</span>
-                  </div>
-                </div>
-
-                {index === selectedIndex && (
-                   <svg className="w-5 h-5 text-indigo-500 dark:text-indigo-400 opacity-70 drop-shadow-sm animate-in fade-in slide-in-from-left-2 duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              return (
+              <div key={`${item.section}-${item.id}`}>
+                {isSectionStart && (
+                    <div className="text-[10px] font-bold text-slate-400 dark:text-slate-500 px-4 py-2 uppercase tracking-widest bg-slate-50/50 dark:bg-slate-800/50 sticky top-0 backdrop-blur-sm z-10">
+                        {item.section || 'Actions'}
+                    </div>
                 )}
-              </button>
-            ))
+                <button
+                  onClick={() => {
+                    item.perform();
+                    onClose();
+                  }}
+                  className={`group w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-all duration-150 ease-out outline-none ${
+                    index === selectedIndex
+                      ? 'bg-indigo-50/80 dark:bg-indigo-500/10 text-indigo-900 dark:text-indigo-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.4)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ring-1 ring-indigo-200 dark:ring-indigo-500/30 scale-[1.01]'
+                      : 'text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                  }`}
+                >
+                  <div className={`p-2.5 rounded-lg shadow-sm transition-colors duration-200 ${
+                    index === selectedIndex
+                      ? 'bg-white dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/20'
+                      : 'bg-slate-100/80 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-transparent'
+                  }`}>
+                    {item.icon || <ActionIcon />}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className={`text-[15px] truncate transition-all duration-200 ${
+                      index === selectedIndex ? 'font-semibold' : 'font-medium'
+                    }`}>
+                      {item.title}
+                    </div>
+                    {(extendedItem.snippet || item.section === 'Semantic') && (
+                        <div className="text-xs text-slate-400 dark:text-slate-500 truncate flex items-center gap-2 mt-0.5">
+                          {item.section === 'Semantic' && (
+                              <span className="text-amber-500/90 font-bold text-[9px] uppercase tracking-widest border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-sm">Semantic Match</span>
+                          )}
+                          {extendedItem.snippet && <span className="truncate opacity-80">{extendedItem.snippet}</span>}
+                        </div>
+                    )}
+                  </div>
+
+                  {extendedItem.date && (
+                    <div className="text-xs text-slate-400 dark:text-slate-500 whitespace-nowrap opacity-60 ml-2">
+                        {new Date(extendedItem.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </div>
+                  )}
+
+                  {index === selectedIndex && (
+                     <svg className="w-5 h-5 text-indigo-500 dark:text-indigo-400 opacity-70 drop-shadow-sm animate-in fade-in slide-in-from-left-2 duration-300 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+                  )}
+                </button>
+              </div>
+            )})
           )}
         </div>
 
