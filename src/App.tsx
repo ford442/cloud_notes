@@ -54,6 +54,8 @@ function App() {
   notesRef.current = notes
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selectedIdRef = useRef<string | null>(selectedId)
+
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
   
   // Command Palette
@@ -107,6 +109,12 @@ function App() {
   const [isAiLoading, setIsAiLoading] = useState(false)
   const [aiStatus, setAiStatus] = useState('')
   const [authorName, setAuthorName] = useState(() => localStorage.getItem('author_name') || 'Anon')
+  const authorNameRef = useRef<string>(authorName)
+
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+    authorNameRef.current = authorName;
+  }, [selectedId, authorName]);
 
   useEffect(() => { refreshList() }, [])
   useEffect(() => { localStorage.setItem('author_name', authorName) }, [authorName])
@@ -115,15 +123,39 @@ function App() {
   useEffect(() => {
     PluginRegistry.setNoteGetter(() => currentNoteRef.current);
     PluginRegistry.setAllNotesGetter(() => notesRef.current);
-    PluginRegistry.setNoteUpdater((updates) => setCurrentNote(prev => ({ ...prev, ...updates })));
+    PluginRegistry.setNoteUpdater(async (updates) => {
+      const currentAuthor = authorNameRef.current;
+      const currentSelectedId = selectedIdRef.current;
+
+      const updatedNote = { ...currentNoteRef.current, ...updates, updatedAt: new Date().toISOString() };
+      setCurrentNote(updatedNote);
+
+      if (currentSelectedId) {
+        const res = await StorageService.updateNote(currentSelectedId, updatedNote, currentAuthor);
+        if (res.success) {
+          refreshList();
+        } else {
+          addToast("Failed to update note", "error");
+        }
+      }
+    });
     PluginRegistry.setNavigator((id) => handleSelectNote(id));
     PluginRegistry.setNoteDeleter(async (id: string) => { await handleDelete(id); });
-    PluginRegistry.setNoteCreator((updates) => {
-      setSelectedId(null);
-      setCurrentNote({
+    PluginRegistry.setNoteCreator(async (updates) => {
+      const currentAuthor = authorNameRef.current;
+      const newNote = {
         title: '', content: '', tags: '', subject: 'General', section: 'Inbox',
-        ...updates
-      });
+        ...updates,
+        updatedAt: new Date().toISOString()
+      };
+      const res = await StorageService.saveNote(newNote, currentAuthor);
+      if (res.success && res.id) {
+        setSelectedId(res.id);
+        setCurrentNote({ ...newNote, id: res.id });
+        refreshList();
+      } else {
+        addToast("Failed to create note", "error");
+      }
     });
     PluginRegistry.setModeSetter((mode) => {
        if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets'].includes(mode)) {
