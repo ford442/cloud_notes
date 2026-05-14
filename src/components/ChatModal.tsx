@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { SemanticService } from '../services/semantic';
 import { AIService } from '../services/ai';
 import { db, STORE_NOTES_CONTENT } from '../utils/db';
@@ -17,134 +17,150 @@ interface Message {
   sources?: { id: string; title: string }[];
 }
 
-export const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, onNavigate }) => {
+export const ChatModal = ({ isOpen, onClose, onNavigate }: ChatModalProps) => {
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [aiStatus, setAiStatus] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when opened and show greeting
   useEffect(() => {
     if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setTimeout(() => inputRef.current?.focus(), 100);
       if (messages.length === 0) {
-        setMessages([{ role: 'system', content: 'Ask anything about your notes. I will search your brain and find the answer securely on your device.' }]);
+        setMessages([{
+          role: 'system',
+          content: 'Hello! I am your local Second Brain. Ask me anything about your notes, and I will find the answers securely on your device.'
+        }]);
       }
     }
   }, [isOpen, messages.length]);
 
+  // Auto-scroll to bottom of chat
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, aiStatus]);
 
-  const handleAsk = async () => {
-    if (!query.trim() || isLoading) return;
+  const handleAsk = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!query.trim() || loading) return;
 
-    const userQuery = query.trim();
+    const userMsg = query.trim();
     setQuery('');
-    setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
-    setIsLoading(true);
+    setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
+    setLoading(true);
     setAiStatus('Searching your notes semantically...');
 
     try {
-      // 1. Semantic Search to find relevant notes
-      const similarNotes = await SemanticService.findSimilar(userQuery, undefined, 3);
+      // 1. Retrieval: Find top 3 relevant notes
+      const matches = await SemanticService.findSimilar(userMsg, undefined, 3);
 
-      if (similarNotes.length === 0) {
+      if (matches.length === 0) {
         setMessages(prev => [...prev, { role: 'ai', content: "I couldn't find any notes relevant to that question." }]);
-        setIsLoading(false);
-        setAiStatus('');
         return;
       }
 
-      // 2. Fetch and Decrypt the context
-      let contextString = '';
-      const sources: { id: string, title: string }[] = [];
+      const contextParts: string[] = [];
+      const sources: {id: string, title: string}[] = [];
 
-      for (const sim of similarNotes) {
-        const noteRecord = await db.get<Note>(STORE_NOTES_CONTENT, sim.id);
-        if (noteRecord) {
-           const decryptedContent = await EncryptionService.decrypt(noteRecord.content);
-           contextString += `--- Note: ${noteRecord.title} ---\n${decryptedContent}\n\n`;
-           sources.push({ id: noteRecord.id || 'unknown', title: noteRecord.title || 'Untitled' });
+      // 2. Fetch & Decrypt Context
+      for (const m of matches) {
+        const note = await db.get<Note>(STORE_NOTES_CONTENT, m.id);
+        if (note) {
+          const decrypted = await EncryptionService.decrypt(note.content);
+          contextParts.push(`--- Note: ${note.title || 'Untitled'} ---
+${decrypted}`);
+          sources.push({ id: note.id || 'unknown', title: note.title || 'Untitled Note' });
         }
       }
 
-      // 3. Ask the AI Worker
+      // 3. Augmentation & Generation via local Qwen model
       setAiStatus('Reading context & thinking...');
-      const answer = await AIService.askQuestion(userQuery, contextString, (msg) => {
-         setAiStatus(msg);
-      });
+      const context = contextParts.join('\n\n');
+      const answer = await AIService.askQuestion(userMsg, context, (msg) => setAiStatus(msg));
 
       setMessages(prev => [...prev, { role: 'ai', content: answer, sources }]);
-
     } catch (e) {
       console.error(e);
       setMessages(prev => [...prev, { role: 'system', content: `Error: ${e instanceof Error ? e.message : 'Failed to generate answer'}` }]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
       setAiStatus('');
     }
   };
 
-  // Also close on escape key globally if modal is open
+  // Handle escape key
   useEffect(() => {
-    const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (isOpen && e.key === 'Escape') {
-        onClose();
-      }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) onClose();
     };
-    window.addEventListener('keydown', handleGlobalKeyDown);
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+      {/* Darkened Backdrop */}
+      <div
+        className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity duration-300"
+        onClick={onClose}
+      />
 
-      <div className="relative w-full max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl flex flex-col h-[600px] max-h-[80vh] border border-slate-200 dark:border-slate-700 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+      {/* Glassmorphism Modal Container */}
+      <div className="relative w-full max-w-4xl h-[85vh] flex flex-col bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/40 dark:border-slate-700/50 rounded-3xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">🧠</span>
-            <h2 className="font-semibold text-slate-800 dark:text-white">Q&A over Notes</h2>
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/50 dark:border-slate-700/50 bg-white/30 dark:bg-slate-800/30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center shadow-lg">
+              <span className="text-xl">🧠</span>
+            </div>
+            <div>
+              <h2 className="font-bold text-lg text-slate-800 dark:text-white leading-tight">Second Brain Q&A</h2>
+              <p className="text-xs font-medium text-purple-600 dark:text-purple-400">100% Local & Private</p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-             Esc
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 transition-colors"
+          >
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
         {/* Chat History */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
           {messages.map((msg, i) => (
             <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-              <div className={`max-w-[85%] px-4 py-3 rounded-2xl ${
+              <div className={`max-w-[85%] px-5 py-4 shadow-sm ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-br-none'
+                  ? 'bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-3xl rounded-br-sm'
                   : msg.role === 'system'
-                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-sm italic'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-100 rounded-bl-none'
+                  ? 'bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-sm italic rounded-2xl border border-slate-200/50 dark:border-slate-700/50'
+                  : 'bg-white/80 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 rounded-3xl rounded-bl-sm border border-white/50 dark:border-slate-600/50'
               }`}>
-                <div className="whitespace-pre-wrap">{msg.content}</div>
+                <div className="whitespace-pre-wrap leading-relaxed">{msg.content}</div>
 
                 {/* Source Citations */}
                 {msg.sources && msg.sources.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-600">
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Sources used:</p>
+                  <div className="mt-4 pt-3 border-t border-slate-200/50 dark:border-slate-600/50">
+                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wider">Sources Used:</p>
                     <div className="flex flex-wrap gap-2">
-                      {msg.sources.map(source => (
+                      {msg.sources.map((source, idx) => (
                         <button
-                          key={source.id}
+                          key={`${source.id}-${idx}`}
                           onClick={() => { onNavigate(source.id); onClose(); }}
-                          className="text-xs bg-slate-200 dark:bg-slate-800 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors px-2 py-1 rounded border border-slate-300 dark:border-slate-600"
+                          className="text-xs flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900/50 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-slate-700 dark:text-slate-300 transition-colors px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700"
                         >
-                          {source.title}
+                          <svg className="w-3 h-3 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          <span className="truncate max-w-[150px]">{source.title}</span>
                         </button>
                       ))}
                     </div>
@@ -153,39 +169,48 @@ export const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, onNavigat
               </div>
             </div>
           ))}
-          {isLoading && (
-            <div className="flex items-start">
-              <div className="bg-slate-100 dark:bg-slate-700 px-4 py-3 rounded-2xl rounded-bl-none flex items-center gap-3">
-                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-sm text-slate-500 dark:text-slate-300">{aiStatus || 'Thinking...'}</span>
+
+          {/* Loading Indicator */}
+          {loading && (
+            <div className="flex items-start animate-in fade-in">
+              <div className="bg-white/80 dark:bg-slate-800/80 px-5 py-4 rounded-3xl rounded-bl-sm border border-white/50 dark:border-slate-600/50 flex items-center gap-3 shadow-sm">
+                <div className="flex gap-1">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">{aiStatus || 'Thinking...'}</span>
               </div>
             </div>
           )}
         </div>
 
         {/* Input Area */}
-        <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800">
+        <div className="p-4 sm:p-6 border-t border-slate-200/50 dark:border-slate-700/50 bg-white/30 dark:bg-slate-800/30">
           <form
-            onSubmit={(e) => { e.preventDefault(); handleAsk(); }}
-            className="relative flex items-center"
+            onSubmit={handleAsk}
+            className="relative flex items-center bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-600 rounded-2xl shadow-inner focus-within:ring-2 focus-within:ring-purple-500/50 focus-within:border-purple-500/50 transition-all"
           >
             <input
               ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              disabled={isLoading}
-              placeholder="Ask a question about your notes..."
-              className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-white disabled:opacity-50"
+              disabled={loading}
+              placeholder="Ask a question to synthesize your notes..."
+              className="w-full bg-transparent text-slate-800 dark:text-white placeholder:text-slate-400 outline-none px-6 py-4 rounded-2xl disabled:opacity-50"
             />
             <button
               type="submit"
-              disabled={!query.trim() || isLoading}
-              className="absolute right-2 p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg disabled:opacity-50 transition-colors"
+              disabled={!query.trim() || loading}
+              className="absolute right-2 p-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl disabled:opacity-30 disabled:hover:bg-purple-600 transition-all shadow-md"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M12 5l7 7-7 7" /></svg>
             </button>
           </form>
+          <div className="text-center mt-3 text-xs text-slate-400 font-medium">
+            Press <kbd className="px-1.5 py-0.5 bg-slate-200/50 dark:bg-slate-700/50 rounded-md">Esc</kbd> to close
+          </div>
         </div>
 
       </div>
