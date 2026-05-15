@@ -185,7 +185,7 @@ function App() {
   // Global Command Palette Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'K' && e.shiftKey) {
+      if (((e.metaKey || e.ctrlKey) && e.key === 'K' && e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'j')) {
         e.preventDefault()
         setIsChatOpen(prev => !prev)
       } else if ((e.metaKey || e.ctrlKey) && e.key === 'k') {

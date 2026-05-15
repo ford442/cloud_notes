@@ -80,10 +80,10 @@ async function getExtractor() {
 async function getChatGenerator(onProgress?: (msg: string) => void) {
     if (!pipelines.chatGenerator) {
         if (onProgress) onProgress('Loading chat model (first time only, ~300MB)...');
-
+        // @ts-expect-error - Expected
         pipelines.chatGenerator = await pipeline('text-generation', 'Xenova/Qwen1.5-0.5B-Chat');
     }
-
+    // @ts-expect-error - Expected
     return pipelines.chatGenerator;
 }
 
