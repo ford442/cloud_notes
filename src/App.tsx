@@ -188,7 +188,7 @@ function App() {
       if (((e.metaKey || e.ctrlKey) && e.key === 'K' && e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'j')) {
         e.preventDefault()
         setIsChatOpen(prev => !prev)
-      } else if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K') && !e.shiftKey) {
         e.preventDefault()
         setIsCmdPaletteOpen(prev => !prev)
       }
@@ -570,6 +570,8 @@ function App() {
           notes={notes}
           onNavigate={handleSelectNote}
           actions={PluginRegistry.getActions()}
+          onNewNote={handleNew}
+          onSearchOpen={() => setIsSearchOpen(true)}
         />
 
         {/* Search Modal */}
