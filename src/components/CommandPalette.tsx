@@ -1,7 +1,10 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Fuse from 'fuse.js';
-import type { CloudItemMeta } from '../services/api';
+import type { FuseResultMatch } from 'fuse.js';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { CloudItemMeta, Note } from '../services/api';
 import { SemanticService } from '../services/semantic';
+import { db, STORE_NOTES_CONTENT } from '../utils/db';
 
 export interface ActionItem {
   id: string;
@@ -18,6 +21,8 @@ interface CommandPaletteProps {
   notes: CloudItemMeta[];
   actions: ActionItem[];
   onNavigate: (id: string) => void;
+  onNewNote?: () => void;
+  onSearchOpen?: () => void;
 }
 
 // Icons
@@ -28,16 +33,36 @@ const ActionIcon = () => (
   <svg width="18" height="18" className="text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
 );
 
-export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: CommandPaletteProps) => {
+export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, onNewNote, onSearchOpen }: CommandPaletteProps) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [results, setResults] = useState<ActionItem[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [fullNotesContent, setFullNotesContent] = useState<Map<string, Note>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input when opened
+  // Focus input and load content when opened
   useEffect(() => {
     if (isOpen) {
+      const loadContents = async () => {
+        try {
+          const contents = await db.getAll<Note>(STORE_NOTES_CONTENT);
+          const map = new Map<string, Note>();
+          contents.forEach(n => {
+             // In db.getAll, if the wrapper extracts the values, n is the Note.
+             // If it returns { key, value }, n is the wrapper.
+             // Looking at SearchModal, `const allNotes = await db.getAll<Note>(STORE_NOTES_CONTENT); setNotes(allNotes.map(n => n.value));` implies it returns {value: Note} objects or similar wrapper. Let's handle both cases to be safe.
+             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+             const note = (n as any).value || n;
+             if (note && note.id) map.set(note.id, note as Note);
+          });
+          setFullNotesContent(map);
+        } catch (e) {
+          console.error("Failed to load full note content for command palette", e);
+        }
+      };
+      loadContents();
+
       setTimeout(() => {
         inputRef.current?.focus();
         setQuery('');
@@ -55,9 +80,16 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
       const tags = parts[2] ? parts[2].split(',').filter(Boolean) : [];
       let snippet = tags.length > 0 ? tags.join(', ') : (note.description || '');
 
-      // Attempt to clean snippet
-      if (snippet && snippet.length > 50) {
-          snippet = snippet.substring(0, 50) + '...';
+      const fullNote = fullNotesContent.get(note.id);
+      let contentToIndex = note.description || '';
+
+      if (fullNote && fullNote.content) {
+          contentToIndex = fullNote.content.substring(0, 500); // Index first 500 chars for fuzzy matching
+
+          if (tags.length === 0) {
+              snippet = fullNote.content.substring(0, 120).replace(/\n/g, ' ').trim();
+              if (snippet.length > 100) snippet = snippet.substring(0, 100) + '...';
+          }
       }
 
       return {
@@ -66,22 +98,47 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
         section: 'Notes',
         icon: <NoteIcon />,
         perform: () => onNavigate(note.id),
-        keywords: [note.description || ''],
+        keywords: [contentToIndex], // Use snippet/content for fuzzy search
+        content: fullNote?.content || '', // Keep raw content for highlight matches
         // Store snippet and date for rendering
         snippet: snippet,
         date: note.date
-      } as ActionItem & { snippet: string, date: string };
+      } as ActionItem & { snippet: string, date: string, content: string, matches?: readonly FuseResultMatch[] };
     });
 
+    const defaultActions: ActionItem[] = [
+      {
+        id: 'default-new-note',
+        title: 'New Note',
+        section: 'Commands',
+        icon: <span className="text-lg">✍️</span>,
+        perform: () => {
+          if (onNewNote) onNewNote();
+        },
+        keywords: ['create', 'make', 'add']
+      },
+      {
+        id: 'default-search',
+        title: 'Search in all notes',
+        section: 'Commands',
+        icon: <span className="text-lg">🔍</span>,
+        perform: () => {
+          if (onSearchOpen) onSearchOpen();
+        },
+        keywords: ['find', 'search', 'query']
+      }
+    ];
+
     // Actions come first, then notes
-    return [...actions, ...noteItems];
-  }, [actions, notes, onNavigate]);
+    return [...defaultActions, ...actions, ...noteItems];
+  }, [actions, notes, onNavigate, fullNotesContent, onNewNote, onSearchOpen]);
 
   // Fuse.js setup
   const fuse = useMemo(() => new Fuse(allItems, {
-    keys: ['title', 'section', 'keywords'],
+    keys: ['title', 'section', 'keywords', 'content'],
     threshold: 0.3,
     ignoreLocation: true,
+    includeMatches: true,
   }), [allItems]);
 
   // Hybrid Search Effect
@@ -213,22 +270,63 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, results, selectedIndex, onClose]);
 
-  if (!isOpen) return null;
+  // Helper to extract a snippet with the matched text highlighted
+  const renderSnippet = (match: FuseResultMatch | undefined, fallbackSnippet?: string) => {
+    if (!match || !match.value) {
+      if (fallbackSnippet) return <span className="truncate opacity-80">{fallbackSnippet}</span>;
+      return null;
+    }
+
+    // Find the first match indices
+    const indices = match.indices[0];
+    if (!indices) return <span className="truncate opacity-80">{match.value.substring(0, 100)}...</span>;
+
+    const start = Math.max(0, indices[0] - 40);
+    const end = Math.min(match.value.length, indices[1] + 40);
+
+    const prefix = start > 0 ? '...' : '';
+    const suffix = end < match.value.length ? '...' : '';
+
+    const before = match.value.substring(start, indices[0]);
+    const highlighted = match.value.substring(indices[0], indices[1] + 1);
+    const after = match.value.substring(indices[1] + 1, end);
+
+    return (
+      <span className="truncate opacity-80">
+        {prefix}
+        {before}
+        <strong className="text-indigo-600 dark:text-indigo-400 bg-indigo-100/50 dark:bg-indigo-900/30 px-0.5 rounded">{highlighted}</strong>
+        {after}
+        {suffix}
+      </span>
+    );
+  };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-slate-900/60 backdrop-blur-md transition-opacity duration-300 ease-in-out"
-        onClick={onClose}
-      />
+    <AnimatePresence>
+    {isOpen && (
+      <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] px-4">
+        {/* Backdrop */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+          onClick={onClose}
+        />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] border border-slate-200/50 dark:border-slate-700/50 overflow-hidden flex flex-col max-h-[70vh] animate-in fade-in zoom-in-95 duration-200">
-
-        {/* Search Input */}
-        <div className="flex items-center border-b border-slate-200/50 dark:border-slate-700/50 p-5 gap-4 bg-transparent">
-          <svg className="w-6 h-6 text-slate-400 dark:text-slate-500 animate-pulse-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+        {/* Modal */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: -10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: -10 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }} // nice spring curve
+          className="relative w-full max-w-2xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-2xl shadow-[0_30px_60px_-15px_rgba(0,0,0,0.6)] border border-slate-200/50 dark:border-slate-700/50 overflow-hidden flex flex-col max-h-[70vh]"
+        >
+          {/* Search Input */}
+          <div className="flex items-center border-b border-slate-200/50 dark:border-slate-700/50 p-5 gap-4 bg-transparent">
+            <svg className="w-6 h-6 text-slate-400 dark:text-slate-500 animate-pulse-slow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
           <input
             ref={inputRef}
             className="flex-1 bg-transparent text-xl font-medium text-slate-900 dark:text-white placeholder:text-slate-400/80 dark:placeholder:text-slate-500/80 outline-none transition-all duration-200"
@@ -255,13 +353,14 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
           {results.length === 0 ? (
             <div className="p-12 flex flex-col items-center justify-center gap-3 text-slate-400 dark:text-slate-500">
               <svg className="w-12 h-12 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span className="text-sm font-medium tracking-wide">No connections found</span>
+              <span className="text-sm font-medium tracking-wide">No notes found — press <button className="font-bold underline text-indigo-500" onClick={() => { if(onNewNote) { onNewNote(); onClose(); } }}>N</button> to create one</span>
             </div>
           ) : (
             results.map((item, index) => {
               const isSectionStart = index === 0 || item.section !== results[index - 1].section;
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
               const extendedItem = item as any; // To access our injected properties safely
+              const contentMatch = extendedItem.matches?.find((m: FuseResultMatch) => m.key === 'content' || m.key === 'keywords');
 
               return (
               <div key={`${item.section}-${item.id}`}>
@@ -289,18 +388,23 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
                     {item.icon || <ActionIcon />}
                   </div>
 
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 flex items-center gap-2">
                     <div className={`text-[15px] truncate transition-all duration-200 ${
                       index === selectedIndex ? 'font-semibold' : 'font-medium'
                     }`}>
                       {item.title}
                     </div>
-                    {(extendedItem.snippet || item.section === 'Semantic') && (
+                    {/* Placeholder badge logic, we can check a 'pinned' tag or subject */}
+                    {extendedItem.snippet && extendedItem.snippet.toLowerCase().includes('pinned') && (
+                       <span className="text-[9px] font-bold text-slate-500 bg-slate-200/50 dark:bg-slate-700/50 px-1.5 py-0.5 rounded-sm uppercase">Pinned</span>
+                    )}
+                  </div>
+                    {(extendedItem.snippet || item.section === 'Semantic' || contentMatch) && (
                         <div className="text-xs text-slate-400 dark:text-slate-500 truncate flex items-center gap-2 mt-0.5">
                           {item.section === 'Semantic' && (
-                              <span className="text-amber-500/90 font-bold text-[9px] uppercase tracking-widest border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-sm">Semantic Match</span>
+                              <span className="text-amber-500/90 font-bold text-[9px] uppercase tracking-widest border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-sm shrink-0">Semantic Match</span>
                           )}
-                          {extendedItem.snippet && <span className="truncate opacity-80">{extendedItem.snippet}</span>}
+                          {renderSnippet(contentMatch, extendedItem.snippet)}
                         </div>
                     )}
                   </div>
@@ -320,16 +424,18 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate }: 
           )}
         </div>
 
-        {/* Footer */}
-        <div className="bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-200/50 dark:border-slate-700/50 p-2.5 px-5 text-xs text-slate-400 dark:text-slate-500 flex justify-between items-center backdrop-blur-sm">
-            <span className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-slate-700/50 px-1.5 rounded shadow-sm">↑↓</span> to navigate
-            </span>
-            <span className="flex items-center gap-1.5">
-                <span className="font-bold text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-slate-700/50 px-1.5 rounded shadow-sm">↵</span> to select
-            </span>
-        </div>
+          {/* Footer */}
+          <div className="bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-200/50 dark:border-slate-700/50 p-2.5 px-5 text-xs text-slate-400 dark:text-slate-500 flex justify-between items-center backdrop-blur-sm">
+              <span className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-slate-700/50 px-1.5 rounded shadow-sm">↑↓</span> to navigate
+              </span>
+              <span className="flex items-center gap-1.5">
+                  <span className="font-bold text-slate-500 dark:text-slate-400 bg-slate-200/50 dark:bg-slate-700/50 px-1.5 rounded shadow-sm">↵</span> to select
+              </span>
+          </div>
+        </motion.div>
       </div>
-    </div>
+    )}
+    </AnimatePresence>
   );
 };
