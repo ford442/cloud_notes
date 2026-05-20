@@ -16,7 +16,6 @@ const MusicLibraryView = lazy(() => import('./components/MusicLibraryView').then
 const PlaylistView = lazy(() => import('./components/PlaylistView').then(m => ({ default: m.PlaylistView })))
 const ModSongsView = lazy(() => import('./components/ModSongsView').then(m => ({ default: m.ModSongsView })))
 const PresetsPanel = lazy(() => import('./components/PresetsPanel').then(m => ({ default: m.PresetsPanel })))
-const TexturesPanel = lazy(() => import('./components/TexturesPanel').then(m => ({ default: m.TexturesPanel })))
 
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
@@ -58,7 +57,7 @@ function App() {
   const selectedIdRef = useRef<string | null>(selectedId)
 
   const [theme, setTheme] = useState<'light' | 'dark'>('dark')
-  
+
   // Command Palette
   const [isCmdPaletteOpen, setIsCmdPaletteOpen] = useState(false)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
@@ -96,15 +95,15 @@ function App() {
   }, []);
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures'>('rich')
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets'>('rich')
 
   // Initialize with default Subject/Section
-  const [currentNote, setCurrentNote] = useState<Note>({ 
-    title: '', content: '', tags: '', subject: 'General', section: 'Inbox' 
+  const [currentNote, setCurrentNote] = useState<Note>({
+    title: '', content: '', tags: '', subject: 'General', section: 'Inbox'
   })
   const currentNoteRef = useRef(currentNote)
   currentNoteRef.current = currentNote
-  
+
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isAiLoading, setIsAiLoading] = useState(false)
@@ -159,7 +158,7 @@ function App() {
       }
     });
     PluginRegistry.setModeSetter((mode) => {
-       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets', 'textures'].includes(mode)) {
+       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets'].includes(mode)) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setEditorMode(mode as any);
        } else {
@@ -257,9 +256,9 @@ function App() {
   const handleNew = () => {
     setSelectedId(null)
     // Keep current subject/section for rapid entry, or reset to defaults
-    setCurrentNote({ 
-      title: '', content: '', tags: '', 
-      subject: 'General', section: 'Inbox' 
+    setCurrentNote({
+      title: '', content: '', tags: '',
+      subject: 'General', section: 'Inbox'
     })
   }
 
@@ -287,13 +286,13 @@ function App() {
 
   const handleSave = async () => {
     if (!currentNote.title.trim()) return addToast("Title required", "error")
-    
+
     setIsSaving(true)
-    
+
     // Stamp updatedAt so sync comparisons are reliable
     const noteToSave = { ...currentNote, updatedAt: new Date().toISOString() };
     setCurrentNote(noteToSave);
-    
+
     // Check if we are updating an existing note or creating a new one
     // Logic:
     // 1. If we have a selectedId AND the title matches the original title -> Update (PUT)
@@ -520,7 +519,7 @@ function App() {
   return (
     <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
       <div className="h-full w-full bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
-        
+
         {/* Settings Modal */}
         {isSettingsOpen && (
            <SettingsModal
@@ -625,7 +624,7 @@ function App() {
           )}
 
           {/* Header Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex-1 flex items-center gap-4 min-w-[300px]">
                  <input
@@ -721,12 +720,6 @@ function App() {
                     className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'presets' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     🎨 Presets
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('textures')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'textures' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    🖼️ Textures
                   </button>
                 </div>
 
@@ -869,8 +862,6 @@ function App() {
                 </div>
               ) : editorMode === 'presets' ? (
                 <PresetsPanel onClose={() => setEditorMode('rich')} />
-              ) : editorMode === 'textures' ? (
-                <TexturesPanel onClose={() => setEditorMode('rich')} />
               ) : editorMode === 'simple' ? (
                 <Editor
                   value={currentNote.content}
@@ -919,7 +910,7 @@ function App() {
           </div>
 
           {/* Footer Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
@@ -928,7 +919,7 @@ function App() {
                   </svg>
                   <span className="text-sm font-medium">Tags</span>
                 </div>
-                <input 
+                <input
                   value={currentNote.tags}
                   onChange={e => setCurrentNote({...currentNote, tags: e.target.value})}
                   placeholder="Add tags separated by commas..."
