@@ -29,6 +29,7 @@ import { BlockHandle } from './editor/BlockHandle'
 import { processImageToBlob } from '../utils/media'
 import { ExcalidrawExtension } from './editor/ExcalidrawExtension'
 import { AudioExtension } from './editor/AudioExtension'
+import { AutoLinkExtension } from './editor/AutoLinkExtension'
 import { PromptSectionExtension } from './editor/PromptSectionExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
 import { AIBubbleMenu } from './editor/AIBubbleMenu'
@@ -104,10 +105,6 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
   const isEncrypted = value.trim().startsWith('---ENCRYPTED_V1---');
 
   useEffect(() => {
-    notesRef.current = availableNotes;
-  }, [availableNotes]);
-
-  useEffect(() => {
     onNavigateRef.current = onNavigate;
   }, [onNavigate]);
 
@@ -158,6 +155,9 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       AudioExtension,
       ExcalidrawExtension,
       PromptSectionExtension,
+      AutoLinkExtension.configure({
+        debounceMs: 150,
+      }),
       StarterKit.configure({
         // Disable extensions that clash with our custom ones if needed
       }),
@@ -424,6 +424,13 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       onChange(markdown);
     },
   }, [ydoc]) // Re-create editor when ydoc changes
+
+  useEffect(() => {
+    notesRef.current = availableNotes;
+    if (editor) {
+      editor.storage.autoLink.updateAvailableNotes(availableNotes);
+    }
+  }, [availableNotes, editor]);
 
   // Handle External Updates (e.g. Restore History)
   const lastProcessedRef = useRef<number | undefined>(undefined);
