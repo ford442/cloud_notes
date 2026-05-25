@@ -32,6 +32,7 @@ import { AudioExtension } from './editor/AudioExtension'
 import { PromptSectionExtension } from './editor/PromptSectionExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
 import { AIBubbleMenu } from './editor/AIBubbleMenu'
+import { AutoLinkExtension } from './editor/extensions/AutoLinkExtension'
 
 interface BlockEditorProps {
   noteId: string;
@@ -158,6 +159,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       AudioExtension,
       ExcalidrawExtension,
       PromptSectionExtension,
+      AutoLinkExtension,
       StarterKit.configure({
         // Disable extensions that clash with our custom ones if needed
       }),
@@ -424,6 +426,12 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       onChange(markdown);
     },
   }, [ydoc]) // Re-create editor when ydoc changes
+
+  useEffect(() => {
+    if (editor && availableNotes) {
+      editor.storage.autoLink.updateAvailableNotes(availableNotes);
+    }
+  }, [availableNotes, editor]);
 
   // Handle External Updates (e.g. Restore History)
   const lastProcessedRef = useRef<number | undefined>(undefined);
