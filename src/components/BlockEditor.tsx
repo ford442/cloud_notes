@@ -33,6 +33,7 @@ import { AutoLinkExtension } from './editor/AutoLinkExtension'
 import { PromptSectionExtension } from './editor/PromptSectionExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
 import { AIBubbleMenu } from './editor/AIBubbleMenu'
+import { AutoLinkExtension } from './editor/extensions/AutoLinkExtension'
 
 interface BlockEditorProps {
   noteId: string;
@@ -425,10 +426,10 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
     },
   }, [ydoc]) // Re-create editor when ydoc changes
 
-  useEffect(() => {
+useEffect(() => {
     notesRef.current = availableNotes;
     if (editor) {
-      editor.storage.autoLink.updateAvailableNotes(availableNotes);
+      editor.storage.autoLink?.updateAvailableNotes(availableNotes);
     }
   }, [availableNotes, editor]);
 
