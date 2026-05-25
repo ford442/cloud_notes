@@ -41,13 +41,13 @@ def run():
         page.keyboard.type("Encrypt Note")
         time.sleep(1)
 
-        page.keyboard.press("Enter")
+        page.locator("button").filter(has_text="Encrypt Note").first.click()
         time.sleep(1)
 
         # Handle the custom PluginRegistry.prompt
         # It's rendered as a Dialog component with a text input
         print("Entering password...")
-        prompt_input = page.locator("div[role='dialog'] input[type='text']")
+        prompt_input = page.locator("div[role='dialog'] input")
         prompt_input.wait_for()
         prompt_input.fill("testpassword123")
         page.locator("div[role='dialog']").get_by_text("OK").click()
@@ -77,7 +77,7 @@ def run():
 
         # Enter password again
         print("Entering password for decryption...")
-        prompt_input = page.locator("div[role='dialog'] input[type='text']")
+        prompt_input = page.locator("div[role='dialog'] input")
         prompt_input.wait_for()
         prompt_input.fill("testpassword123")
         page.locator("div[role='dialog']").get_by_text("OK").click()
