@@ -33,7 +33,8 @@ import { AutoLinkExtension } from './editor/AutoLinkExtension'
 import { PromptSectionExtension } from './editor/PromptSectionExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
 import { AIBubbleMenu } from './editor/AIBubbleMenu'
-import { AutoLinkExtension } from './editor/extensions/AutoLinkExtension'
+import { AutoLinkExtension } from './editor/auto-link'
+
 
 interface BlockEditorProps {
   noteId: string;
@@ -133,6 +134,10 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
 
   const editor = useEditor({
     extensions: [
+    AutoLinkExtension.configure({
+      debounceMs: 150,
+    }),
+
       // Custom extension to bind Yjs UndoManager to keyboard shortcuts
       Extension.create({
         name: 'yjs-undo',
@@ -426,12 +431,12 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
     },
   }, [ydoc]) // Re-create editor when ydoc changes
 
-useEffect(() => {
-    notesRef.current = availableNotes;
-    if (editor) {
-      editor.storage.autoLink?.updateAvailableNotes(availableNotes);
+
+  useEffect(() => {
+    if (editor && availableNotes) {
+      editor.storage.autoLink.availableNotes = availableNotes;
     }
-  }, [availableNotes, editor]);
+  }, [editor, availableNotes]);
 
   // Handle External Updates (e.g. Restore History)
   const lastProcessedRef = useRef<number | undefined>(undefined);
