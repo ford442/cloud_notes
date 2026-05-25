@@ -149,7 +149,15 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
             const meta = tr.getMeta(pluginKey)
             if (meta) return meta
 
-            // Map the decorations through the transaction
+            // If the document changes and we didn't explicitly update the decoration,
+            // the ghost text is likely stale or invalid, so clear it.
+            if (tr.docChanged && old.decorationSet !== DecorationSet.empty) {
+                // Clear state synchronously here to prevent jumping ghost text
+                extensionThis.storage.currentSuggestion = null
+                return { decorationSet: DecorationSet.empty }
+            }
+
+            // Map the decorations through the transaction (for non-doc changes like selection)
             const mappedDecorationSet = old.decorationSet.map(tr.mapping, tr.doc)
             return { decorationSet: mappedDecorationSet }
           },
@@ -170,14 +178,16 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
                 const { state } = view
                 const { tr, selection } = state
 
-                // Get the text we matched against to replace it
+                // Get the text we matched against to replace it accurately
                 const $from = selection.$from
                 const textBefore = $from.parent.textContent.slice(0, $from.parentOffset)
-                const words = textBefore.trim().split(/\s+/)
-                const query = words.slice(-3).join(' ')
 
-                // Start of the word/query we matched
-                const replaceFrom = selection.from - query.length
+                // Find the exact query we matched (last 1-3 words)
+                // We'll use a regex to match up to 3 trailing words
+                const match = textBefore.match(/(?:\S+\s+){0,2}\S+\s*$/)
+                const exactQuery = match ? match[0] : ''
+
+                const replaceFrom = selection.from - exactQuery.length
 
                 const linkText = suggestion.title
                 const linkId = suggestion.id
@@ -189,7 +199,7 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
                     class: 'cursor-pointer text-blue-500 hover:text-blue-600 underline',
                 })
 
-                // Replace the query with the linked text
+                // Replace the query with the linked text safely
                 tr.delete(replaceFrom, selection.from)
                 tr.insertText(linkText, replaceFrom)
                 tr.addMark(replaceFrom, replaceFrom + linkText.length, linkMark)
