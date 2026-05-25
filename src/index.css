@@ -78,3 +78,10 @@ ul[data-type="taskList"] input[type="checkbox"] {
 .dark .ProseMirror p.is-editor-empty:first-child::before {
   color: #475569;
 }
+
+/* AutoLink Ghost Text */
+.auto-link-ghost {
+  font-style: italic;
+  user-select: none;
+  pointer-events: none;
+}

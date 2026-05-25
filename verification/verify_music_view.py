@@ -33,9 +33,9 @@ async def verify_music_library():
             await page.click("body") # Ensure focus
             await page.evaluate("() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true, bubbles: true })); }")
 
-            await page.wait_for_selector('input[placeholder="Type a command or search..."]', timeout=5000)
+            await page.wait_for_selector('input[placeholder="Type to search notes, commands, or ask AI..."]', timeout=5000)
 
-            await page.get_by_placeholder("Type a command or search...").fill("Music Library")
+            await page.get_by_placeholder("Type to search notes, commands, or ask AI...").fill("Music Library")
             await page.wait_for_timeout(1000)
             await page.get_by_text("Music Library", exact=True).first.click()
 
