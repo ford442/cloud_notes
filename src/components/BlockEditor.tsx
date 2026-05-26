@@ -33,7 +33,6 @@ import { AutoLinkExtension } from './editor/AutoLinkExtension'
 import { PromptSectionExtension } from './editor/PromptSectionExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
 import { AIBubbleMenu } from './editor/AIBubbleMenu'
-import { AutoLinkExtension } from './editor/auto-link'
 
 
 interface BlockEditorProps {
