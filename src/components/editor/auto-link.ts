@@ -162,8 +162,6 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
           if (testQuery.length < 3) continue;
 
           const results = this.storage.fuseInstance.search(testQuery);
-            if (results.length > 0) {
-                }
 
           if (results.length > 0 && results[0].score! < 0.4) {
               if (!bestMatch || results[0].score! < bestMatch.score!) {
@@ -188,7 +186,7 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
 
          if (isGoodMatch && (isPrefixMatch || isWordMatch || bestMatch.score! < 0.25)) {
              // Find the actual typed text in the doc to determine exactly how many characters to replace
-             const regex = new RegExp(usedQuery.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&') + "\\s*$");
+             const regex = new RegExp(usedQuery.replace(/[-\\/\\^$*+?.()|[\]{}]/g, '\\$&') + "\\s*$");
              const match = textBefore.match(regex);
 
              const actualMatchLength = match ? match[0].length : usedQuery.length;
