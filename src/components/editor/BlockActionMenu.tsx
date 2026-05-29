@@ -6,7 +6,7 @@ interface BlockActionMenuProps {
   position: { top: number; left: number };
   onClose: () => void;
   currentNodePos: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   ignoreRef?: RefObject<any>;
 }
 

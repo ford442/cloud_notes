@@ -18,7 +18,7 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
     return {
       availableNotes: [] as any[],
       currentSuggestion: null as string | null,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       updateAvailableNotes: function (notes: any[]) {
         this.availableNotes = notes
       },
@@ -40,7 +40,7 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
 
     let currentDecorationSet = DecorationSet.empty
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const updateSuggestion = (view: any, suggestion: string | null) => {
       extensionThis.storage.currentSuggestion = suggestion
 
@@ -65,13 +65,13 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
       currentDecorationSet = DecorationSet.create(view.state.doc, [ghost])
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const clearSuggestion = (view: any) => {
       updateSuggestion(view, null)
       view.dispatch(view.state.tr.setMeta(pluginKey, { decorationSet: DecorationSet.empty }))
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const acceptSuggestion = (view: any) => {
       const suggestion = extensionThis.storage.currentSuggestion
       if (!suggestion) return false
@@ -103,7 +103,7 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
     // Debounced suggestion checker
     let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const checkForMatch = (view: any) => {
       if (debounceTimer) clearTimeout(debounceTimer)
 
@@ -129,7 +129,7 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
         }
 
         const best = results[0]
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const item = best.item as any
         const title = item.name || item.title || ''
         const score = best.score ?? 1

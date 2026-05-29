@@ -6,17 +6,17 @@ env.useBrowserCache = true;
 
 // Singleton instances
 const pipelines = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   summarizer: null as any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   classifier: null as any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   extractor: null as any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   generator: null as any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   chatGenerator: null as any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   transcriber: null as any,
 };
 
@@ -140,7 +140,7 @@ async function handleSuggestTags(id: string, { text, existingTags }: { text: str
     });
 
     const threshold = 0.4;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     const suggestedTags = output.labels.filter((_: string, index: number) => output.scores[index] > threshold);
 
     self.postMessage({ id, status: 'complete', data: suggestedTags.slice(0, 5) });
@@ -155,7 +155,7 @@ async function handleGetEmbedding(id: string, text: string) {
     const extractor = await getExtractor();
     const output = await extractor(text, { pooling: 'mean', normalize: true });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     self.postMessage({ id, status: 'complete', data: Array.from((output as any).data) });
 }
 
@@ -199,7 +199,7 @@ async function handleTranscribeAudio(id: string, audioData: Float32Array) {
             stride_length_s: 5,
         });
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         self.postMessage({ id, status: 'complete', data: (output as any).text || '' });
     } catch (e) {
         throw new Error(e instanceof Error ? e.message : String(e));

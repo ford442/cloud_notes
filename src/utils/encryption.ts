@@ -1,6 +1,7 @@
 // src/utils/encryption.ts
 
 const STORAGE_KEY = 'cloud_notes_encryption_key';
+const PREV_STORAGE_KEY = 'cloud_notes_prev_encryption_key';
 
 // Key derivation parameters
 const PBKDF2_ITERATIONS = 100000;
@@ -26,7 +27,23 @@ export const EncryptionService = {
   },
 
   setPassword(pass: string) {
+    const current = localStorage.getItem(STORAGE_KEY);
+    if (current && current !== pass) {
+      this.setPreviousPassword(current);
+    }
     localStorage.setItem(STORAGE_KEY, pass);
+  },
+
+  getPreviousPassword(): string | null {
+    return localStorage.getItem(PREV_STORAGE_KEY);
+  },
+
+  setPreviousPassword(pass: string) {
+    localStorage.setItem(PREV_STORAGE_KEY, pass);
+  },
+
+  clearPreviousPassword() {
+    localStorage.removeItem(PREV_STORAGE_KEY);
   },
 
   generateRandomPassword(): string {
@@ -63,10 +80,10 @@ export const EncryptionService = {
   },
 
   // Encrypt string
-  async encrypt(text: string): Promise<string> {
+  async encrypt(text: string, customPassword?: string): Promise<string> {
     if (!text) return '';
     const crypto = getCrypto();
-    const password = this.getOrInitPassword();
+    const password = customPassword || this.getOrInitPassword();
 
     const salt = crypto.getRandomValues(new Uint8Array(SALT_SIZE));
     const key = await this.deriveKey(password, salt);
@@ -93,37 +110,66 @@ export const EncryptionService = {
   },
 
   // Decrypt string
-  async decrypt(encryptedText: string): Promise<string> {
+  async decrypt(encryptedText: string, customPassword?: string): Promise<string> {
     if (!encryptedText || !encryptedText.startsWith('ENC:v1:')) {
         return encryptedText; // Not encrypted or unknown version, return as is
     }
 
+    const doDecrypt = async (pass: string) => {
+        const crypto = getCrypto();
+        const parts = encryptedText.split(':');
+        if (parts.length !== 5) throw new Error("Invalid format");
+
+        const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
+        const iv = Uint8Array.from(atob(parts[3]), c => c.charCodeAt(0));
+        const ciphertext = Uint8Array.from(atob(parts[4]), c => c.charCodeAt(0));
+
+        const key = await this.deriveKey(pass, salt);
+
+        const decrypted = await crypto.subtle.decrypt(
+          {
+            name: "AES-GCM",
+            iv
+          },
+          key,
+          ciphertext
+        );
+
+        const dec = new TextDecoder();
+        return dec.decode(decrypted);
+    };
+
     try {
-      const crypto = getCrypto();
-      const password = this.getOrInitPassword();
-      const parts = encryptedText.split(':');
-      if (parts.length !== 5) throw new Error("Invalid format");
-
-      const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
-      const iv = Uint8Array.from(atob(parts[3]), c => c.charCodeAt(0));
-      const ciphertext = Uint8Array.from(atob(parts[4]), c => c.charCodeAt(0));
-
-      const key = await this.deriveKey(password, salt);
-
-      const decrypted = await crypto.subtle.decrypt(
-        {
-          name: "AES-GCM",
-          iv
-        },
-        key,
-        ciphertext
-      );
-
-      const dec = new TextDecoder();
-      return dec.decode(decrypted);
+      const password = customPassword || this.getOrInitPassword();
+      return await doDecrypt(password);
     } catch (e) {
+      // If decryption fails, try the previous password as a fallback
+      // This prevents locking users out if a key rotation was interrupted
+      if (!customPassword) {
+         const prevPassword = this.getPreviousPassword();
+         if (prevPassword) {
+             try {
+                return await doDecrypt(prevPassword);
+             } catch (fallbackError) {
+                // Ignore fallback error, throw original
+             }
+         }
+      }
+
       console.error("Decryption failed", e);
       return "**Decryption Failed**: Please check your encryption key.";
     }
+  },
+
+  async verifyPassword(password: string, sampleEncryptedText: string): Promise<boolean> {
+     if (!sampleEncryptedText || !sampleEncryptedText.startsWith('ENC:v1:')) {
+         return true; // Nothing to verify against
+     }
+     try {
+         const decrypted = await this.decrypt(sampleEncryptedText, password);
+         return !decrypted.startsWith("**Decryption Failed**");
+     } catch (e) {
+         return false;
+     }
   }
 };

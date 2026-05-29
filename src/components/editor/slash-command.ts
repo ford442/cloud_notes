@@ -111,7 +111,7 @@ export const getSlashSuggestionOptions = (items: CommandItem[] | (() => CommandI
           return true
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         return (component.ref as any)?.onKeyDown(props)
       },
 

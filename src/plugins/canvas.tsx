@@ -22,7 +22,7 @@ export const CanvasToolsPlugin: Plugin = {
 
         const color = isDark ? '#ffffff' : '#1e1e1e';
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const element: any = {
             id: `text-${Date.now()}`,
             type: 'text',
@@ -61,7 +61,7 @@ export const CanvasToolsPlugin: Plugin = {
         api.updateScene({
             elements: [...api.getSceneElements(), element],
             commitToHistory: true,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         } as any);
       }
     });
@@ -102,7 +102,7 @@ export const CanvasToolsPlugin: Plugin = {
         // Removing simple markdown characters for cleaner canvas display
         const plainText = content.replace(/[#*`_~]/g, '').trim();
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         const element: any = {
             id: `text-${Date.now()}`,
             type: 'text',
@@ -141,7 +141,7 @@ export const CanvasToolsPlugin: Plugin = {
         api.updateScene({
             elements: [...api.getSceneElements(), element],
             commitToHistory: true,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         } as any);
       }
     });

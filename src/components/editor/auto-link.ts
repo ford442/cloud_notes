@@ -139,7 +139,7 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
 
       if (!availableNotes || availableNotes.length === 0) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       if (!this.storage.fuseInstance || (this.storage.fuseInstance as any)._docs !== availableNotes) {
          this.storage.fuseInstance = new Fuse(availableNotes, {
              keys: ['name'],
@@ -147,7 +147,7 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
              includeScore: true,
              ignoreLocation: true
          })
-         // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
          ;(this.storage.fuseInstance as any)._docs = availableNotes;
 
 

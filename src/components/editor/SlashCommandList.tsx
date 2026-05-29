@@ -15,7 +15,7 @@ export const SlashCommandList = forwardRef((props: SlashCommandListProps, ref) =
   // We use a heuristic (length + first item) to avoid resetting on every render if props.items is a new reference but same content
   const firstItemTitle = props.items.length > 0 ? props.items[0].title : '';
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+
     setSelectedIndex(0)
   }, [props.items.length, firstItemTitle])
 

@@ -15,6 +15,7 @@ interface SettingsModalProps {
 
 import { SemanticService } from '../services/semantic';
 import { normalizeFlacApiUrl } from '../utils/flac';
+import { vpsStorageAPI } from '../services/vpsStorageAPI';
 
 const Tabs = ['General', 'Security', 'Integrations', 'Data'];
 
@@ -23,7 +24,12 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
   const [activeTab, setActiveTab] = useState('General');
   const [readwiseToken, setReadwiseToken] = useState('');
   const [encryptionKey, setEncryptionKey] = useState('');
+  const [newEncryptionKey, setNewEncryptionKey] = useState('');
   const [showKey, setShowKey] = useState(false);
+  const [showNewKey, setShowNewKey] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
+  const [rotationProgress, setRotationProgress] = useState<number | null>(null);
+
   const [isReindexing, setIsReindexing] = useState(false);
   const [reindexProgress, setReindexProgress] = useState('');
   const [apiUrl, setApiUrl] = useState('');
@@ -70,12 +76,88 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
     addToast('FLAC API URL set to match Storage API', 'success');
   };
 
-  const handleUpdateKey = async () => {
-    if (!encryptionKey.trim()) return addToast('Key cannot be empty', 'error');
-    if (await PluginRegistry.confirm('Warning: changing the encryption key will make existing encrypted notes unreadable. Are you sure?')) {
-        EncryptionService.setPassword(encryptionKey);
-        addToast('Encryption key updated. Please reload.', 'success');
-        setTimeout(() => window.location.reload(), 1500);
+  const handleRotateKey = async () => {
+    if (!encryptionKey.trim()) return addToast('Current key cannot be empty', 'error');
+    if (!newEncryptionKey.trim()) return addToast('New key cannot be empty', 'error');
+    if (encryptionKey === newEncryptionKey) return addToast('New key must be different', 'error');
+
+    const confirmed = await PluginRegistry.confirm(
+      'Are you sure you want to rotate your encryption key? This will download, decrypt, and re-encrypt all your notes. Please do not close the app during this process.'
+    );
+    if (!confirmed) return;
+
+    setIsRotating(true);
+    setRotationProgress(0);
+
+    try {
+      const notesMeta = await vpsStorageAPI.listNotes();
+      if (notesMeta.length === 0) {
+          EncryptionService.setPassword(newEncryptionKey);
+          addToast('Encryption key updated (no notes to migrate).', 'success');
+          setNewEncryptionKey('');
+          setIsRotating(false);
+          setRotationProgress(null);
+          return;
+      }
+
+      // 1. Verify current password works against the first note
+      const sampleNote = await vpsStorageAPI.readNote(notesMeta[0].name);
+      const isCurrentKeyValid = await EncryptionService.verifyPassword(encryptionKey, sampleNote.content);
+      if (!isCurrentKeyValid) {
+          setIsRotating(false);
+          setRotationProgress(null);
+          return addToast('Current key is incorrect. Decryption failed.', 'error');
+      }
+
+      // 2. Batch process notes
+      const BATCH_SIZE = 5;
+      let processedCount = 0;
+
+      for (let i = 0; i < notesMeta.length; i += BATCH_SIZE) {
+          const batch = notesMeta.slice(i, i + BATCH_SIZE);
+
+          await Promise.all(batch.map(async (meta) => {
+              try {
+                  const note = await vpsStorageAPI.readNote(meta.name);
+                  // Decrypt with OLD key
+                  const decryptedContent = await EncryptionService.decrypt(note.content, encryptionKey);
+
+                  // If it failed to decrypt (e.g. not encrypted, or corrupted), skip re-encryption to avoid data loss
+                  if (decryptedContent.startsWith('**Decryption Failed**')) {
+                      console.warn(`[KeyRotation] Skipping note ${meta.name} due to decryption failure.`);
+                      return;
+                  }
+
+                  // Encrypt with NEW key
+                  const reEncryptedContent = await EncryptionService.encrypt(decryptedContent, newEncryptionKey);
+
+                  // Save back to VPS
+                  await vpsStorageAPI.writeNote(meta.name, reEncryptedContent);
+              } catch (e) {
+                  console.error(`[KeyRotation] Error processing note ${meta.name}:`, e);
+                  throw new Error(`Failed to migrate note ${meta.name}`);
+              }
+          }));
+
+          processedCount += batch.length;
+          setRotationProgress(Math.round((processedCount / notesMeta.length) * 100));
+      }
+
+      // 3. Finalize: Set the new key globally
+      EncryptionService.setPassword(newEncryptionKey);
+      addToast('Encryption key successfully rotated!', 'success');
+      setEncryptionKey(newEncryptionKey);
+      setNewEncryptionKey('');
+
+      // Optionally reload to ensure all local caches are using the new key seamlessly
+      setTimeout(() => window.location.reload(), 1500);
+
+    } catch (e) {
+        console.error('[KeyRotation] Fatal error during rotation:', e);
+        addToast(`Key rotation failed: ${e instanceof Error ? e.message : 'Unknown error'}. Your global key was NOT changed.`, 'error');
+    } finally {
+        setIsRotating(false);
+        setRotationProgress(null);
     }
   };
 
@@ -370,11 +452,11 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
           {activeTab === 'Security' && (
             <div className="space-y-4">
                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/30 rounded-lg p-4 text-sm text-amber-800 dark:text-amber-200">
-                 <strong>Warning:</strong> Your notes are encrypted with this key. If you lose it, you lose access to your encrypted content. If you change it, you must migrate your data or it will be unreadable.
+                 <strong>Warning:</strong> Your notes are encrypted with this key. If you lose it, you lose access to your encrypted content. Rotating the key will securely re-encrypt all your saved notes.
                </div>
 
                <div>
-                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Encryption Key</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Current Encryption Key</label>
                 <div className="relative">
                   <input
                     type={showKey ? "text" : "password"}
@@ -395,12 +477,49 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
                 </div>
                </div>
 
-               <div className="flex justify-end">
+               <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 mt-4">New Encryption Key</label>
+                <div className="relative">
+                  <input
+                    type={showNewKey ? "text" : "password"}
+                    value={newEncryptionKey}
+                    onChange={e => setNewEncryptionKey(e.target.value)}
+                    disabled={isRotating}
+                    className="w-full pl-4 pr-12 py-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono disabled:opacity-50"
+                  />
+                  <button
+                    onClick={() => setShowNewKey(!showNewKey)}
+                    disabled={isRotating}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-50"
+                  >
+                    {showNewKey ? (
+                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    ) : (
+                      <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    )}
+                  </button>
+                </div>
+               </div>
+
+               {isRotating && rotationProgress !== null && (
+                 <div className="mt-4">
+                    <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
+                      <span>Re-encrypting notes...</span>
+                      <span>{rotationProgress}%</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                      <div className="bg-blue-500 h-2 rounded-full transition-all duration-300" style={{ width: `${rotationProgress}%` }}></div>
+                    </div>
+                 </div>
+               )}
+
+               <div className="flex justify-end mt-4">
                  <button
-                   onClick={handleUpdateKey}
-                   className="px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
+                   onClick={handleRotateKey}
+                   disabled={isRotating}
+                   className="px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
                  >
-                   Update Key
+                   {isRotating ? 'Rotating...' : 'Rotate Key'}
                  </button>
                </div>
             </div>

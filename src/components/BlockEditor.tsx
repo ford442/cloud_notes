@@ -198,7 +198,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
           ...PluginRegistry.getSlashCommands()
         ]),
       }),
-      // eslint-disable-next-line react-hooks/refs
+
       NoteLink.configure({
         suggestion: {
            ...getNoteLinkSuggestionOptions([]),
@@ -216,7 +216,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
            }
         },
       }),
-      // eslint-disable-next-line react-hooks/refs
+
       WikiLink.configure({
         suggestion: {
            ...getWikiLinkSuggestionOptions([]),
