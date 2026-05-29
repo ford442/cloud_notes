@@ -21,7 +21,7 @@ export const WikiLink = Extension.create<WikiLinkOptions>({
       suggestion: {
         char: '[',
         allowSpaces: true,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         findSuggestionMatch: (config: { char: string, allowSpaces: boolean, startOfLine: boolean, $position: any }): SuggestionMatch | null => {
             const { $position } = config;
 
@@ -202,7 +202,7 @@ export const getWikiLinkSuggestionOptions = (items: CloudItemMeta[]): Omit<Sugge
           return true
         }
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         return (component.ref as any)?.onKeyDown(props)
       },
 

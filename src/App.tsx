@@ -74,7 +74,7 @@ function App() {
     type: DialogType;
     message: string;
     defaultValue?: string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
     resolve: (value: any) => void;
   } | null>(null);
 
@@ -160,7 +160,7 @@ function App() {
     });
     PluginRegistry.setModeSetter((mode) => {
        if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets', 'textures'].includes(mode)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           setEditorMode(mode as any);
        } else {
          console.warn(`Plugin attempted to set invalid mode: ${mode}`);
@@ -373,7 +373,7 @@ function App() {
 
       // Save to History (Fire and Forget)
       if (savedId) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
           db.get<any[]>(STORE_HISTORY, savedId).then((history) => {
              const newHistory = [...(history || []), {
                  timestamp: Date.now(),

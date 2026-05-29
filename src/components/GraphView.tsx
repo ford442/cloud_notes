@@ -12,7 +12,7 @@ interface GraphViewProps {
 export const GraphView = ({ notes, currentId, onNodeClick, theme }: GraphViewProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const graphRef = useRef<any>(null);
 
   // Handle Resize
@@ -115,7 +115,7 @@ export const GraphView = ({ notes, currentId, onNodeClick, theme }: GraphViewPro
         height={dimensions.height}
         graphData={data}
         nodeLabel="name"
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         nodeColor={(node: any) => {
            if (node.isCurrent) return highlightColor;
 
@@ -130,10 +130,10 @@ export const GraphView = ({ notes, currentId, onNodeClick, theme }: GraphViewPro
         }}
         linkColor={() => isDark ? '#334155' : '#cbd5e1'} // slate-700 : slate-300
         backgroundColor={isDark ? '#0f172a' : '#f8fafc'} // slate-900 : slate-50
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         onNodeClick={(node: any) => onNodeClick(node.id as string)}
         cooldownTicks={100}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         nodeCanvasObject={(node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
           const label = node.name;
           const isCurrent = node.isCurrent;
@@ -161,7 +161,7 @@ export const GraphView = ({ notes, currentId, onNodeClick, theme }: GraphViewPro
             ctx.fillText(label, node.x!, node.y! + radius + fontSize);
           }
         }}
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
         onNodeHover={(node: any) => {
            if (containerRef.current) {
              containerRef.current.style.cursor = node ? 'pointer' : 'default';

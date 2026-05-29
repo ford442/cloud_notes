@@ -4,7 +4,7 @@ export interface BlockMetadata {
   createdBy?: string;
   lastEditedBy?: string;
   source?: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   [key: string]: any;
 }
 
@@ -18,7 +18,7 @@ export interface Block {
   createdAt: number;
   updatedAt: number;
   metadata: BlockMetadata;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   properties: Record<string, any>; // Attributes like 'checked' for tasks, 'level' for headings
 }
 
@@ -26,6 +26,6 @@ export interface Block {
 export interface CRDTBlockUpdate {
   blockId: string;
   clock: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   ops: any[]; // Placeholder for Yjs state updates
 }

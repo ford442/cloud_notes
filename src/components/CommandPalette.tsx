@@ -52,7 +52,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
              // In db.getAll, if the wrapper extracts the values, n is the Note.
              // If it returns { key, value }, n is the wrapper.
              // Looking at SearchModal, `const allNotes = await db.getAll<Note>(STORE_NOTES_CONTENT); setNotes(allNotes.map(n => n.value));` implies it returns {value: Note} objects or similar wrapper. Let's handle both cases to be safe.
-             // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
              const note = (n as any).value || n;
              if (note && note.id) map.set(note.id, note as Note);
           });
@@ -358,7 +358,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
           ) : (
             results.map((item, index) => {
               const isSectionStart = index === 0 || item.section !== results[index - 1].section;
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
               const extendedItem = item as any; // To access our injected properties safely
               const contentMatch = extendedItem.matches?.find((m: FuseResultMatch) => m.key === 'content' || m.key === 'keywords');
 

@@ -30,7 +30,7 @@ export const CanvasEditor = ({ initialData, onChange, theme }: CanvasEditorProps
                 isText = true;
                 // Convert text to Excalidraw Text Element
                 const text = initialData.trim();
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
                 const element: any = {
                     id: `text-${Date.now()}`,
                     type: "text",

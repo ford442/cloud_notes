@@ -4,9 +4,9 @@
 const worker = new Worker(new URL('./ai.worker.ts', import.meta.url), { type: 'module' });
 
 interface PendingRequest {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   resolve: (value: any) => void;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   reject: (reason?: any) => void;
   onProgress?: (msg: string) => void;
 }
@@ -35,7 +35,7 @@ worker.onerror = (e) => {
 };
 
 // Helper to send requests
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const request = <T>(type: string, payload: any, onProgress?: (msg: string) => void): Promise<T> => {
   const id = crypto.randomUUID();
   return new Promise((resolve, reject) => {
