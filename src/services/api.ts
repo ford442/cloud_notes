@@ -1,10 +1,25 @@
 // src/services/api.ts
 // Cloud Notes API Service - Integrated with Contabo Storage Manager
 
-import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OPS, getPendingOps } from '../utils/db';
+import { db, CACHE_KEYS, STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_PENDING_OPS, STORE_HISTORY, getPendingOps } from '../utils/db';
 import { EncryptionService } from '../utils/encryption';
 import { createPackedDescription } from '../utils/metadata';
 import { vpsStorageAPI } from './vpsStorageAPI';
+
+
+async function saveToHistory(id: string, note: Note, author: string) {
+    try {
+        const history = await db.get<any[]>(STORE_HISTORY, id) || [];
+        const newHistory = [...history, {
+            timestamp: Date.now(),
+            content: note.content,
+            author: author
+        }].slice(-50); // Keep last 50 versions
+        await db.set(STORE_HISTORY, id, newHistory);
+    } catch (e) {
+        console.warn('Failed to save to history', e);
+    }
+}
 
 function slugify(title: string): string {
     return title
@@ -527,6 +542,7 @@ export const StorageService = {
 
         // 1. Always do Optimistic Cache Update for immediate feedback
         db.set(STORE_NOTES_CONTENT, id, { ...note, id }).catch(console.warn);
+        saveToHistory(id, note, author);
 
         // 2. If clearly offline, throw to trigger queue immediately
         if (!navigator.onLine) throw new Error("Offline");
@@ -568,6 +584,7 @@ export const StorageService = {
       const res = await this._networkSaveNote(note, author);
       if (res.success && res.id) {
          db.set(STORE_NOTES_CONTENT, res.id, { ...note, id: res.id }).catch(console.warn);
+         saveToHistory(res.id, note, author);
       }
       return res;
 
@@ -588,6 +605,7 @@ export const StorageService = {
       // Store operation and optimistic cache
       await db.set(STORE_PENDING_OPS, `${op.timestamp}-${op.id}`, op);
       await db.set(STORE_NOTES_CONTENT, tempId, { ...note, id: tempId });
+      saveToHistory(tempId, note, author);
 
       // Optimistically update the list so it appears in the sidebar while offline
       const currentList = await this.getCachedNotes();

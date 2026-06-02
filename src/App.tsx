@@ -32,7 +32,6 @@ import { SettingsModal } from './components/SettingsModal'
 import { createPackedDescription } from './utils/metadata'
 import { Dialog } from './components/Dialog'
 import type { DialogType } from './components/Dialog'
-import { db, STORE_HISTORY } from './utils/db'
 import { HistoryModal } from './components/HistoryModal'
 
 // Initialize Core Plugins once
@@ -98,10 +97,19 @@ function App() {
   // Editor mode state
   const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures'>('rich')
 
+
+
+
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
     title: '', content: '', tags: '', subject: 'General', section: 'Inbox' 
   })
+
+  // Auto-save state
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'saving' | 'saved' | ''>('');
+  const lastSavedNoteRef = useRef<Note>({ title: '', content: '', subject: '', section: '', tags: '' });
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const currentNoteRef = useRef(currentNote)
   currentNoteRef.current = currentNote
   
@@ -229,22 +237,28 @@ function App() {
     let loadedFromCache = false;
 
     try {
+
       // 1. Try Cache First
       const cached = await StorageService.getCachedNote(id);
       if (cached) {
         setCurrentNote(cached);
+        lastSavedNoteRef.current = cached;
         setSelectedId(id);
         setIsLoading(false);
         loadedFromCache = true;
       }
 
+
       // 2. Fetch Fresh Content
       const content = await StorageService.getNoteContent(id)
+
 
       // Only update if we didn't have cache, or if we want to force update
       // For now, let's always update to ensure freshness, but user won't see a spinner if cached
       setCurrentNote(content)
+      lastSavedNoteRef.current = content
       setSelectedId(id)
+
     } catch {
       if (!loadedFromCache) {
         addToast("Failed to load note", "error");
@@ -254,14 +268,18 @@ function App() {
     }
   }
 
+
   const handleNew = () => {
     setSelectedId(null)
     // Keep current subject/section for rapid entry, or reset to defaults
-    setCurrentNote({ 
+    const newNoteState = {
       title: '', content: '', tags: '', 
       subject: 'General', section: 'Inbox' 
-    })
+    };
+    setCurrentNote(newNoteState);
+    lastSavedNoteRef.current = newNoteState;
   }
+
 
 
   const handleDelete = async (id?: string) => {
@@ -285,10 +303,12 @@ function App() {
     }
   }
 
-  const handleSave = async () => {
+
+  const handleSave = async (isAutoSave = false) => {
     if (!currentNote.title.trim()) return addToast("Title required", "error")
     
-    setIsSaving(true)
+    if (!isAutoSave) setIsSaving(true)
+
     
     // Stamp updatedAt so sync comparisons are reliable
     const noteToSave = { ...currentNote, updatedAt: new Date().toISOString() };
@@ -317,7 +337,7 @@ function App() {
         if (res.success) {
             savedId = selectedId;
             success = true;
-            addToast("Note updated successfully", "success")
+            if (!isAutoSave) addToast("Note updated successfully", "success")
         }
     } else {
         // CREATE NEW
@@ -325,7 +345,7 @@ function App() {
         if (res.success && res.id) {
             savedId = res.id;
             success = true;
-            addToast(isUpdate ? "Note saved as copy (title changed)" : "Note created successfully", "success")
+            if (!isAutoSave) addToast(isUpdate ? "Note saved as copy (title changed)" : "Note created successfully", "success")
         }
     }
 
@@ -342,6 +362,8 @@ function App() {
              date: new Date().toISOString(),
              description: packedDesc
           };
+
+
 
           setNotes(prev => {
               // If updating, replace. If new, add to top.
@@ -361,6 +383,7 @@ function App() {
                   return [newItem, ...prev];
               }
           });
+          lastSavedNoteRef.current = noteToSave;
       }
 
       // await refreshList() // Removed to prevent overwriting optimistic update with stale API data
@@ -371,22 +394,11 @@ function App() {
          SemanticService.indexNote(savedId, currentNote.content);
       }
 
-      // Save to History (Fire and Forget)
-      if (savedId) {
-
-          db.get<any[]>(STORE_HISTORY, savedId).then((history) => {
-             const newHistory = [...(history || []), {
-                 timestamp: Date.now(),
-                 content: noteToSave.content,
-                 author: authorName
-             }].slice(-50); // Keep last 50
-             db.set(STORE_HISTORY, savedId, newHistory);
-          });
-      }
     } else {
       addToast("Save failed", "error")
     }
-    setIsSaving(false)
+    if (!isAutoSave) setIsSaving(false)
+    return success;
   }
 
   const handleVpsSync = async (onProgress?: (message: string) => void) => {
@@ -407,6 +419,48 @@ function App() {
       return { pulled: 0, pushed: 0, errors: ['Unexpected error'] };
     }
   };
+
+
+
+  // Auto-save logic
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+
+  useEffect(() => {
+    const hasMeaningfulChange = () => {
+      const last = lastSavedNoteRef.current;
+      const current = currentNote;
+      return last.title !== current.title ||
+             last.content !== current.content ||
+             last.subject !== current.subject ||
+             last.section !== current.section ||
+             last.tags !== current.tags;
+    };
+
+    if (currentNote.title.trim() && hasMeaningfulChange()) {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+
+      autoSaveTimerRef.current = setTimeout(async () => {
+        setAutoSaveStatus('saving');
+        const success = await handleSaveRef.current(true);
+        if (success) {
+          setAutoSaveStatus('saved');
+          setTimeout(() => setAutoSaveStatus(''), 2000); // Clear after 2 seconds
+        } else {
+          setAutoSaveStatus('');
+        }
+      }, 1200);
+    }
+
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, [currentNote]);
+
+
+
+
+
 
   const handleAutoTag = async () => {
     if (!currentNote.content.trim()) return addToast("Write some content first!", "info");
@@ -757,22 +811,29 @@ function App() {
                     Delete
                   </button>
 
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg ${
-                      isSaving
-                        ? 'bg-amber-600/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                        : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-blue-500/25'
-                    }`}
-                  >
-                    {isSaving ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
-                        Saving...
-                      </div>
-                    ) : 'Save Note'}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    {autoSaveStatus && (
+                      <span className="text-xs font-medium text-slate-400 dark:text-slate-500 animate-in fade-in transition-opacity">
+                        {autoSaveStatus === 'saving' ? 'Saving...' : 'Saved'}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handleSave()}
+                      disabled={isSaving}
+                      className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg ${
+                        isSaving
+                          ? 'bg-amber-600/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                          : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-blue-500/25'
+                      }`}
+                    >
+                      {isSaving ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
+                          Saving...
+                        </div>
+                      ) : 'Save Note'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
