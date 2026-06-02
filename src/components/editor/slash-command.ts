@@ -59,7 +59,7 @@ export const getSlashSuggestionOptions = (items: CommandItem[] | (() => CommandI
       if (item.title.toLowerCase().includes(q)) return true
       if (item.searchTerms?.some(term => term.toLowerCase().includes(q))) return true
       return false
-    }).slice(0, 100)
+    })
   },
 
   render: () => {
