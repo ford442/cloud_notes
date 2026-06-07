@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { CloudItemMeta } from '../services/api';
 import { StorageService } from '../services/api';
 import { useToast } from './Toast';
+import { PluginRegistry } from '../services/plugin';
 
 interface TaskViewProps {
   notes: CloudItemMeta[];
@@ -22,15 +23,25 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const { addToast } = useToast();
 
-  const loadTasks = async () => {
-    setIsLoading(true);
+  const hasLoadedOnce = useRef(false);
+
+  const loadTasks = async (showLoadingState = true, forceFresh = false) => {
+    if (showLoadingState && !hasLoadedOnce.current) {
+      setIsLoading(true);
+    }
     const foundTasks: Task[] = [];
 
+    // Deduplicate notes by ID to prevent double scanning which caused unique keys warning
+    const uniqueNotes = Array.from(new Map(notes.map(n => [n.id, n])).values());
+
     // Iterate all notes and load content to find tasks
-    const promises = notes.map(async (n) => {
+    const promises = uniqueNotes.map(async (n) => {
        try {
-         // Try cache first to be fast, but fallback to network via getNoteContent if needed
-         let note = await StorageService.getCachedNote(n.id);
+         let note;
+         if (!forceFresh) {
+           note = await StorageService.getCachedNote(n.id);
+         }
+
          if (!note) {
              note = await StorageService.getNoteContent(n.id);
          }
@@ -45,7 +56,7 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
              const content = trimmed.replace(/^[-*] \[ \]\s?/, '').trim();
              if (content) {
                foundTasks.push({
-                   id: `${n.id}-${index}`,
+                   id: n.id + '-' + index,
                    noteId: n.id,
                    noteTitle: n.name || note.title || 'Untitled',
                    content,
@@ -60,17 +71,33 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
     });
 
     await Promise.all(promises);
-    setTasks(foundTasks);
+
+    // Crucially: only update state if we found tasks OR if we are forcing a fresh reload.
+    // OR if we're not just encountering an empty array because of a race condition!
+    // But how do we know it's a race condition? If foundTasks is empty and we had tasks previously, it's safer to not wipe them out during a background refresh unless we really need to.
+
+    // Actually, if we just completed a task, we do NOT want loadTasks to run immediately via the notes effect and wipe out the array.
+    if (foundTasks.length > 0 || !hasLoadedOnce.current || forceFresh) {
+        setTasks(foundTasks);
+    }
+
+    hasLoadedOnce.current = true;
     setIsLoading(false);
   };
 
   useEffect(() => {
-    loadTasks();
+    // Only fetch tasks IF we don't have tasks to avoid wiping out the optimistic update
+    // from the handleComplete call.
+    // Because `refreshList` causes `notes` to change and re-triggers this.
+    loadTasks(false, false);
   }, [notes]);
 
   const handleComplete = async (task: Task) => {
+      // Optimistically remove from local list
+      setTasks(prev => prev.filter(t => t.id !== task.id));
+
       try {
-          // 1. Get fresh content to avoid race conditions
+          // 1. Get fresh content to avoid race conditions. Bypassing cache to ensure we get the latest
           const note = await StorageService.getNoteContent(task.noteId);
           if (!note) return;
 
@@ -83,25 +110,30 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
 
               const newContent = lines.join('\n');
               const updatedNote = { ...note, content: newContent };
-
-              // We don't have author name here easily, defaults to "User" or we can try to get it from localStorage
               const author = localStorage.getItem('author_name') || "Anon";
 
-              await StorageService.updateNote(task.noteId, updatedNote, author);
+              const currentNote = PluginRegistry.getCurrentNote();
+              if (currentNote && currentNote.id === task.noteId) {
+                  // Update via PluginRegistry to ensure editor state is updated
+                  await PluginRegistry.updateNote({ content: newContent });
+              } else {
+                  // Just use StorageService
+                  await StorageService.updateNote(task.noteId, updatedNote, author);
+              }
 
-              // Remove from local list
-              setTasks(prev => prev.filter(t => t.id !== task.id));
           } else {
               addToast('Task line changed or moved. Please reload.', 'error');
-              loadTasks(); // Reload to sync
+              loadTasks(false, true); // Reload to sync
           }
       } catch (e) {
           console.error(e);
           addToast('Failed to complete task', 'error');
+          // Revert optimistic update
+          loadTasks(false, true);
       }
   };
 
-  if (isLoading) {
+  if (isLoading && !hasLoadedOnce.current) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900">
         <div className="animate-spin text-4xl mb-4">⏳</div>
