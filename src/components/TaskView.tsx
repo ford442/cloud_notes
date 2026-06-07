@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { CloudItemMeta } from '../services/api';
 import { StorageService } from '../services/api';
 import { useToast } from './Toast';
@@ -23,10 +23,10 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const { addToast } = useToast();
 
-  const hasLoadedOnce = useRef(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const loadTasks = async (showLoadingState = true, forceFresh = false) => {
-    if (showLoadingState && !hasLoadedOnce.current) {
+    if (showLoadingState && !hasLoadedOnce) {
       setIsLoading(true);
     }
     const foundTasks: Task[] = [];
@@ -77,11 +77,11 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
     // But how do we know it's a race condition? If foundTasks is empty and we had tasks previously, it's safer to not wipe them out during a background refresh unless we really need to.
 
     // Actually, if we just completed a task, we do NOT want loadTasks to run immediately via the notes effect and wipe out the array.
-    if (foundTasks.length > 0 || !hasLoadedOnce.current || forceFresh) {
+    if (foundTasks.length > 0 || !hasLoadedOnce || forceFresh) {
         setTasks(foundTasks);
     }
 
-    hasLoadedOnce.current = true;
+    setHasLoadedOnce(true);
     setIsLoading(false);
   };
 
@@ -114,10 +114,8 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
 
               const currentNote = PluginRegistry.getCurrentNote();
               if (currentNote && currentNote.id === task.noteId) {
-                  // Update via PluginRegistry to ensure editor state is updated
                   await PluginRegistry.updateNote({ content: newContent });
               } else {
-                  // Just use StorageService
                   await StorageService.updateNote(task.noteId, updatedNote, author);
               }
 
@@ -133,7 +131,7 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
       }
   };
 
-  if (isLoading && !hasLoadedOnce.current) {
+  if (isLoading && !hasLoadedOnce) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900">
         <div className="animate-spin text-4xl mb-4">⏳</div>
