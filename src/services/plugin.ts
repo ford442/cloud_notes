@@ -111,6 +111,10 @@ class PluginRegistryService {
     return this.noteGetter();
   }
 
+  async updateNote(updates: Partial<Note>): Promise<void> {
+    await this.noteUpdater(updates);
+  }
+
   register(plugin: Plugin) {
     if (this.plugins.has(plugin.id)) {
       console.warn(`Plugin ${plugin.id} is already registered.`);

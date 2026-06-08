@@ -1,11 +1,9 @@
-import { Node, mergeAttributes } from '@tiptap/core'
-import type { Node as ProseMirrorNode } from '@tiptap/pm/model'
-import { ReactNodeViewRenderer, NodeViewWrapper } from '@tiptap/react'
+import React, { useMemo, useState } from 'react'
+import { NodeViewWrapper } from '@tiptap/react'
 import { Excalidraw } from '@excalidraw/excalidraw'
 import "@excalidraw/excalidraw/index.css"
-import React, { useMemo, useState } from 'react'
 
-const ExcalidrawComponent = (props: any) => {
+export const ExcalidrawComponent = (props: any) => {
   const node = props.node;
   const updateAttributes = props.updateAttributes;
   const dataString = node.attrs.data;
@@ -96,49 +94,3 @@ const ExcalidrawComponent = (props: any) => {
     </NodeViewWrapper>
   )
 }
-
-export const ExcalidrawExtension = Node.create({
-  name: 'excalidraw',
-
-  group: 'block',
-
-  atom: true,
-
-  addAttributes() {
-    return {
-      data: {
-        default: '{}',
-      },
-    }
-  },
-
-  parseHTML() {
-    return [
-      {
-        tag: 'pre',
-        preserveWhitespace: 'full',
-        getAttrs: (node: HTMLElement) => {
-            if (node instanceof HTMLElement) {
-                const code = node.querySelector('code.language-excalidraw');
-                if (code) {
-                    return { data: code.textContent || '{}' }
-                }
-            }
-            return false
-        },
-      },
-    ]
-  },
-
-  renderHTML({ node }: { node: ProseMirrorNode }) {
-    return [
-      'pre',
-      mergeAttributes(this.options.HTMLAttributes),
-      ['code', { class: 'language-excalidraw' }, node.attrs.data]
-    ]
-  },
-
-  addNodeView() {
-    return ReactNodeViewRenderer(ExcalidrawComponent)
-  },
-})
