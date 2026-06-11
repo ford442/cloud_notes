@@ -19,13 +19,19 @@ async def verify_textures_panel():
             # Switch to textures mode via command palette
             print("Switching to textures mode...")
             await page.click("body") # Ensure focus
+
+            # Use native evaluate dispatch, as it works reliably across environments based on verify_cmd_palette.py
             await page.evaluate("() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true, bubbles: true })); }")
 
             await page.wait_for_selector('input[placeholder="Type to search notes, commands, or ask AI..."]', timeout=5000)
 
-            await page.get_by_placeholder("Type to search notes, commands, or ask AI...").fill("Textures")
+            await page.locator('input[placeholder="Type to search notes, commands, or ask AI..."]').fill("Textures")
+
+            # Wait for search results to populate
             await page.wait_for_timeout(1000)
-            await page.get_by_text("Textures", exact=True).first.click()
+
+            # Hit enter to select the first result since it's already highlighted
+            await page.keyboard.press('Enter')
 
             # Wait for panel to load
             print("Waiting for textures panel...")
