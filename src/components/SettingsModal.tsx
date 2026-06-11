@@ -16,12 +16,14 @@ interface SettingsModalProps {
 import { SemanticService } from '../services/semantic';
 import { normalizeFlacApiUrl } from '../utils/flac';
 import { vpsStorageAPI } from '../services/vpsStorageAPI';
+import { MigrationDashboard } from './MigrationDashboard';
 
 const Tabs = ['General', 'Security', 'Integrations', 'Data'];
 
 export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, theme, setTheme, onVpsSync }: SettingsModalProps) => {
   const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('General');
+  const [isMigrationDashboardOpen, setIsMigrationDashboardOpen] = useState(false);
   const [readwiseToken, setReadwiseToken] = useState('');
   const [encryptionKey, setEncryptionKey] = useState('');
   const [newEncryptionKey, setNewEncryptionKey] = useState('');
@@ -329,6 +331,16 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
                         Save URL
                       </button>
                     </div>
+
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <button
+                        onClick={() => setIsMigrationDashboardOpen(true)}
+                        className="px-4 py-2 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/30 dark:hover:bg-purple-800/40 text-purple-700 dark:text-purple-300 rounded-xl font-medium transition-colors w-full text-left flex items-center justify-between"
+                      >
+                        <span>Open Migration Dashboard</span>
+                        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -599,6 +611,10 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
 
         </div>
       </div>
+      <MigrationDashboard
+        isOpen={isMigrationDashboardOpen}
+        onClose={() => setIsMigrationDashboardOpen(false)}
+      />
     </div>
   );
 };

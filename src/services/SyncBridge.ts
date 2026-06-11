@@ -1,5 +1,7 @@
 import { StorageService } from './api';
 import type { CloudItemMeta } from './api';
+import { vpsStorageAPI } from './vpsStorageAPI';
+import type { VpsNoteMeta } from './vpsStorageAPI';
 
 export class SyncBridge {
   /**
@@ -20,26 +22,68 @@ export class SyncBridge {
     let freshNotes: CloudItemMeta[] = [];
     let isRemoteFetchSuccessful = false;
 
+    // 2. Fetch from the new VPS network and legacy network
+    let vpsNotes: VpsNoteMeta[] = [];
     try {
-      // 2. Fetch from the actual network (tell it to skip updating the cache so we can merge first)
-      freshNotes = await StorageService.getNotes(true);
-
-      // If the backend returned items (or we successfully reached the backend but it was intentionally empty)
-      // We assume it's successful. Note: if the server is offline, getNotes catches and returns cachedNotes anyway.
-      // But we can check if it returned a genuine fresh list.
+      vpsNotes = await vpsStorageAPI.listNotes();
       isRemoteFetchSuccessful = true;
     } catch (e) {
-      console.warn('[SyncBridge] Failed to fetch fresh notes from server', e);
-      freshNotes = [];
+      console.warn('[SyncBridge] Failed to fetch notes from VPS', e);
+    }
+
+    try {
+      // Fetch from the actual network (legacy HF/FTP API) (tell it to skip updating the cache so we can merge first)
+      const legacyNotes = await StorageService.getNotes(true);
+      freshNotes = legacyNotes;
+      if (legacyNotes.length > 0) isRemoteFetchSuccessful = true;
+    } catch (e) {
+      console.warn('[SyncBridge] Failed to fetch fresh notes from legacy server', e);
+      // We don't overwrite freshNotes to [] if vpsNotes was successfully populated,
+      // but freshNotes is already the legacy notes.
     }
 
     // 3. Merging logic (The Safety Valve)
     const mergedMap = new Map<string, CloudItemMeta>();
     let protectedCount = 0;
 
-    // Start with the fresh server truth
+    // Start with the fresh server truth (legacy)
     for (const fresh of freshNotes) {
       mergedMap.set(fresh.id, fresh);
+    }
+
+    // Merge VPS notes on top (preferring them as they are the new source of truth)
+    // VPS notes might have a different format, but we try to construct CloudItemMeta
+    // Note: VpsNoteMeta doesn't have an ID. We will use the filename as an ID if needed,
+    // but the best way is to map them or merge them carefully.
+    for (const vpsNote of vpsNotes) {
+        // vpsNote.name is the filename e.g., "my-note.md"
+        // Let's try to find an existing note or synthesize one.
+        const existingNoteId = Array.from(mergedMap.keys()).find(k => {
+           const meta = mergedMap.get(k);
+           return meta && (meta.id === vpsNote.name || meta.id === vpsNote.name.replace('.md', '') || meta.name === vpsNote.name.replace('.md', ''));
+        });
+
+        if (existingNoteId) {
+            // Update existing
+            const existing = mergedMap.get(existingNoteId)!;
+            // Assuming VPS is newer or preferred
+            mergedMap.set(existingNoteId, {
+                ...existing,
+                // Ideally we'd use updated_at, but we'll prefer VPS if present
+                date: vpsNote.updated_at || existing.date
+            });
+        } else {
+            // It's a completely new note from VPS not in legacy
+            const newId = vpsNote.name.replace('.md', ''); // Fallback ID
+            mergedMap.set(newId, {
+                id: newId,
+                name: vpsNote.name.replace('.md', ''),
+                author: 'VPS', // Unknown
+                date: vpsNote.updated_at,
+                type: 'note',
+                description: ''
+            });
+        }
     }
 
     // Now look at our local cache. If we have a note that the server doesn't,
