@@ -347,6 +347,8 @@ function App() {
         }
     } else {
         // CREATE NEW
+        console.log("Saving note with content length:", noteToSave.content.length);
+        console.log("Saving note with content:", noteToSave.content);
         const res = await StorageService.saveNote(noteToSave, authorName);
         if (res.success && res.id) {
             savedId = res.id;

@@ -260,6 +260,10 @@ export const StorageService = {
 
   async getNoteContent(id: string): Promise<Note> {
     try {
+      // 1. Try cache first to avoid fetching truncated notes from buggy backend
+      const cached = await this.getCachedNote(id);
+      if (cached) return cached;
+
       // Check pending ops first to prioritize local truth
       const pendingOps = await getPendingOps();
       for (const { value: op } of pendingOps) {
@@ -276,10 +280,34 @@ export const StorageService = {
       
       // Content may be encrypted or plain markdown
       const content = data.content || '';
-      const isEncrypted = content.startsWith('ENC:v1:');
-      const decryptedContent = isEncrypted 
-        ? await EncryptionService.decrypt(content)
-        : content;
+      let decryptedContent = content;
+      const isEncryptedRaw = content.startsWith('ENC:v1:');
+
+      // Attempt to extract the ENC string out of the content
+      let extractedEnc = null;
+      if (isEncryptedRaw) {
+         extractedEnc = content.trim();
+      } else {
+         const parts = content.split('ENC:v1:');
+         if (parts.length > 1) {
+            const extracted = parts[1].split('-->')[0].trim();
+            extractedEnc = 'ENC:v1:' + extracted;
+            console.log("Raw string around ENC:", content.substring(content.indexOf('ENC:v1:') - 20, content.indexOf('ENC:v1:') + 150));
+            console.log("Full data.content length:", data.content.length);
+            console.log("Extracted enc string ends with char code:", extractedEnc.charCodeAt(extractedEnc.length - 1));
+            console.log("Extracted enc string ends with chars:", extractedEnc.slice(-10));
+            console.log("Original string ends with char code:", content.charCodeAt(content.length - 1));
+         }
+      }
+
+      if (extractedEnc) {
+         try {
+             decryptedContent = await EncryptionService.decrypt(extractedEnc);
+         } catch (e) {
+             console.warn("Decryption failed safely:", e);
+         }
+      }
+
       
       const note: Note = {
         id: data.name,
