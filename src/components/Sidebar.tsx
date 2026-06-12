@@ -207,7 +207,7 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                         <div className="ml-6 space-y-1 border-l border-slate-300/20 dark:border-slate-600/20 pl-3">
                           {sectionNotes.map(note => (
                             <div
-                              key={note.id}
+                              key={`sidebar-${subject}-${section}-${note.id}`}
                               draggable="true"
                               onDragStart={(e) => {
                                   e.dataTransfer.setData('text/plain', note.id);

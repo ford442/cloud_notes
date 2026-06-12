@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { CloudItemMeta } from '../services/api';
 import { StorageService } from '../services/api';
 import { useToast } from './Toast';
@@ -22,7 +22,7 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const { addToast } = useToast();
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     setIsLoading(true);
     const foundTasks: Task[] = [];
 
@@ -31,8 +31,13 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
        try {
          // Try cache first to be fast, but fallback to network via getNoteContent if needed
          let note = await StorageService.getCachedNote(n.id);
-         if (!note) {
-             note = await StorageService.getNoteContent(n.id);
+         if (!note || !note.content) {
+             // Only fetch if not in cache, which avoids overwriting with buggy server data for fresh notes
+             try {
+                note = await StorageService.getNoteContent(n.id);
+             } catch (e) {
+                console.warn(e);
+             }
          }
 
          if (!note || !note.content) return;
@@ -60,45 +65,68 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
     });
 
     await Promise.all(promises);
+
+    // Sort tasks logically by note and line index
+    foundTasks.sort((a, b) => {
+        if (a.noteId === b.noteId) return a.lineIndex - b.lineIndex;
+        return a.noteId.localeCompare(b.noteId);
+    });
+
+    // We add an index to guarantee unique React keys so we don't have dupes dropped by React
     setTasks(foundTasks);
     setIsLoading(false);
-  };
+  }, [notes]);
 
   useEffect(() => {
     loadTasks();
-  }, [notes]);
+  }, [loadTasks]);
 
   const handleComplete = async (task: Task) => {
-      try {
-          // 1. Get fresh content to avoid race conditions
-          const note = await StorageService.getNoteContent(task.noteId);
-          if (!note) return;
-
-          const lines = note.content.split('\n');
-          // Verify the line still exists and matches roughly (ignoring minor whitespace changes if possible, but strict for now)
-          // We check if the line at index contains the task content and starts with - [ ]
-          if (lines[task.lineIndex] && lines[task.lineIndex].includes(task.content)) {
-              // Replace [ ] with [x]
-              lines[task.lineIndex] = lines[task.lineIndex].replace(/[-*] \[ \]/, (match) => match.replace('[ ]', '[x]'));
-
-              const newContent = lines.join('\n');
-              const updatedNote = { ...note, content: newContent };
-
-              // We don't have author name here easily, defaults to "User" or we can try to get it from localStorage
-              const author = localStorage.getItem('author_name') || "Anon";
-
-              await StorageService.updateNote(task.noteId, updatedNote, author);
-
-              // Remove from local list
-              setTasks(prev => prev.filter(t => t.id !== task.id));
-          } else {
-              addToast('Task line changed or moved. Please reload.', 'error');
-              loadTasks(); // Reload to sync
-          }
-      } catch (e) {
-          console.error(e);
-          addToast('Failed to complete task', 'error');
+    try {
+      const note = await StorageService.getNoteContent(task.noteId);
+      if (!note) {
+        addToast('Note not found', 'error');
+        return;
       }
+
+      const lines = note.content.split('\n');
+
+      let updated = false;
+      for (let i = 0; i < lines.length; i++) {
+        const trimmed = lines[i].trim();
+        const contentMatch = trimmed.replace(/^[-*]\s*\[\s*\]\s?/, '').replace(/&nbsp;/g, '').replace(/\u200b/g, '').trim();
+        const taskMatch = task.content.replace(/&nbsp;/g, '').replace(/\u200b/g, '').trim();
+
+        if ((trimmed.startsWith('-') || trimmed.startsWith('*')) && trimmed.includes('[ ]') &&
+            contentMatch === taskMatch) {
+
+          // Mark as completed
+          lines[i] = lines[i].replace(/\[\s*\]/, '[x]');
+          updated = true;
+          break;
+        }
+      }
+
+      if (!updated) {
+        addToast('Task no longer matches (edited?)', 'error');
+        await loadTasks();
+        return;
+      }
+
+      const newContent = lines.join('\n');
+      const updatedNote = { ...note, content: newContent };
+      const author = localStorage.getItem('author_name') || "Anon";
+
+      await StorageService.updateNote(task.noteId, updatedNote, author);
+
+      addToast('Task completed ✓', 'success');
+      await loadTasks();
+
+    } catch (error) {
+      console.error('Complete task failed:', error);
+      addToast('Failed to complete task', 'error');
+      await loadTasks();
+    }
   };
 
   if (isLoading) {
