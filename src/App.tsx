@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, lazy, Suspense } from 'react'
 import { StorageService } from './services/api'
+import { SyncBridge } from './services/SyncBridge'
 import { AIService } from './services/ai'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
@@ -214,17 +215,22 @@ function App() {
   const refreshList = async () => {
     setIsLoading(true)
 
-    // 1. Instant Load from Cache
+    // 1. Instant Load from Cache (Immediate Feedback - "The Juice")
     const cached = await StorageService.getCachedNotes();
     if (cached.length > 0) {
       setNotes(cached);
-      setIsLoading(false); // Immediate user feedback
+      setIsLoading(false);
     }
 
-    // 2. Background Sync
+    // 2. Safe Background Sync via Bridge
     try {
-      const fresh = await StorageService.getNotes();
-      setNotes(fresh);
+      const { notes: safeNotes, protectedCount, synced } = await SyncBridge.safeGetNotes();
+      setNotes(safeNotes);
+
+      // Tasteful feedback if the safety valve activated
+      if (synced && protectedCount > 0) {
+         addToast(`Protected ${protectedCount} local note(s) missing from server`, "info");
+      }
     } catch {
       if (cached.length === 0) addToast("Failed to fetch notes", "error");
     } finally {

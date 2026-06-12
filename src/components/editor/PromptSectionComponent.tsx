@@ -1,8 +1,7 @@
-import { Node, mergeAttributes } from '@tiptap/core';
-import { ReactNodeViewRenderer, NodeViewWrapper, NodeViewContent } from '@tiptap/react';
+import { NodeViewWrapper, NodeViewContent } from '@tiptap/react';
 
 // The React Component for the Node View
-const PromptSectionComponent = ({ node }: any) => {
+export const PromptSectionComponent = ({ node }: any) => {
   const maxLength = node.attrs.maxLength || 2000;
 
   // Calculate text length recursively from the node content
@@ -27,43 +26,3 @@ const PromptSectionComponent = ({ node }: any) => {
     </NodeViewWrapper>
   );
 };
-
-export const PromptSectionExtension = Node.create({
-  name: 'promptSection',
-
-  group: 'block',
-  content: 'block+', // Allow nested blocks (paragraphs, lists, etc.)
-
-  addAttributes() {
-    return {
-      maxLength: {
-        default: 2000,
-        parseHTML: (element: HTMLElement) => parseInt(element.getAttribute('data-max-length') || '2000', 10),
-        renderHTML: (attributes: Record<string, unknown>) => {
-          if (!attributes.maxLength) {
-            return {};
-          }
-          return {
-            'data-max-length': attributes.maxLength,
-          };
-        },
-      },
-    };
-  },
-
-  parseHTML() {
-    return [
-      {
-        tag: 'div[data-type="prompt-section"]',
-      },
-    ];
-  },
-
-  renderHTML({ HTMLAttributes }: { HTMLAttributes: Record<string, unknown> }) {
-    return ['div', mergeAttributes(HTMLAttributes, { 'data-type': 'prompt-section' }), 0];
-  },
-
-  addNodeView() {
-    return ReactNodeViewRenderer(PromptSectionComponent);
-  },
-});
