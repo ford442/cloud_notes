@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import type { CloudItemMeta } from '../services/api';
 import { StorageService } from '../services/api';
+import { PluginRegistry } from '../services/plugin';
 import { useToast } from './Toast';
 
 interface TaskViewProps {
@@ -22,15 +23,18 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const { addToast } = useToast();
 
-  const loadTasks = async () => {
+  // Deduplicate notes by ID
+  const uniqueNotes = Array.from(new Map(notes.map(n => [n.id, n])).values());
+
+  const loadTasks = async (forceFresh = false) => {
     setIsLoading(true);
     const foundTasks: Task[] = [];
 
     // Iterate all notes and load content to find tasks
-    const promises = notes.map(async (n) => {
+    const promises = uniqueNotes.map(async (n) => {
        try {
          // Try cache first to be fast, but fallback to network via getNoteContent if needed
-         let note = await StorageService.getCachedNote(n.id);
+         let note = forceFresh ? null : await StorageService.getCachedNote(n.id);
          if (!note) {
              note = await StorageService.getNoteContent(n.id);
          }
@@ -42,7 +46,7 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
            // Match "- [ ] ", "- [ ]", "* [ ] "
            const trimmed = line.trim();
            if (trimmed.startsWith('- [ ]') || trimmed.startsWith('* [ ]')) {
-             const content = trimmed.replace(/^[-*] \[ \]\s?/, '').trim();
+             const content = trimmed.replace(/^[-*] \[ \]\s?/, '').replace(/&nbsp;$/, '').trim();
              if (content) {
                foundTasks.push({
                    id: `${n.id}-${index}`,
@@ -60,7 +64,19 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
     });
 
     await Promise.all(promises);
-    setTasks(foundTasks);
+    if (foundTasks.length > 0 || forceFresh) {
+        // Sort tasks by noteTitle and then lineIndex to maintain consistent rendering
+        foundTasks.sort((a, b) => {
+            if (a.noteTitle === b.noteTitle) {
+                return a.lineIndex - b.lineIndex;
+            }
+            return a.noteTitle.localeCompare(b.noteTitle);
+        });
+        setTasks(foundTasks);
+    } else if (tasks.length > 0 && !forceFresh) {
+        // Do NOT wipe existing tasks on a failed/empty refresh
+        console.warn("loadTasks returned empty — keeping previous tasks");
+    }
     setIsLoading(false);
   };
 
@@ -69,35 +85,67 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
   }, [notes]);
 
   const handleComplete = async (task: Task) => {
+      // Optimistic removal
+      setTasks(prev => prev.filter(t => t.id !== task.id));
+
       try {
-          // 1. Get fresh content to avoid race conditions
-          const note = await StorageService.getNoteContent(task.noteId);
-          if (!note) return;
+          const currentNote = PluginRegistry.getCurrentNote();
+          let note;
+
+          if (currentNote && currentNote.id === task.noteId) {
+              note = currentNote;
+          } else {
+              note = await StorageService.getCachedNote(task.noteId);
+              if (!note) {
+                  note = await StorageService.getNoteContent(task.noteId);
+              }
+          }
+
+          if (!note?.content) throw new Error("Note not found");
 
           const lines = note.content.split('\n');
-          // Verify the line still exists and matches roughly (ignoring minor whitespace changes if possible, but strict for now)
-          // We check if the line at index contains the task content and starts with - [ ]
-          if (lines[task.lineIndex] && lines[task.lineIndex].includes(task.content)) {
-              // Replace [ ] with [x]
-              lines[task.lineIndex] = lines[task.lineIndex].replace(/[-*] \[ \]/, (match) => match.replace('[ ]', '[x]'));
+          let updated = false;
 
-              const newContent = lines.join('\n');
-              const updatedNote = { ...note, content: newContent };
-
-              // We don't have author name here easily, defaults to "User" or we can try to get it from localStorage
-              const author = localStorage.getItem('author_name') || "Anon";
-
-              await StorageService.updateNote(task.noteId, updatedNote, author);
-
-              // Remove from local list
-              setTasks(prev => prev.filter(t => t.id !== task.id));
+          // Primary: update at known line index
+          if (lines[task.lineIndex]?.includes(task.content) && lines[task.lineIndex].match(/\[\s*\]/)) {
+            lines[task.lineIndex] = lines[task.lineIndex].replace(/\[\s*\]/, '[x]');
+            updated = true;
           } else {
-              addToast('Task line changed or moved. Please reload.', 'error');
-              loadTasks(); // Reload to sync
+            // Fallback: search across all lines
+            for (let i = 0; i < lines.length; i++) {
+              if (lines[i].includes(task.content) && lines[i].match(/\[\s*\]/)) {
+                lines[i] = lines[i].replace(/\[\s*\]/, '[x]');
+                updated = true;
+                break;
+              }
+            }
           }
-      } catch (e) {
-          console.error(e);
+
+          if (!updated) {
+            addToast('Could not locate task in note', 'error');
+            loadTasks(true);
+            return;
+          }
+
+          const newContent = lines.join('\n');
+          const author = localStorage.getItem('author_name') || "Anon";
+
+          if (currentNote && currentNote.id === task.noteId) {
+              // Update using PluginRegistry context function so it reflects in Editor immediately
+              await PluginRegistry.updateNote({ content: newContent });
+          } else {
+              await StorageService.updateNote(task.noteId, { ...note, content: newContent }, author);
+          }
+
+          addToast('Task completed ✓', 'success');
+
+          // Only refresh after successful save (with small delay for UI polish)
+          setTimeout(() => loadTasks(false), 250);
+      } catch (error) {
+          console.error('Complete task failed:', error);
           addToast('Failed to complete task', 'error');
+          // Revert optimistic change
+          loadTasks(false);
       }
   };
 
