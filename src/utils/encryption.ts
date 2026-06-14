@@ -8,6 +8,22 @@ const PBKDF2_ITERATIONS = 100000;
 const SALT_SIZE = 16;
 const IV_SIZE = 12; // AES-GCM recommendation
 
+function safeAtob(str: string): string {
+  if (!str) return "";
+  const originalStr = str;
+  let cleaned = str.replace(/[\s\n\r\t]+/g, '').trim();
+  const padLen = (4 - (cleaned.length % 4)) % 4;
+  if (padLen !== 0 && padLen !== 4) {
+    cleaned += '='.repeat(padLen);
+  }
+    try {
+    return atob(cleaned);
+  } catch (e) {
+    console.error("safeAtob failed on", originalStr.substring(0, 100));
+    throw e;
+  }
+}
+
 // Helper to access crypto in both Browser and Node (for testing)
 const getCrypto = () => {
   if (typeof window !== 'undefined' && window.crypto) return window.crypto;
@@ -120,9 +136,9 @@ export const EncryptionService = {
         const parts = encryptedText.split(':');
         if (parts.length !== 5) throw new Error("Invalid format");
 
-        const salt = Uint8Array.from(atob(parts[2]), c => c.charCodeAt(0));
-        const iv = Uint8Array.from(atob(parts[3]), c => c.charCodeAt(0));
-        const ciphertext = Uint8Array.from(atob(parts[4]), c => c.charCodeAt(0));
+        const salt = Uint8Array.from(safeAtob(parts[2]), c => c.charCodeAt(0));
+        const iv = Uint8Array.from(safeAtob(parts[3]), c => c.charCodeAt(0));
+        const ciphertext = Uint8Array.from(safeAtob(parts[4]), c => c.charCodeAt(0));
 
         const key = await this.deriveKey(pass, salt);
 

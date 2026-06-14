@@ -125,7 +125,9 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
                             noteTitle.toLowerCase().includes(query.toLowerCase())
 
       if (isGoodMatch && isPrefixMatch) {
-        extensionThis.storage.currentSuggestion = { title: noteTitle, id: noteId }
+        // Track the full matched query to accurately replace it when "Tab" is pressed
+        const exactQuery = query;
+        extensionThis.storage.currentSuggestion = { title: noteTitle, id: noteId, exactQuery }
         updateDecorations(view, noteTitle)
         view.dispatch(view.state.tr.setMeta(pluginKey, { decorationSet }))
       } else {
@@ -178,14 +180,8 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
                 const { state } = view
                 const { tr, selection } = state
 
-                // Get the text we matched against to replace it accurately
-                const $from = selection.$from
-                const textBefore = $from.parent.textContent.slice(0, $from.parentOffset)
-
-                // Find the exact query we matched (last 1-3 words)
-                // We'll use a regex to match up to 3 trailing words
-                const match = textBefore.match(/(?:\S+\s+){0,2}\S+\s*$/)
-                const exactQuery = match ? match[0] : ''
+                // Retrieve the exact matched query from the suggestion to avoid over-deleting
+                const exactQuery = suggestion.exactQuery || ''
 
                 const replaceFrom = selection.from - exactQuery.length
 

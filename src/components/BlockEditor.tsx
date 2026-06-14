@@ -164,7 +164,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
         debounceMs: 150,
       }),
       StarterKit.configure({
-        // Disable extensions that clash with our custom ones if needed
+        history: false, // Disabled because we use Yjs + custom undo manager
       }),
       ...(ydoc ? [Collaboration.configure({
         document: ydoc,
