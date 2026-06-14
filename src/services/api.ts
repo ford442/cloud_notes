@@ -246,6 +246,15 @@ export const StorageService = {
         }
       }
 
+      // Protect local-only / recently-synced notes that the server doesn't know about yet
+      const cached = await this.getCachedNotes();
+      for (const cachedNote of cached) {
+          const existsOnServerOrPending = metaList.some(m => m.id === cachedNote.id);
+          if (!existsOnServerOrPending) {
+              metaList.push(cachedNote);
+          }
+      }
+
       if (!skipCacheUpdate) {
         db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, metaList).catch(e =>
           console.warn('[Cache] Failed to update notes list', e)
