@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { CloudItemMeta } from '../services/api';
 import { StorageService } from '../services/api';
-import { useToast } from './Toast';
 import { PluginRegistry } from '../services/plugin';
+import { useToast } from './Toast';
 
 interface TaskViewProps {
   notes: CloudItemMeta[];
@@ -16,7 +16,7 @@ interface Task {
   noteTitle: string;
   content: string;
   lineIndex: number;
-  rawLine?: string; // For more reliable matching
+  rawLine?: string;
 }
 
 export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
@@ -55,7 +55,7 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
         const lines = noteContent.split('\n');
         lines.forEach((line, index) => {
           const trimmed = line.trim();
-          if (trimmed.match(/^[-*]\s*\[\s*\]/)) {  // - [ ] or * [ ]
+          if (trimmed.match(/^[-*]\s*\[\s*\]/)) {
             const content = trimmed.replace(/^[-*]\s*\[\s*\]\s?/, '').trim();
             if (content) {
               foundTasks.push({
@@ -76,27 +76,28 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
 
     await Promise.all(promises);
 
-    // Only update if we found tasks or it's the first real load / forced refresh
+    // Only update state when we have real data or it's the first load
     if (foundTasks.length > 0 || !hasLoadedOnce || forceFresh) {
-      // Sort: by note, then by line index
       foundTasks.sort((a, b) => {
         if (a.noteId === b.noteId) return a.lineIndex - b.lineIndex;
         return a.noteId.localeCompare(b.noteId);
       });
       setTasks(foundTasks);
+    } else if (tasks.length > 0 && !forceFresh) {
+      console.warn('[TaskView] loadTasks returned empty — preserving current tasks');
     }
 
     setHasLoadedOnce(true);
     setIsLoading(false);
-  }, [notes, hasLoadedOnce]);
+  }, [notes, hasLoadedOnce, tasks.length]);
 
-  // Initial + notes list change load
+  // Initial load + when notes list changes
   useEffect(() => {
     loadTasks(true, false);
   }, [loadTasks]);
 
   const handleComplete = async (task: Task) => {
-    // Optimistic UI update
+    // Optimistic update
     setTasks(prev => prev.filter(t => t.id !== task.id));
 
     try {
@@ -122,7 +123,9 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
 
       // Try to update at stored line index first
       let updated = false;
-      if (lines[task.lineIndex]?.includes(task.content)) {
+
+      // Primary match by line index
+      if (lines[task.lineIndex]?.includes(task.content) && lines[task.lineIndex].match(/\[\s*\]/)) {
         lines[task.lineIndex] = lines[task.lineIndex].replace(/\[\s*\]/, '[x]');
         updated = true;
       } else {
@@ -154,12 +157,11 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
       }
 
       addToast('Task completed ✓', 'success');
-      // Small delay so the optimistic removal feels smooth
-      setTimeout(() => loadTasks(false, true), 300);
+      setTimeout(() => loadTasks(false, false), 300); // gentle refresh
     } catch (error) {
       console.error('Complete task failed:', error);
       addToast('Failed to complete task', 'error');
-      loadTasks(false, true); // Revert + refresh
+      loadTasks(false, true); // revert + refresh
     }
   };
 
