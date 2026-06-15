@@ -133,10 +133,6 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
 
   const editor = useEditor({
     extensions: [
-    AutoLinkExtension.configure({
-      debounceMs: 150,
-    }),
-
       // Custom extension to bind Yjs UndoManager to keyboard shortcuts
       Extension.create({
         name: 'yjs-undo',
@@ -432,7 +428,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
 
 
   useEffect(() => {
-    if (editor && availableNotes) {
+    if (editor && availableNotes && editor.storage.autoLink) {
       editor.storage.autoLink.availableNotes = availableNotes;
     }
   }, [editor, availableNotes]);
@@ -498,6 +494,18 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
 
   return (
     <div className="w-full h-full overflow-auto relative" onClick={() => editor?.commands.focus()}>
+      {editor && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            editor.chain().focus().toggleTaskList().run();
+          }}
+          className="absolute top-4 right-8 z-10 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-sm text-sm font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors flex items-center gap-2"
+          title="Insert Task List"
+        >
+          <span className="text-blue-500">☑</span> Tasks
+        </button>
+      )}
       {editor && <AIBubbleMenu editor={editor} />}
       <BlockHandle editor={editor} />
       <EditorContent editor={editor} />

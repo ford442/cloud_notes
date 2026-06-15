@@ -33,16 +33,26 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
 
     const promises = uniqueNotes.map(async (n) => {
       try {
-        let note;
-        if (!forceFresh) {
-          note = await StorageService.getCachedNote(n.id);
-        }
-        if (!note || !note.content) {
-          note = await StorageService.getNoteContent(n.id);
-        }
-        if (!note || !note.content) return;
+        let noteContent = '';
 
-        const lines = note.content.split('\n');
+        // Sync from current note if it is open in the editor to capture unsaved changes
+        const currentNote = PluginRegistry.getCurrentNote();
+        if (currentNote && currentNote.id === n.id) {
+           noteContent = currentNote.content;
+        } else {
+           let note;
+           if (!forceFresh) {
+             note = await StorageService.getCachedNote(n.id);
+           }
+           if (!note || !note.content) {
+             note = await StorageService.getNoteContent(n.id);
+           }
+           if (note?.content) noteContent = note.content;
+        }
+
+        if (!noteContent) return;
+
+        const lines = noteContent.split('\n');
         lines.forEach((line, index) => {
           const trimmed = line.trim();
           if (trimmed.match(/^[-*]\s*\[\s*\]/)) {
@@ -51,7 +61,7 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
               foundTasks.push({
                 id: `${n.id}-${index}`,
                 noteId: n.id,
-                noteTitle: n.name || note.title || 'Untitled',
+                noteTitle: n.name || 'Untitled',
                 content,
                 lineIndex: index,
                 rawLine: line,
@@ -91,14 +101,27 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
     setTasks(prev => prev.filter(t => t.id !== task.id));
 
     try {
+      // Sync from current note if it is open in the editor
+      let currentContent = '';
+      const activeNote = PluginRegistry.getCurrentNote();
+      const isCurrentNote = activeNote && activeNote.id === task.noteId;
       const note = await StorageService.getNoteContent(task.noteId);
-      if (!note?.content) {
+
+      if (isCurrentNote && activeNote) {
+          currentContent = activeNote.content;
+      } else if (note?.content) {
+          currentContent = note.content;
+      }
+
+      if (!currentContent) {
         addToast('Note not found', 'error');
         loadTasks(false, true);
         return;
       }
 
-      const lines = note.content.split('\n');
+      const lines = currentContent.split('\n');
+
+      // Try to update at stored line index first
       let updated = false;
 
       // Primary match by line index
@@ -125,8 +148,9 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
       const newContent = lines.join('\n');
       const author = localStorage.getItem('author_name') || "Anon";
 
-      const currentNote = PluginRegistry.getCurrentNote();
-      if (currentNote && currentNote.id === task.noteId) {
+      // Use PluginRegistry if this note is currently open in editor
+      const openNote = PluginRegistry.getCurrentNote();
+      if (openNote && openNote.id === task.noteId) {
         await PluginRegistry.updateNote({ content: newContent });
       } else {
         await StorageService.updateNote(task.noteId, { ...note, content: newContent }, author);
