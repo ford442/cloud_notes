@@ -42,9 +42,9 @@ turndownService.addRule('tiptapTaskItem', {
     // Clean up content (remove newlines usually added by block elements inside li)
     let cleanContent = content.trim();
 
-    // Remove the zero-width space/non-breaking space we inject for empty checkboxes
-    if (cleanContent === '\xa0' || cleanContent === '&nbsp;') {
-       cleanContent = '';
+    // For empty checkboxes, preserve a minimal placeholder so the roundtrip stays valid
+    if (!cleanContent || cleanContent === '\xa0' || cleanContent === '&nbsp;') {
+      cleanContent = '\u200B'; // zero-width space — survives Turndown but is invisible
     }
 
     return `${isChecked ? '- [x]' : '- [ ]'} ${cleanContent}\n`;
@@ -127,11 +127,12 @@ marked.use({ renderer: tiptapRenderer });
  */
 export const markdownToHtml = (markdown: string): string => {
   if (!markdown) return '';
-  // Inject &nbsp; for empty task lists to prevent Tiptap crash
+  // Inject zero-width space for empty task lists/items to prevent Tiptap crash
+  // \u200B is safer than &nbsp; for surviving block element wrapping
   const processedMarkdown = markdown
-    .replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 &nbsp;')
-    .replace(/^(\s*-)\s*$/gm, '$1 &nbsp;')
-    .replace(/^(\s*\d+\.)\s*$/gm, '$1 &nbsp;');
+    .replace(/^(\s*- \[[ x]\])\s*$/gm, '$1 \u200B')
+    .replace(/^(\s*-)\s*$/gm, '$1 \u200B')
+    .replace(/^(\s*\d+\.)\s*$/gm, '$1 \u200B');
   // marked.parse returns a string or Promise<string>. synchronous by default unless async is enabled.
   // We cast to string because we are not using async features of marked.
   return marked.parse(processedMarkdown) as string;
