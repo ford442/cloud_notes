@@ -85,3 +85,9 @@ ul[data-type="taskList"] input[type="checkbox"] {
   user-select: none;
   pointer-events: none;
 }
+
+/* Completed Task Styles */
+ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
