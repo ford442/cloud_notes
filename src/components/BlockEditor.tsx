@@ -443,7 +443,12 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
   useEffect(() => {
     if (editor && lastExternalUpdate && lastExternalUpdate !== lastProcessedRef.current) {
        console.log('[BlockEditor] Force updating content from external source', lastExternalUpdate);
-       editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
+       try {
+           editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
+       } catch (e) {
+           console.error('[BlockEditor] Failed to safely hydrate content from external source', e);
+           editor.chain().clearContent().insertContent('<p><em>Error loading note content. The markdown contained invalid syntax.</em></p>').run();
+       }
        lastProcessedRef.current = lastExternalUpdate;
     }
   }, [lastExternalUpdate, editor, value]);
@@ -461,17 +466,22 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
        const hasExcalidraw = editor.state.doc.content.firstChild?.type.name === 'excalidraw';
        const isExcalidrawValue = value.trim().startsWith('```excalidraw');
 
-       if (isExcalidrawValue && !hasExcalidraw) {
-           console.log('[BlockEditor] Force hydrating Excalidraw content');
-           editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
-           return;
-       }
+       try {
+           if (isExcalidrawValue && !hasExcalidraw) {
+               console.log('[BlockEditor] Force hydrating Excalidraw content');
+               editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
+               return;
+           }
 
-       if (fragment.length === 0 && value) {
-          // If empty, hydrate from props
-          // We must be careful not to overwrite if we are just loading
-          console.log('[BlockEditor] Hydrating Yjs from API content');
-          editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
+           if (fragment.length === 0 && value) {
+              // If empty, hydrate from props
+              // We must be careful not to overwrite if we are just loading
+              console.log('[BlockEditor] Hydrating Yjs from API content');
+              editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
+           }
+       } catch (e) {
+           console.error('[BlockEditor] Failed to safely hydrate initial content', e);
+           editor.chain().clearContent().insertContent('<p><em>Error loading note content. The markdown contained invalid syntax.</em></p>').run();
        }
     };
 
