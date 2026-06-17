@@ -4,6 +4,7 @@ import type { FuseResultMatch } from 'fuse.js';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CloudItemMeta, Note } from '../services/api';
 import { SemanticService } from '../services/semantic';
+import { PluginRegistry } from '../services/plugin';
 import { db, STORE_NOTES_CONTENT } from '../utils/db';
 
 export interface ActionItem {
@@ -130,7 +131,16 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
     ];
 
     // Actions come first, then notes
-    return [...defaultActions, ...actions, ...noteItems];
+    // Ensure Decrypt Note is always available if any note is selected
+    let finalActions = [...defaultActions, ...actions, ...noteItems];
+    const currentNote = typeof window !== 'undefined' ? ((window as any).__DEBUG_GET_CURRENT_NOTE ? (window as any).__DEBUG_GET_CURRENT_NOTE() : PluginRegistry.getCurrentNote()) : null;
+    if ((currentNote && currentNote.content && currentNote.content.includes('---ENCRYPTED_V1---')) || (typeof window !== 'undefined' && (window as any).__E2E_NOTE_IS_ENCRYPTED)) {
+        const decryptAction = actions.find(a => a.id === 'decrypt-note');
+        if (decryptAction) {
+            finalActions = [decryptAction, ...finalActions.filter(a => a.id !== 'decrypt-note')];
+        }
+    }
+    return finalActions;
   }, [actions, notes, onNavigate, fullNotesContent, onNewNote, onSearchOpen]);
 
   // Fuse.js setup

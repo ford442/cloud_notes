@@ -35,21 +35,21 @@ export const BlockHandle = ({ editor }: BlockHandleProps) => {
       // If we are hovering the menu (if it exists outside ref for some reason), keep it
       // But menu is rendered conditionally, so if isMenuOpen is true, we return early anyway.
 
-      if (!view.dom.contains(event.target as Node)) {
+      if (!view.dom.contains(event.target as Node)) { setPosition(null); setActiveNodePos(null);
           return
       }
 
       const pos = view.posAtCoords({ left: event.clientX, top: event.clientY })
-      if (!pos) return
+      if (!pos) { setPosition(null); setActiveNodePos(null); return }
 
       const $pos = view.state.doc.resolve(pos.pos)
       const depth = 1
-      if ($pos.depth < depth) return
+      if ($pos.depth < depth) { setPosition(null); setActiveNodePos(null); return }
 
       const blockPos = $pos.before(depth)
 
       const nodeDom = view.nodeDOM(blockPos) as HTMLElement
-      if (!nodeDom || !nodeDom.getBoundingClientRect) return
+      if (!nodeDom || !nodeDom.getBoundingClientRect) { setPosition(null); setActiveNodePos(null); return }
 
       const rect = nodeDom.getBoundingClientRect()
 
