@@ -193,6 +193,9 @@ export const StorageService = {
           this.getNotes(false).catch(console.warn);
       }
 
+      // Deduplicate by id to prevent React key errors
+      metaList = Array.from(new Map(metaList.map(item => [item.id, item])).values());
+
     } catch (e) {
       console.error('[Sync Engine] Failed to run sync queue', e);
     }

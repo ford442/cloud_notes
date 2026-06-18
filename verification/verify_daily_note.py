@@ -15,11 +15,14 @@ def run():
         page.wait_for_timeout(1000)
 
         page.click('body')
-        page.keyboard.press('Meta+k')
+        page.evaluate("() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true, bubbles: true })); }")
         page.wait_for_timeout(500)
         page.keyboard.type('Open Daily Note')
-        page.wait_for_timeout(500)
-        page.get_by_text("Open Daily Note", exact=True).click()
+        page.wait_for_timeout(1000)
+
+        # Select by enter
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(2000)
 
         page.wait_for_timeout(2000)
 

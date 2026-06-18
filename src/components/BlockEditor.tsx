@@ -378,7 +378,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
 
                  // We must schedule this for the next tick to allow the current transaction to complete
                  setTimeout(() => {
-                     editor?.chain().focus().insertContent(embedHtml).run();
+                     if (editor && !editor.isDestroyed) editor.chain().focus().insertContent(embedHtml).run();
                  }, 0);
                  return true;
              } else if (twitterRegex.test(trimmedText)) {
@@ -395,7 +395,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
                      }
 
                      setTimeout(() => {
-                         editor?.chain().focus().insertContent(embedHtml).run();
+                         if (editor && !editor.isDestroyed) editor.chain().focus().insertContent(embedHtml).run();
                      }, 0);
                      return true;
                  }
@@ -440,10 +440,10 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
     if (editor && lastExternalUpdate && lastExternalUpdate !== lastProcessedRef.current) {
        console.log('[BlockEditor] Force updating content from external source', lastExternalUpdate);
        try {
-           editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
+           if (editor && !editor.isDestroyed) editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
        } catch (e) {
            console.error('[BlockEditor] Failed to safely hydrate content from external source', e);
-           editor.chain().clearContent().insertContent('<p><em>Error loading note content. The markdown contained invalid syntax.</em></p>').run();
+           if (editor && !editor.isDestroyed) editor.chain().clearContent().insertContent('<p><em>Error loading note content. The markdown contained invalid syntax.</em></p>').run();
        }
        lastProcessedRef.current = lastExternalUpdate;
     }
@@ -465,7 +465,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
        try {
            if (isExcalidrawValue && !hasExcalidraw) {
                console.log('[BlockEditor] Force hydrating Excalidraw content');
-               editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
+               if (editor && !editor.isDestroyed) editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
                return;
            }
 
@@ -473,11 +473,11 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
               // If empty, hydrate from props
               // We must be careful not to overwrite if we are just loading
               console.log('[BlockEditor] Hydrating Yjs from API content');
-              editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
+              if (editor && !editor.isDestroyed) editor.chain().clearContent().insertContent(markdownToHtml(value)).run();
            }
        } catch (e) {
            console.error('[BlockEditor] Failed to safely hydrate initial content', e);
-           editor.chain().clearContent().insertContent('<p><em>Error loading note content. The markdown contained invalid syntax.</em></p>').run();
+           if (editor && !editor.isDestroyed) editor.chain().clearContent().insertContent('<p><em>Error loading note content. The markdown contained invalid syntax.</em></p>').run();
        }
     };
 
