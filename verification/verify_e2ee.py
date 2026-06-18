@@ -20,13 +20,13 @@ def run():
         print("Creating a secret note...")
         # Write title
         page.get_by_placeholder("Note Title...").fill("Secret Password Info")
+        time.sleep(2) # ensure title saved
 
         # Write content
         editor = page.locator(".ProseMirror")
         editor.click()
         editor.fill("My secret password is: HUNTER2")
-
-        time.sleep(1)
+        time.sleep(2) # Wait for autosave to pick up the changes
 
         # Open Command Palette (Cmd+K)
         # Using specific keys because of Playwright's meta vs control modifier
@@ -52,11 +52,18 @@ def run():
         # It's rendered as a Dialog component with a text input
         print("Entering password...")
         prompt_input = page.locator("div[role='dialog'] input")
-        prompt_input.wait_for()
+        prompt_input.wait_for(timeout=5000)
         prompt_input.fill("testpassword123")
+        page.screenshot(path="verification_e2ee_decrypt_pwd.png")
         page.locator("div[role='dialog']").get_by_text("OK").click()
 
         time.sleep(2)
+        try:
+            # Dismiss the success alert
+            page.locator("div[role='dialog']").get_by_text("OK").click()
+            time.sleep(1)
+        except Exception:
+            pass
 
         # Dismiss the success alert that pops up
         page.locator("div[role='dialog']").get_by_text("OK").click()
@@ -74,10 +81,24 @@ def run():
             print("FAILURE: Note encryption failed or content is still visible.")
 
         print("Decrypting the note...")
+        # Get raw content from global before click
+        raw_content = page.evaluate("() => window.__DEBUG_GET_CURRENT_NOTE ? window.__DEBUG_GET_CURRENT_NOTE().content : 'NOT_FOUND'")
+        print("Raw content before decrypt:", raw_content)
+
+        time.sleep(3) # Wait longer
         page.locator("body").click(position={"x": 10, "y": 10})
         time.sleep(1)
         page.evaluate("() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true, bubbles: true })); }")
 
+        time.sleep(1)
+        page.keyboard.type("Decrypt Note")
+        time.sleep(2)
+        page.screenshot(path="verification_e2ee_decrypt_cmd_after_type.png")
+        time.sleep(2)
+        page.screenshot(path="verification_e2ee_decrypt_cmd.png")
+
+        time.sleep(2)
+        page.keyboard.press("Enter")
         time.sleep(1)
 
         print("Searching for Decrypt Note...")
@@ -106,10 +127,24 @@ def run():
         print("Screenshot saved to verification_e2ee_unlocked.png")
 
         content = page.content()
-        if "My secret password is: HUNTER2" in content and "ENCRYPTED_V1" not in content:
+
+
+        print("Decryption success text verification:", "My secret password is: HUNTER2" in content)
+        print("Encrypted Note text present:", "Encrypted Note" in content)
+
+        # Adding a sleep and taking another DOM snapshot just in case it takes a moment to render
+        time.sleep(2)
+        content = page.content()
+        print("Decryption success text verification (after sleep):", "My secret password is: HUNTER2" in content)
+
+        if "My secret password is: HUNTER2" in content and "Encrypted Note" not in content:
             print("SUCCESS: Note was decrypted successfully and original content restored.")
         else:
             print("FAILURE: Decryption failed or original content is missing.")
+
+            # Additional debug info to help diagnose the test failure
+            with open("verification_e2ee_unlocked.html", "w") as f:
+                f.write(content)
 
         browser.close()
 

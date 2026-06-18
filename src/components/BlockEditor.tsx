@@ -29,7 +29,6 @@ import { BlockHandle } from './editor/BlockHandle'
 import { processImageToBlob } from '../utils/media'
 import { ExcalidrawExtension } from './editor/ExcalidrawExtension'
 import { AudioExtension } from './editor/AudioExtension'
-import { AutoLinkExtension } from './editor/AutoLinkExtension'
 import { PromptSectionExtension } from './editor/PromptSectionExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
 import { AIBubbleMenu } from './editor/AIBubbleMenu'
@@ -98,12 +97,11 @@ const handleImageUpload = (view: EditorView, file: File, pos: number) => {
   });
 };
 
-export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNavigate, lastExternalUpdate }: BlockEditorProps) => {
+// Inner block editor that doesn't check encryption on its own
+const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavigate, lastExternalUpdate }: BlockEditorProps) => {
   // Use refs to keep track of latest props without triggering re-init
   const notesRef = useRef(availableNotes);
   const onNavigateRef = useRef(onNavigate);
-
-  const isEncrypted = value.trim().startsWith('---ENCRYPTED_V1---');
 
   useEffect(() => {
     onNavigateRef.current = onNavigate;
@@ -156,11 +154,9 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       AudioExtension,
       ExcalidrawExtension,
       PromptSectionExtension,
-      AutoLinkExtension.configure({
-        debounceMs: 150,
-      }),
       StarterKit.configure({
         history: false, // Disabled because we use Yjs + custom undo manager
+        link: false, // Disable default Link so we can configure it separately without duplicate names
       }),
       ...(ydoc ? [Collaboration.configure({
         document: ydoc,
@@ -183,6 +179,7 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       TableHeader,
       TableCell,
       Link.configure({
+        autolink: true,
         openOnClick: false, // We handle navigation manually
         HTMLAttributes: {
           class: 'cursor-pointer text-blue-500 hover:text-blue-600 underline',
@@ -488,20 +485,6 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
     }
   }, [editor, ydoc, provider, value]);
 
-  if (isEncrypted) {
-    return (
-      <div className="w-full h-full flex items-center justify-center p-10 bg-slate-50 dark:bg-slate-900">
-        <div className="text-center max-w-md">
-           <div className="text-5xl mb-4">🔒</div>
-           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Encrypted Note</h2>
-           <p className="text-slate-500 dark:text-slate-400 mb-6">
-             The contents of this note are encrypted. To view or edit it, press <strong>Cmd+K</strong> (or Ctrl+K), search for <strong>Decrypt Note</strong>, and enter your password.
-           </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full h-full overflow-auto relative" onClick={() => editor?.commands.focus()}>
       {editor && (
@@ -521,4 +504,42 @@ export const BlockEditor = ({ noteId, value, onChange, availableNotes = [], onNa
       <EditorContent editor={editor} />
     </div>
   )
+}
+
+export const BlockEditor = (props: BlockEditorProps) => {
+  const { value } = props;
+
+  // Early encrypted detection - do this on the raw string
+  const [isEncrypted, setIsEncrypted] = useState(value.includes('---ENCRYPTED_V1---') || value.trim().startsWith('---ENCRYPTED_V1---'));
+
+  useEffect(() => {
+    setIsEncrypted(value.includes('---ENCRYPTED_V1---') || value.trim().startsWith('---ENCRYPTED_V1---'));
+  }, [value]);
+
+  useEffect(() => {
+    const handleEncrypted = () => setIsEncrypted(true);
+    const handleDecrypted = () => setIsEncrypted(false);
+    window.addEventListener('note-encrypted', handleEncrypted);
+    window.addEventListener('note-decrypted', handleDecrypted);
+    return () => {
+      window.removeEventListener('note-encrypted', handleEncrypted);
+      window.removeEventListener('note-decrypted', handleDecrypted);
+    };
+  }, []);
+
+  if (isEncrypted) {
+    return (
+      <div className="w-full h-full flex items-center justify-center p-10 bg-slate-50 dark:bg-slate-900" data-testid="encrypted-screen">
+        <div className="text-center max-w-md">
+           <div className="text-5xl mb-4">🔒</div>
+           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Encrypted Note</h2>
+           <p className="text-slate-500 dark:text-slate-400 mb-6">
+             The contents of this note are encrypted. To view or edit it, press <strong>Cmd+K</strong> (or Ctrl+K), search for <strong>Decrypt Note</strong>, and enter your password.
+           </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <BlockEditorInner {...props} />;
 }
