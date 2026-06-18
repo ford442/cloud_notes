@@ -29,7 +29,6 @@ import { BlockHandle } from './editor/BlockHandle'
 import { processImageToBlob } from '../utils/media'
 import { ExcalidrawExtension } from './editor/ExcalidrawExtension'
 import { AudioExtension } from './editor/AudioExtension'
-import { AutoLinkExtension } from './editor/AutoLinkExtension'
 import { PromptSectionExtension } from './editor/PromptSectionExtension'
 import { StorageService, API_BASE_URL } from '../services/api'
 import { AIBubbleMenu } from './editor/AIBubbleMenu'
@@ -155,11 +154,9 @@ const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavi
       AudioExtension,
       ExcalidrawExtension,
       PromptSectionExtension,
-      AutoLinkExtension.configure({
-        debounceMs: 150,
-      }),
       StarterKit.configure({
         history: false, // Disabled because we use Yjs + custom undo manager
+        link: false, // Disable default Link so we can configure it separately without duplicate names
       }),
       ...(ydoc ? [Collaboration.configure({
         document: ydoc,
@@ -182,6 +179,7 @@ const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavi
       TableHeader,
       TableCell,
       Link.configure({
+        autolink: true,
         openOnClick: false, // We handle navigation manually
         HTMLAttributes: {
           class: 'cursor-pointer text-blue-500 hover:text-blue-600 underline',
