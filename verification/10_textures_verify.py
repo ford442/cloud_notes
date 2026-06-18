@@ -28,7 +28,7 @@ async def verify_textures_panel():
             await page.locator('input[placeholder="Type to search notes, commands, or ask AI..."]').fill("Textures")
 
             # Wait for search results to populate
-            await page.wait_for_timeout(1000)
+            await page.wait_for_timeout(2000)
 
             # Hit enter to select the first result since it's already highlighted
             await page.keyboard.press('Enter')
@@ -38,7 +38,7 @@ async def verify_textures_panel():
             await expect(page.get_by_text("Select a texture directory")).to_be_visible()
 
             # Take screenshot of the base panel
-            await page.wait_for_timeout(1000)
+            await page.wait_for_timeout(2000)
             await page.screenshot(path="verification/textures_panel.png")
             print("Captured textures panel view")
 

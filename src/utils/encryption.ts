@@ -11,12 +11,16 @@ const IV_SIZE = 12; // AES-GCM recommendation
 function safeAtob(str: string): string {
   if (!str) return "";
   const originalStr = str;
-  let cleaned = str.replace(/[\s\n\r\t]+/g, '').trim();
-  const padLen = (4 - (cleaned.length % 4)) % 4;
-  if (padLen !== 0 && padLen !== 4) {
-    cleaned += '='.repeat(padLen);
+  let cleaned = str.replace(/[^A-Za-z0-9+/=]/g, '').trim();
+
+  const pad = cleaned.length % 4;
+  if (pad === 1) {
+    cleaned = cleaned.slice(0, -1);
+  } else if (pad === 2 || pad === 3) {
+    cleaned += '='.repeat(4 - pad);
   }
-    try {
+
+  try {
     return atob(cleaned);
   } catch (e) {
     console.error("safeAtob failed on", originalStr.substring(0, 100));
@@ -134,11 +138,15 @@ export const EncryptionService = {
     const doDecrypt = async (pass: string) => {
         const crypto = getCrypto();
         const parts = encryptedText.split(':');
-        if (parts.length !== 5) throw new Error("Invalid format");
+        if (parts.length < 5) throw new Error("Invalid format: " + encryptedText);
+        if (parts[4].length === 0) throw new Error("Empty ciphertext: " + encryptedText);
 
-        const salt = Uint8Array.from(safeAtob(parts[2]), c => c.charCodeAt(0));
-        const iv = Uint8Array.from(safeAtob(parts[3]), c => c.charCodeAt(0));
-        const ciphertext = Uint8Array.from(safeAtob(parts[4]), c => c.charCodeAt(0));
+        let salt, iv, ciphertext;
+        try {
+            salt = Uint8Array.from(safeAtob(parts[2]), c => c.charCodeAt(0));
+            iv = Uint8Array.from(safeAtob(parts[3]), c => c.charCodeAt(0));
+            ciphertext = Uint8Array.from(safeAtob(parts[4]), c => c.charCodeAt(0));
+        } catch (e: any) { throw new Error("Invalid base64 encoding: " + e.message); }
 
         const key = await this.deriveKey(pass, salt);
 

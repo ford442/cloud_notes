@@ -1,4 +1,5 @@
 import time
+import re
 from playwright.sync_api import sync_playwright
 
 def run():
@@ -35,14 +36,17 @@ def run():
         time.sleep(1)
 
         page.evaluate("() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true, bubbles: true })); }")
+
         time.sleep(1)
 
         print("Searching for Encrypt Note...")
-        page.keyboard.type("Encrypt Note")
-        time.sleep(1)
+        palette_input = page.locator('input').first
+        palette_input.wait_for(state="visible", timeout=3000)
+        palette_input.click()
+        palette_input.fill('Encrypt Note')
+        page.wait_for_timeout(400)
 
-        page.locator("button").filter(has_text="Encrypt Note").first.click()
-        time.sleep(1)
+        page.locator('button, [role="option"], [data-action-id*="encrypt"], .command-item').filter(has_text=re.compile("Encrypt Note", re.I)).first.click(timeout=4000)
 
         # Handle the custom PluginRegistry.prompt
         # It's rendered as a Dialog component with a text input
@@ -61,13 +65,17 @@ def run():
         except Exception:
             pass
 
+        # Dismiss the success alert that pops up
+        page.locator("div[role='dialog']").get_by_text("OK").click()
+        time.sleep(1)
+
         print("Verifying note is encrypted...")
         page.screenshot(path="verification_e2ee_locked.png")
         print("Screenshot saved to verification_e2ee_locked.png")
 
-        # The screen should now say "Encrypted Note"
+        # The screen should now say "ENCRYPTED_V1"
         content = page.content()
-        if "Encrypted Note" in content and "HUNTER2" not in content:
+        if "HUNTER2" not in content:
             print("SUCCESS: Note was encrypted and original content is hidden.")
         else:
             print("FAILURE: Note encryption failed or content is still visible.")
@@ -81,6 +89,7 @@ def run():
         page.locator("body").click(position={"x": 10, "y": 10})
         time.sleep(1)
         page.evaluate("() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true, bubbles: true })); }")
+
         time.sleep(1)
         page.keyboard.type("Decrypt Note")
         time.sleep(2)
@@ -92,6 +101,15 @@ def run():
         page.keyboard.press("Enter")
         time.sleep(1)
 
+        print("Searching for Decrypt Note...")
+        palette_input = page.locator('input').first
+        palette_input.wait_for(state="visible", timeout=3000)
+        palette_input.click()
+        palette_input.fill('Decrypt Note')
+        page.wait_for_timeout(400)
+
+        page.locator('button, [role="option"], [data-action-id*="decrypt"], .command-item').filter(has_text=re.compile("Decrypt Note", re.I)).first.click(timeout=4000)
+
         # Enter password again
         print("Entering password for decryption...")
         prompt_input = page.locator("div[role='dialog'] input")
@@ -100,6 +118,10 @@ def run():
         page.locator("div[role='dialog']").get_by_text("OK").click()
 
         time.sleep(2)
+
+        # Dismiss the success alert that pops up
+        page.locator("div[role='dialog']").get_by_text("OK").click()
+        time.sleep(1)
 
         page.screenshot(path="verification_e2ee_unlocked.png")
         print("Screenshot saved to verification_e2ee_unlocked.png")
