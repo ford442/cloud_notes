@@ -55,18 +55,18 @@ def run():
         prompt_input.wait_for(timeout=5000)
         prompt_input.fill("testpassword123")
         page.screenshot(path="verification_e2ee_decrypt_pwd.png")
-        page.locator("div[role='dialog']").get_by_text("OK").click()
+        page.keyboard.press("Enter")
 
         time.sleep(2)
         try:
             # Dismiss the success alert
-            page.locator("div[role='dialog']").get_by_text("OK").click()
+            page.keyboard.press("Enter")
             time.sleep(1)
         except Exception:
             pass
 
         # Dismiss the success alert that pops up
-        page.locator("div[role='dialog']").get_by_text("OK").click()
+        page.keyboard.press("Enter")
         time.sleep(1)
 
         print("Verifying note is encrypted...")
@@ -105,22 +105,48 @@ def run():
         palette_input = page.locator('input').first
         palette_input.wait_for(state="visible", timeout=3000)
         palette_input.click()
+        # Ensure input is cleared first
+        palette_input.fill('')
         palette_input.fill('Decrypt Note')
-        page.wait_for_timeout(400)
+        page.wait_for_timeout(1000)
 
-        page.locator('button, [role="option"], [data-action-id*="decrypt"], .command-item').filter(has_text=re.compile("Decrypt Note", re.I)).first.click(timeout=4000)
+        try:
+            page.locator('button, [role="option"], [data-action-id*="decrypt"], .command-item').filter(has_text=re.compile("Decrypt Note", re.I)).first.click(timeout=4000)
+        except Exception:
+            page.keyboard.press("ArrowDown")
+            time.sleep(1)
+            page.keyboard.press("Enter")
+
+        page.wait_for_timeout(1000)
+
+        # Taking screenshot of state before looking for prompt
+        page.screenshot(path="verification_e2ee_decrypt_before_prompt.png")
 
         # Enter password again
         print("Entering password for decryption...")
         prompt_input = page.locator("div[role='dialog'] input")
-        prompt_input.wait_for()
+        try:
+            prompt_input.wait_for(timeout=4000)
+        except Exception:
+            print("Decrypt prompt input not found. Trying Command+K -> type 'Decrypt' -> Enter again.")
+            page.evaluate("() => { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, metaKey: true, bubbles: true })); }")
+            time.sleep(1)
+            palette_input = page.locator('input').first
+            palette_input.wait_for(state="visible", timeout=3000)
+            palette_input.fill('Decrypt Note')
+            time.sleep(1)
+
+            # Click the command explicitly this time using the exact same query that worked before
+            page.locator('button, [role="option"], [data-action-id*="decrypt"], .command-item').filter(has_text=re.compile("Decrypt Note", re.I)).first.click(timeout=4000)
+            prompt_input.wait_for(timeout=3000)
+
         prompt_input.fill("testpassword123")
-        page.locator("div[role='dialog']").get_by_text("OK").click()
+        page.keyboard.press("Enter")
 
         time.sleep(2)
 
         # Dismiss the success alert that pops up
-        page.locator("div[role='dialog']").get_by_text("OK").click()
+        page.keyboard.press("Enter")
         time.sleep(1)
 
         page.screenshot(path="verification_e2ee_unlocked.png")

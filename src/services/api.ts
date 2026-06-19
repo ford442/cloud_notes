@@ -192,10 +192,6 @@ export const StorageService = {
       if (consolidatedOps.length > 0) {
           this.getNotes(false).catch(console.warn);
       }
-
-      // Deduplicate by id to prevent React key errors
-      metaList = Array.from(new Map(metaList.map(item => [item.id, item])).values());
-
     } catch (e) {
       console.error('[Sync Engine] Failed to run sync queue', e);
     }
@@ -257,6 +253,9 @@ export const StorageService = {
               metaList.push(cachedNote);
           }
       }
+
+      // Deduplicate by id to prevent React key errors
+      metaList = Array.from(new Map(metaList.map(item => [item.id, item])).values());
 
       if (!skipCacheUpdate) {
         db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, metaList).catch(e =>
