@@ -983,11 +983,14 @@ function App() {
                   content={currentNote.content}
                   onNavigate={handleSelectNote}
                 />
-                <Backlinks
-                  notes={notes}
-                  currentId={selectedId}
-                  onNavigate={handleSelectNote}
-                />
+                <div id="backlinks-panel">
+                  <Backlinks
+                    notes={notes}
+                    currentId={selectedId}
+                    currentTitle={currentNote.title}
+                    onNavigate={handleSelectNote}
+                  />
+                </div>
               </>
             )}
           </div>

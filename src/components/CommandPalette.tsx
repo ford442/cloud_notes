@@ -127,6 +127,31 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
           if (onSearchOpen) onSearchOpen();
         },
         keywords: ['find', 'search', 'query']
+      },
+      {
+        id: 'default-show-backlinks',
+        title: 'Show Backlinks',
+        section: 'Commands',
+        icon: <span className="text-lg">🔗</span>,
+        perform: () => {
+          const panel = document.getElementById('backlinks-panel');
+          if (panel) {
+            panel.scrollIntoView({ behavior: 'smooth' });
+          }
+        },
+        keywords: ['links', 'references', 'backlinks', 'graph']
+      },
+      {
+        id: 'default-insert-link',
+        title: 'Insert Link',
+        section: 'Commands',
+        icon: <span className="text-lg">🔗</span>,
+        perform: () => {
+          if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('insert-wiki-link'));
+          }
+        },
+        keywords: ['link', 'wiki', 'insert', 'reference']
       }
     ];
 

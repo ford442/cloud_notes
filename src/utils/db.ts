@@ -5,6 +5,7 @@ const STORE_NOTES_CONTENT = 'notes_content'; // Stores individual note content
 const STORE_EMBEDDINGS = 'notes_embeddings'; // Stores vector embeddings for semantic search
 const STORE_PENDING_OPS = 'pending_ops'; // Stores offline operations
 const STORE_HISTORY = 'notes_history'; // Stores note version history
+const STORE_BACKLINKS = 'notes_backlinks'; // Stores forward links (backlinks index)
 
 interface DBWrapper {
   get: <T>(storeName: string, key: string) => Promise<T | undefined>;
@@ -40,6 +41,9 @@ const openDB = (): Promise<IDBDatabase> => {
       }
       if (!db.objectStoreNames.contains(STORE_HISTORY)) {
         db.createObjectStore(STORE_HISTORY);
+      }
+      if (!db.objectStoreNames.contains(STORE_BACKLINKS)) {
+        db.createObjectStore(STORE_BACKLINKS);
       }
     };
   });
@@ -114,4 +118,4 @@ export const getPendingOps = async (): Promise<{ key: string; value: any }[]> =>
   return db.getAll(STORE_PENDING_OPS);
 };
 
-export { STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_EMBEDDINGS, STORE_PENDING_OPS, STORE_HISTORY };
+export { STORE_NOTES_LIST, STORE_NOTES_CONTENT, STORE_EMBEDDINGS, STORE_PENDING_OPS, STORE_HISTORY, STORE_BACKLINKS };
