@@ -430,6 +430,16 @@ const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavi
     }
   }, [editor, availableNotes]);
 
+  useEffect(() => {
+    const handleInsertLink = () => {
+      if (editor) {
+        editor.chain().focus().insertContent('[[').run();
+      }
+    };
+    window.addEventListener('insert-wiki-link', handleInsertLink);
+    return () => window.removeEventListener('insert-wiki-link', handleInsertLink);
+  }, [editor]);
+
   // Handle External Updates (e.g. Restore History)
   const lastProcessedRef = useRef<number | undefined>(undefined);
 
