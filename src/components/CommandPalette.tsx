@@ -227,7 +227,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
       }
 
       // Sort the final results to group by section (Semantic first, then Commands, then Notes)
-      const sectionOrder = ['Semantic', 'Commands', 'Actions', 'Notes', 'Integrations'];
+      const sectionOrder = ['Semantic', 'Commands', 'View', 'Editor', 'Actions', 'Notes', 'Integrations'];
 
       const sortedMerged = merged.sort((a, b) => {
           const aSection = a.section || 'Other';
