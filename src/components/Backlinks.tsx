@@ -5,29 +5,26 @@ import { BacklinkService, type BacklinkEntry } from '../services/BacklinkService
 interface BacklinksProps {
   notes: CloudItemMeta[];
   currentId: string | null;
-  currentTitle?: string;
   onNavigate: (id: string) => void;
 }
 
-export const Backlinks = ({ notes, currentId, currentTitle, onNavigate }: BacklinksProps) => {
+export const Backlinks = ({ notes, currentId, onNavigate }: BacklinksProps) => {
   const [backlinks, setBacklinks] = useState<BacklinkEntry[]>([]);
 
   useEffect(() => {
-    if (!currentId && !currentTitle) {
+    if (!currentId) {
       setBacklinks([]);
       return;
     }
 
     const fetchBacklinks = async () => {
-      // Fetch backlinks by name first, as wiki links might use name or ID
-      const byName = currentTitle ? await BacklinkService.getBacklinks(currentTitle) : [];
-      const byId = currentId ? await BacklinkService.getBacklinks(currentId) : [];
+      const byId = await BacklinkService.getBacklinks(currentId);
 
       // Deduplicate based on sourceId
       const uniqueIds = new Set<string>();
       const combined: BacklinkEntry[] = [];
 
-      for (const entry of [...byName, ...byId]) {
+      for (const entry of byId) {
         if (!uniqueIds.has(entry.sourceId)) {
           uniqueIds.add(entry.sourceId);
           combined.push(entry);
@@ -38,7 +35,7 @@ export const Backlinks = ({ notes, currentId, currentTitle, onNavigate }: Backli
     };
 
     fetchBacklinks();
-  }, [currentId, currentTitle, notes]);
+  }, [currentId, notes]);
 
   if (backlinks.length === 0) return null;
 
