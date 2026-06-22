@@ -1,4 +1,5 @@
 import { db, STORE_BACKLINKS } from '../utils/db';
+import { extractInternalLinks } from '../utils/backlinks';
 
 export interface BacklinkEntry {
   sourceId: string;
@@ -13,15 +14,8 @@ export const BacklinkService = {
   async updateBacklinks(sourceId: string, sourceName: string, content: string) {
     if (content === undefined || content === null) return;
 
-    // Find all links: [[Target Name]]
-    const linkRegex = /(?:\[\[)([^\]]+)(?:\]\])/g;
-    const targets = new Set<string>();
-    let match;
-    while ((match = linkRegex.exec(content)) !== null) {
-      if (match[1] && match[1].trim()) {
-        targets.add(match[1].trim());
-      }
-    }
+    const links = extractInternalLinks(content);
+    const targets = new Set<string>(links);
 
     try {
       // For simplicity in MVP, we iterate over all current backlinks to remove old references from this source,
