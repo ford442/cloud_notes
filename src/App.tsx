@@ -987,7 +987,7 @@ function App() {
                   <Backlinks
                     notes={notes}
                     currentId={selectedId}
-                    currentTitle={currentNote.title}
+
                     onNavigate={handleSelectNote}
                   />
                 </div>
