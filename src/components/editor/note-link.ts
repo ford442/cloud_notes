@@ -38,7 +38,7 @@ export const NoteLink = Extension.create<NoteLinkOptions>({
                     attrs: {
                       href: props.id, // Store ID in href for now
                       target: '_self',
-                      class: 'cursor-pointer text-blue-500 hover:text-blue-600 underline',
+                      class: 'internal-wiki-link',
                     },
                   },
                 ],

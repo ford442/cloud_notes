@@ -182,7 +182,7 @@ const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavi
         autolink: true,
         openOnClick: false, // We handle navigation manually
         HTMLAttributes: {
-          class: 'cursor-pointer text-blue-500 hover:text-blue-600 underline',
+          class: 'internal-wiki-link',
         },
       }),
       SlashCommand.configure({

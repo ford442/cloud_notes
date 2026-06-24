@@ -95,7 +95,7 @@ export const WikiLink = Extension.create<WikiLinkOptions>({
                     attrs: {
                       href: linkId,
                       target: '_self',
-                      class: 'internal-wiki-link cursor-pointer text-blue-500 hover:text-blue-600 underline',
+                      class: 'internal-wiki-link',
                       'data-id': linkId,
                     },
                   },

@@ -192,7 +192,7 @@ export const AutoLinkExtension = Extension.create<AutoLinkOptions>({
                 const linkMark = state.schema.marks.link.create({
                     href: linkId,
                     target: '_self',
-                    class: 'cursor-pointer text-blue-500 hover:text-blue-600 underline',
+                    class: 'internal-wiki-link',
                 })
 
                 // Replace the query with the linked text safely
