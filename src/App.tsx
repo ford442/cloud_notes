@@ -34,6 +34,7 @@ import { createPackedDescription } from './utils/metadata'
 import { Dialog } from './components/Dialog'
 import type { DialogType } from './components/Dialog'
 import { HistoryModal } from './components/HistoryModal'
+import { HoverLinkPreview } from './components/editor/HoverLinkPreview'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
@@ -43,6 +44,7 @@ PluginRegistry.register(MusicPlugin);
 function AppWrapper() {
   return (
     <ToastProvider>
+      <HoverLinkPreview />
       <App />
     </ToastProvider>
   )
