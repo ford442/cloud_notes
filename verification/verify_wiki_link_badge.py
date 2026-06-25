@@ -5,7 +5,7 @@ import os
 from contextlib import asynccontextmanager
 import glob
 
-MOCK_API_URL = "http://localhost:5174/mock-api"
+MOCK_API_URL = "http://localhost:5173/mock-api"
 
 @asynccontextmanager
 async def browser_context(record_video_dir=None):
@@ -32,7 +32,7 @@ async def verify_wiki_link_badge():
 
     async with browser_context(record_video_dir=video_dir) as (page, context):
         print("1. Loading app...")
-        await page.goto("http://localhost:5174/")
+        await page.goto("http://localhost:5173/")
         await page.wait_for_timeout(1000)
 
         await page.evaluate(f"localStorage.setItem('api_url', '{MOCK_API_URL}');")

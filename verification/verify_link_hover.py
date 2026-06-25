@@ -5,7 +5,7 @@ import os
 from contextlib import asynccontextmanager
 import glob
 
-MOCK_API_URL = "http://localhost:5176/mock-api"
+MOCK_API_URL = "http://localhost:5173/mock-api"
 
 @asynccontextmanager
 async def browser_context(record_video_dir=None):
@@ -29,7 +29,7 @@ async def verify_link_hover():
         os.remove(f)
 
     async with browser_context(record_video_dir=video_dir) as (page, context):
-        await page.goto("http://localhost:5176/")
+        await page.goto("http://localhost:5173/")
         await page.wait_for_timeout(1000)
 
         await page.evaluate(f"localStorage.setItem('api_url', '{MOCK_API_URL}');")
