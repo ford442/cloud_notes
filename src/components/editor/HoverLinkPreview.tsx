@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import type { CloudItemMeta } from '../../services/api';
-import { vpsStorageAPI } from '../../services/vpsStorageAPI';
 import { StorageService } from '../../services/api';
 
 export const HoverLinkPreview = () => {
@@ -9,7 +8,7 @@ export const HoverLinkPreview = () => {
     const [previewContent, setPreviewContent] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
 
-    const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const elementRef = useRef<HTMLElement | null>(null);
 
     useEffect(() => {
@@ -35,11 +34,7 @@ export const HoverLinkPreview = () => {
             }
         };
 
-        const handleMouseOut = (e: MouseEvent) => {
-            const target = e.target as HTMLElement;
-            // Only clear if we are leaving the link itself AND not entering the preview
-            // Actually, for simplicity, let's just clear on mousemove outside of link and preview
-        };
+
 
         const handleMouseMove = (e: MouseEvent) => {
              if (previewTarget || hoverTimerRef.current) {
@@ -78,7 +73,7 @@ export const HoverLinkPreview = () => {
                  const note = await StorageService.getNoteContent(noteMeta.name);
                  if (note && note.content) {
                       // Extract just a snippet
-                      const snippet = note.content.substring(0, 300).replace(/[#*`_\[\]]/g, '') + (note.content.length > 300 ? '...' : '');
+                      const snippet = note.content.substring(0, 300).replace(/[#*`_[\]]/g, '') + (note.content.length > 300 ? '...' : '');
                       setPreviewContent(snippet);
                  } else {
                      setPreviewContent('No content found.');

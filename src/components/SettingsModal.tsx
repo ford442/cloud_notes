@@ -13,6 +13,7 @@ interface SettingsModalProps {
   onVpsSync?: (onProgress?: (message: string) => void) => Promise<{ pulled: number; pushed: number; errors: string[] }>;
 }
 
+import { ExportService } from '../utils/ExportService';
 import { SemanticService } from '../services/semantic';
 import { normalizeFlacApiUrl } from '../utils/flac';
 import { vpsStorageAPI } from '../services/vpsStorageAPI';
@@ -340,6 +341,53 @@ export const SettingsModal = ({ isOpen, onClose, authorName, setAuthorName, them
                         <span>Open Migration Dashboard</span>
                         <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                       </button>
+                    </div>
+                  </div>
+                </div>
+
+
+                <div className="flex items-start gap-4 mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+                  <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg text-emerald-600 dark:text-emerald-400">
+                    <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-base font-semibold text-slate-800 dark:text-slate-200 mb-1">Library Backup & Restore</h3>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                      Export your entire note library to a local JSON file, or import an existing backup. Safety valve for local first architecture.
+                    </p>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={async () => {
+                           const res = await ExportService.exportLibrary();
+                           if (res.success) {
+                              addToast(`Exported ${res.count} notes successfully`, 'success');
+                           } else {
+                              addToast(`Export failed`, 'error');
+                           }
+                        }}
+                        className="px-4 py-2 bg-slate-800 dark:bg-slate-700 text-white text-sm font-medium rounded-lg hover:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
+                      >
+                        Export Library
+                      </button>
+                      <label className="px-4 py-2 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer">
+                        Import Library
+                        <input
+                           type="file"
+                           accept=".json"
+                           className="hidden"
+                           onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const res = await ExportService.importLibrary(file, authorName);
+                              if (res.success) {
+                                  addToast(`Imported ${res.count} notes successfully`, 'success');
+                              } else {
+                                  addToast(`Import failed`, 'error');
+                              }
+                              e.target.value = '';
+                           }}
+                        />
+                      </label>
                     </div>
                   </div>
                 </div>

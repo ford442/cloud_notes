@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Fuse from 'fuse.js'
 import type { CloudItemMeta } from '../services/api'
 import { useToast } from './Toast'
@@ -42,6 +42,20 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
   const [query, setQuery] = useState('');
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
 
   const toggle = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -238,11 +252,19 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
         )}
       </div>
       
+
       {/* Footer Status */}
       <div className="p-4 border-t border-slate-200/50 dark:border-slate-700/50 bg-slate-100/30 dark:bg-slate-900/30 text-xs text-slate-500 dark:text-slate-400 flex justify-between font-medium rounded-b-2xl transition-colors">
-        <span>{filteredNotes.length} {filteredNotes.length === 1 ? 'Item' : 'Items'}</span>
         <div className="flex items-center gap-3">
+            <span>{filteredNotes.length} {filteredNotes.length === 1 ? 'Item' : 'Items'}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full ${isOnline ? 'bg-emerald-100/50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100/50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
+            <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-rose-500'}`}></div>
+            <span className="font-semibold text-[10px] uppercase tracking-wider">{isOnline ? (isSyncing ? 'Syncing...' : 'Online') : 'Offline'}</span>
+          </div>
           {onVpsSync && (
+
             <button
               onClick={async () => {
                 if (isSyncing) return;
