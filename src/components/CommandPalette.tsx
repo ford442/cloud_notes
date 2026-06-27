@@ -180,11 +180,29 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
   useEffect(() => {
     let isActive = true;
 
+    const sectionOrder = ['Semantic', 'Commands', 'View', 'Editor', 'Actions', 'Notes', 'Integrations'];
+
+    const sortResults = (items: ActionItem[]) => {
+      return items.sort((a, b) => {
+          const aSection = a.section || 'Other';
+          const bSection = b.section || 'Other';
+
+          let aIndex = sectionOrder.indexOf(aSection);
+          let bIndex = sectionOrder.indexOf(bSection);
+
+          if (aIndex === -1) aIndex = 99;
+          if (bIndex === -1) bIndex = 99;
+
+          if (aIndex !== bIndex) return aIndex - bIndex;
+          return 0; // Preserve existing relevance order
+      });
+    };
+
     if (!query.trim()) {
       // Wrap in timeout to avoid "setState during render" warning
       const t = setTimeout(() => {
         if (isActive) {
-           setResults(allItems.slice(0, 50));
+           setResults(sortResults([...allItems]).slice(0, 50));
            setIsSearching(false);
         }
       }, 0);
@@ -197,11 +215,11 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
     setIsSearching(true);
     const timer = setTimeout(async () => {
       // 1. Fuzzy Search (Fast, Local)
-      const fuzzyResults = fuse.search(query).map(r => r.item).slice(0, 50);
+      const fuzzyResults = fuse.search(query).map(r => r.item);
 
       // Immediate update with fuzzy results
       if (isActive) {
-          setResults(fuzzyResults);
+          setResults(sortResults([...fuzzyResults]).slice(0, 50));
           setSelectedIndex(0);
       }
 
@@ -252,21 +270,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
       }
 
       // Sort the final results to group by section (Semantic first, then Commands, then Notes)
-      const sectionOrder = ['Semantic', 'Commands', 'View', 'Editor', 'Actions', 'Notes', 'Integrations'];
-
-      const sortedMerged = merged.sort((a, b) => {
-          const aSection = a.section || 'Other';
-          const bSection = b.section || 'Other';
-
-          let aIndex = sectionOrder.indexOf(aSection);
-          let bIndex = sectionOrder.indexOf(bSection);
-
-          if (aIndex === -1) aIndex = 99;
-          if (bIndex === -1) bIndex = 99;
-
-          if (aIndex !== bIndex) return aIndex - bIndex;
-          return a.title.localeCompare(b.title);
-      });
+      const sortedMerged = sortResults(merged);
 
       setResults(sortedMerged.slice(0, 50));
       setIsSearching(false);
