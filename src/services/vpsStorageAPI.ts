@@ -19,6 +19,13 @@ export interface VpsNoteMeta {
   size: number;
 }
 
+export interface VpsNoteDetailedMeta extends VpsNoteMeta {
+  wordCount?: number;
+  lastEdited?: string;
+  version?: number;
+  dailyDate?: string;
+}
+
 export interface VpsNoteContent {
   name: string;
   content: string;
@@ -55,6 +62,10 @@ export const vpsStorageAPI = {
     const res = await fetch(`${getVpsBaseUrl()}/api/notes/delete/${encodeURIComponent(name)}`, {
       method: 'DELETE',
     });
+    if (!res.ok) {
+      const text = await res.text().catch(() => 'Unknown error');
+      throw new Error(`Failed to delete note "${name}": ${res.status} - ${text}`);
+    }
     return res.ok;
   },
 };

@@ -52,6 +52,8 @@ export interface Note {
   section: string;
   tags: string;
   updatedAt?: string;
+  lastEdited?: string;
+  wordCount?: number;
 }
 
 export interface CloudItemMeta {
@@ -498,6 +500,10 @@ export const StorageService = {
 
   // Pure network call for Creates
   async _networkSaveNote(note: Note, author: string, skipWebhook = false): Promise<{ success: boolean; id?: string }> {
+      const wordCount = note.content ? note.content.trim().split(/\s+/).filter(Boolean).length : 0;
+      note.lastEdited = new Date().toISOString();
+      note.wordCount = wordCount;
+
       const noteName = slugify(note.title);
 
       // 1. Maintain Legacy API call (Synchronous truth)
@@ -558,6 +564,10 @@ export const StorageService = {
 
   // Pure network call for Updates
   async _networkUpdateNote(id: string, note: Note, author: string, skipWebhook = false): Promise<{ success: boolean; id?: string }> {
+      const wordCount = note.content ? note.content.trim().split(/\s+/).filter(Boolean).length : 0;
+      note.lastEdited = new Date().toISOString();
+      note.wordCount = wordCount;
+
       const noteName = slugify(id);
 
       // 1. Maintain Legacy API call (Synchronous truth)
