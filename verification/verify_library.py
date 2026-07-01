@@ -1,6 +1,7 @@
 import asyncio
 import os
 import shutil
+import re
 from playwright.sync_api import sync_playwright, expect
 
 def run_cuj(page):
@@ -23,12 +24,13 @@ def run_cuj(page):
     page.keyboard.press('Enter')
 
     print("Waiting for library panel...")
-    expect(page.get_by_text("Cloud Library Browser")).to_be_visible(timeout=10000)
+    page.wait_for_selector('[data-testid="library-browser"]', timeout=10000)
+    expect(page.get_by_role("heading", name=re.compile(r"Cloud Library Browser", re.IGNORECASE))).to_be_visible(timeout=10000)
     page.wait_for_timeout(1000)
 
     print("Switching to Samples tab...")
     # More resilient locator as suggested by user
-    page.get_by_role("button", name="samples").click()
+    page.get_by_role("tab", name=re.compile(r"samples?", re.IGNORECASE)).click()
     page.wait_for_timeout(2000)
 
     print("Capturing screenshot...")

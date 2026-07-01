@@ -18,16 +18,36 @@ export interface ItemPayload {
   data: Record<string, any>;
 }
 
+export interface LibrarySearchParams {
+  type?: string;
+  q?: string;
+  tags?: string;
+  max_rating?: number;
+  min_rating?: number;
+  played_after?: string;
+  limit?: number;
+  offset?: number;
+  sort_by?: string;
+}
+
 export const cloudStorageApi = {
   /**
-   * List JSON library items (songs, patterns, banks).
-   * @param type Optional filter by type (e.g., 'song', 'pattern', 'bank')
+   * List JSON library items (songs, patterns, banks) with advanced search.
+   * @param params Filtering and pagination parameters
    */
-  async listLibrary(type?: string): Promise<MetaData[]> {
+  async listLibrary(params: LibrarySearchParams = {}): Promise<MetaData[]> {
     const url = new URL(`${getVpsBaseUrl()}/api/songs`);
-    if (type) {
-      url.searchParams.append('type', type);
-    }
+
+    if (params.type) url.searchParams.append('type', params.type);
+    if (params.q) url.searchParams.append('q', params.q);
+    if (params.tags) url.searchParams.append('tags', params.tags);
+    if (params.max_rating !== undefined) url.searchParams.append('max_rating', params.max_rating.toString());
+    if (params.min_rating !== undefined) url.searchParams.append('min_rating', params.min_rating.toString());
+    if (params.played_after) url.searchParams.append('played_after', params.played_after);
+    if (params.limit !== undefined) url.searchParams.append('limit', params.limit.toString());
+    if (params.offset !== undefined) url.searchParams.append('offset', params.offset.toString());
+    if (params.sort_by) url.searchParams.append('sort_by', params.sort_by);
+
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`Failed to list library: ${res.statusText}`);
     return res.json();

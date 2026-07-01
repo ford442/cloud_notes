@@ -18,6 +18,7 @@ const PlaylistView = lazy(() => import('./components/PlaylistView').then(m => ({
 const ModSongsView = lazy(() => import('./components/ModSongsView').then(m => ({ default: m.ModSongsView })))
 const PresetsPanel = lazy(() => import('./components/PresetsPanel').then(m => ({ default: m.PresetsPanel })))
 const TexturesPanel = lazy(() => import('./components/TexturesPanel').then(m => ({ default: m.TexturesPanel })))
+const LibraryBrowser = lazy(() => import('./components/LibraryBrowser').then(m => ({ default: m.LibraryBrowser })))
 
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
@@ -36,9 +37,12 @@ import type { DialogType } from './components/Dialog'
 import { HistoryModal } from './components/HistoryModal'
 import { HoverLinkPreview } from './components/editor/HoverLinkPreview'
 
+import { LibraryPlugin } from './plugins/library'
+
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
 PluginRegistry.register(MusicPlugin);
+PluginRegistry.register(LibraryPlugin);
 
 // Wrapper to provide toast context
 function AppWrapper() {
@@ -98,7 +102,7 @@ function App() {
   }, []);
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures'>('rich')
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser'>('rich')
 
 
 
@@ -175,7 +179,7 @@ function App() {
       }
     });
     PluginRegistry.setModeSetter((mode) => {
-       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets', 'textures'].includes(mode)) {
+       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets', 'textures', 'library-browser'].includes(mode)) {
 
           setEditorMode(mode as any);
        } else {
@@ -694,7 +698,7 @@ function App() {
           )}
 
           {/* Header Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex-1 flex items-center gap-4 min-w-[300px]">
                  <input
@@ -947,6 +951,8 @@ function App() {
                 <PresetsPanel onClose={() => setEditorMode('rich')} />
               ) : editorMode === 'textures' ? (
                 <TexturesPanel onClose={() => setEditorMode('rich')} />
+              ) : editorMode === 'library-browser' ? (
+                <LibraryBrowser onClose={() => setEditorMode('rich')} />
               ) : editorMode === 'simple' ? (
                 <Editor
                   value={currentNote.content}
@@ -998,7 +1004,7 @@ function App() {
           </div>
 
           {/* Footer Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
