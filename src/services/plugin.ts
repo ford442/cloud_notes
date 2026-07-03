@@ -37,9 +37,9 @@ export interface Plugin {
 
 class PluginRegistryService {
   private plugins: Map<string, Plugin> = new Map();
-  private commands: CommandItem[] = [];
+  private commands: Map<string, CommandItem> = new Map();
   private commandProviders: (() => CommandItem[])[] = [];
-  private actions: ActionItem[] = [];
+  private actions: Map<string, ActionItem> = new Map();
 
   // Callbacks provided by App
   private noteGetter: () => Note | null = () => null;
@@ -127,13 +127,13 @@ class PluginRegistryService {
   private initPlugin(plugin: Plugin) {
     const context: PluginContext = {
       registerCommand: (cmd) => {
-        this.commands.push(cmd);
+        this.commands.set(cmd.title, cmd);
       },
       registerCommandProvider: (provider) => {
         this.commandProviders.push(provider);
       },
       registerAction: (action) => {
-        this.actions.push(action);
+        this.actions.set(action.id, action);
       },
       getCurrentNote: () => this.noteGetter(),
       getAllNotes: () => this.allNotesGetter(),
@@ -159,11 +159,11 @@ class PluginRegistryService {
 
   getSlashCommands(): CommandItem[] {
     const dynamicCommands = this.commandProviders.flatMap(provider => provider());
-    return [...this.commands, ...dynamicCommands];
+    return [...Array.from(this.commands.values()), ...dynamicCommands];
   }
 
   getActions(): ActionItem[] {
-    return this.actions;
+    return Array.from(this.actions.values());
   }
 
   registerAll(plugins: Plugin[]) {
