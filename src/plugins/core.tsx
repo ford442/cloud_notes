@@ -149,23 +149,64 @@ export const TextToolsPlugin: Plugin = {
   name: 'Text Tools',
   init: (ctx) => {
     ctx.registerAction({
+      id: 'text-uppercase',
+      title: 'Text: To UPPERCASE',
+      section: 'Editor',
+      icon: <span className="text-lg">🔠</span>,
+      perform: () => {
+        // Dispatch event for editor to catch and apply transform
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'uppercase' } }));
+      }
+    });
+
+    ctx.registerAction({
+      id: 'text-lowercase',
+      title: 'Text: To lowercase',
+      section: 'Editor',
+      icon: <span className="text-lg">🔡</span>,
+      perform: () => {
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'lowercase' } }));
+      }
+    });
+
+    ctx.registerAction({
+      id: 'text-titlecase',
+      title: 'Text: To Title Case',
+      section: 'Editor',
+      icon: <span className="text-lg">🔠</span>,
+      perform: () => {
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'titlecase' } }));
+      }
+    });
+
+    ctx.registerAction({
+      id: 'text-strip',
+      title: 'Text: Strip Formatting',
+      section: 'Editor',
+      icon: <span className="text-lg">🧹</span>,
+      perform: () => {
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'strip' } }));
+      }
+    });
+
+    ctx.registerAction({
+      id: 'text-bullet-list',
+      title: 'Text: To Bullet List',
+      section: 'Editor',
+      icon: <span className="text-lg">📝</span>,
+      perform: () => {
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'bullet-list' } }));
+      }
+    });
+
+    ctx.registerAction({
       id: 'append-signature',
-      title: 'Append Signature',
+      title: 'Text: Append Signature',
       section: 'Editor',
       icon: <span className="text-lg">✍️</span>,
       perform: () => {
         const note = ctx.getCurrentNote();
         if (!note) return;
-
-        // Note: note.author might not be on the Note interface strictly speaking, but we can try note.author or fallback
-        // Looking at api.ts Note interface: id, title, content, subject, section, tags.
-        // CloudItemMeta has author.
-        // App.tsx passes currentNote which matches Note.
-        // So author might not be available on 'note'.
-        // We will just use 'Me' or check if we can get it from somewhere else.
-        // Actually, App.tsx manages 'authorName' state but doesn't pass it to the Note object unless saved.
-        // But for now, we just append a static signature or "Me".
-
         const signature = `\n\n---\n*Signed*`;
         ctx.updateNote({ content: (note.content || '') + signature });
       }
