@@ -12,6 +12,7 @@ interface SidebarProps {
   onMoveNote?: (id: string, newSubject: string, newSection: string) => void;
   onSearchOpen?: () => void;
   onVpsSync?: (onProgress?: (message: string) => void) => Promise<{ pulled: number; pushed: number; errors: string[] }>;
+  onToggleGraph?: () => void;
 }
 
 // Icons
@@ -36,7 +37,7 @@ const parseMeta = (desc: string) => {
   return { subject: parts[0] || 'General', section: parts[1] || 'Inbox' };
 };
 
-export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote, onSearchOpen, onVpsSync }: SidebarProps) => {
+export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote, onSearchOpen, onVpsSync, onToggleGraph }: SidebarProps) => {
   const { addToast } = useToast();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState('');
@@ -107,6 +108,19 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
             <span className="text-blue-500 dark:text-blue-400 text-lg">📚</span> KNOWLEDGE
           </h1>
           <div className="flex items-center gap-2">
+            <button
+              onClick={onToggleGraph}
+              className="text-xs p-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition-all shadow-sm flex items-center justify-center"
+              title="Graph View"
+            >
+              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <circle cx="18" cy="5" r="3" strokeWidth="2" />
+                 <circle cx="6" cy="12" r="3" strokeWidth="2" />
+                 <circle cx="18" cy="19" r="3" strokeWidth="2" />
+                 <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" strokeWidth="2" />
+                 <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" strokeWidth="2" />
+              </svg>
+            </button>
             <button
               onClick={onSearchOpen}
               className="text-xs p-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition-all shadow-sm flex items-center justify-center"

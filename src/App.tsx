@@ -675,6 +675,7 @@ function App() {
             onMoveNote={handleMoveNote}
             onSearchOpen={() => setIsSearchOpen(true)}
             onVpsSync={handleVpsSync}
+            onToggleGraph={() => setEditorMode('graph')}
           />
         </div>
 

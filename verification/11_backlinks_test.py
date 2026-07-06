@@ -68,7 +68,7 @@ async def verify_backlinks():
 
         print("Checking backlinks panel...")
         # Check if Backlinks panel contains "Source Note"
-        has_backlink = await page.locator("text=Source Note").is_visible()
+        has_backlink = await page.locator("#backlinks-panel").locator("text=Source Note").is_visible()
         if not has_backlink:
              # take screenshot
              await page.screenshot(path="verification/backlinks_error.png")
