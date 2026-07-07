@@ -144,6 +144,36 @@ export const ExportPlugin: Plugin = {
 };
 
 // --- Text Tools Plugin ---
+export const NoteActionsPlugin: Plugin = {
+  id: 'core-note-actions',
+  name: 'Note Actions',
+  init: (ctx) => {
+    ctx.registerAction({
+      id: 'duplicate-note',
+      title: 'Duplicate Note',
+      section: 'Actions',
+      icon: <span className="text-lg">📋</span>,
+      perform: () => {
+        const note = ctx.getCurrentNote();
+        if (!note) {
+          ctx.alert('No note selected');
+          return;
+        }
+
+        ctx.createNote({
+          title: `[Copy] ${note.title || 'Untitled'}`,
+          content: note.content || '',
+          subject: note.subject,
+          section: note.section,
+          tags: note.tags,
+        });
+
+        ctx.alert(`Duplicated note: ${note.title}`);
+      }
+    });
+  }
+};
+
 export const TextToolsPlugin: Plugin = {
   id: 'core-text-tools',
   name: 'Text Tools',
@@ -216,4 +246,4 @@ export const TextToolsPlugin: Plugin = {
 
 import { TexturesPlugin } from './textures';
 
-export const CorePlugins = [TexturesPlugin, InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin, E2EPlugin];
+export const CorePlugins = [TexturesPlugin, InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, NoteActionsPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin, E2EPlugin];
