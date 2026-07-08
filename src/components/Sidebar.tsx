@@ -43,19 +43,39 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
   const [query, setQuery] = useState('');
   const [dragOverTarget, setDragOverTarget] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatusText, setSyncStatusText] = useState('Synced');
 
   const [isOnline, setIsOnline] = useState(navigator.onLine);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
+
+    const handleSyncStatus = (e: Event) => {
+        const customEvent = e as CustomEvent<string>;
+        const status = customEvent.detail;
+        if (status === 'Syncing...') {
+            setIsSyncing(true);
+            setSyncStatusText(status);
+        } else {
+            setIsSyncing(false);
+            setSyncStatusText(status);
+            if (status === 'Failed') {
+                addToast('Background sync failed.', 'error');
+            }
+        }
+    };
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    window.addEventListener('sync-status', handleSyncStatus);
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('sync-status', handleSyncStatus);
     };
-  }, []);
+  }, [addToast]);
 
 
   const toggle = (key: string) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
@@ -310,8 +330,8 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
             </button>
           )}
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-amber-500 dark:bg-amber-400 animate-pulse' : 'bg-green-500 dark:bg-green-400'}`}></div>
-            <span>{isSyncing ? 'Syncing…' : 'Synced'}</span>
+            <div className={`w-2 h-2 rounded-full ${isSyncing ? 'bg-amber-500 dark:bg-amber-400 animate-pulse' : syncStatusText === 'Failed' ? 'bg-red-500' : 'bg-green-500 dark:bg-green-400'}`}></div>
+            <span>{syncStatusText}</span>
           </div>
         </div>
       </div>

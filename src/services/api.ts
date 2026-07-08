@@ -42,6 +42,8 @@ interface PendingOp {
   note?: Note;
   author?: string;
   timestamp: number;
+  retries?: number;
+  nextRetry?: number;
 }
 
 export interface Note {
@@ -90,11 +92,27 @@ export const StorageService = {
   // --- THE SYNC ENGINE ---
 
   async syncPending() {
-    if (!navigator.onLine) return;
+    if (!navigator.onLine) {
+        window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Offline' }));
+        return;
+    }
 
     try {
-      const ops = await db.getAll<PendingOp>(STORE_PENDING_OPS);
-      if (ops.length === 0) return;
+      window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Syncing...' }));
+      const allOps = await db.getAll<PendingOp>(STORE_PENDING_OPS);
+      if (allOps.length === 0) {
+          window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Synced' }));
+          return;
+      }
+
+      const now = Date.now();
+      const ops = allOps.filter(item => !item.value.nextRetry || item.value.nextRetry <= now);
+
+      if (ops.length === 0) {
+          // Some ops exist but are waiting for backoff
+          window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Failed' }));
+          return;
+      }
 
       console.log(`[Sync Engine] Processing ${ops.length} offline operations...`);
 
@@ -132,6 +150,7 @@ export const StorageService = {
       // Map to track temporary offline IDs resolving to real server IDs
       const idMap = new Map<string, string>();
       const successfulOps: PendingOp[] = [];
+      let hasFailures = false;
 
       // We do not want the legacy network methods to fire individual webhooks
       // because we will fire one batch webhook at the end (or individual if only 1 op).
@@ -143,6 +162,11 @@ export const StorageService = {
 
           // Resolve the target ID (if this note was created offline, use the new real server ID)
           const targetId = idMap.get(op.noteId) || op.noteId;
+
+          // [CONFLICT RESOLUTION STUB]
+          // If pulling before pushing, we would check the remote `updatedAt` vs `op.timestamp`
+          // and apply Last-Write-Wins here.
+          console.log(`[Sync Engine] Stub: Checking conflict resolution for ${targetId}`);
 
           if (op.type === 'create' && op.note) {
             const res = await this._networkSaveNote(op.note, op.author || "User", skipWebhook);
@@ -171,10 +195,21 @@ export const StorageService = {
               await db.del(STORE_PENDING_OPS, k);
             }
           } else {
-            console.warn(`[Sync Engine] Op ${keys.join(', ')} failed, keeping in queue for next retry.`);
+            throw new Error(`[Sync Engine] Op ${keys.join(', ')} failed gracefully.`);
           }
         } catch (e) {
-          console.error(`[Sync Engine] Failed to process op ${keys.join(', ')}`, e);
+          hasFailures = true;
+          console.error(`[Sync Engine] Error processing op ${keys.join(', ')}`, e);
+          for (const k of keys) {
+              const retries = (op.retries || 0) + 1;
+              if (retries >= 5) {
+                  console.error(`[Sync Engine] Max retries exceeded for ${k}. Dropping operation.`);
+                  await db.del(STORE_PENDING_OPS, k);
+              } else {
+                  const nextRetry = Date.now() + Math.min(30000, 1000 * Math.pow(2, retries));
+                  await db.set(STORE_PENDING_OPS, k, { ...op, retries, nextRetry });
+              }
+          }
         }
       }
 
@@ -195,8 +230,12 @@ export const StorageService = {
       if (consolidatedOps.length > 0) {
           this.getNotes(false).catch(console.warn);
       }
+
+      window.dispatchEvent(new CustomEvent('sync-status', { detail: hasFailures ? 'Failed' : 'Synced' }));
+
     } catch (e) {
       console.error('[Sync Engine] Failed to run sync queue', e);
+      window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Failed' }));
     }
   },
 
