@@ -471,7 +471,7 @@ const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavi
         case 'titlecase':
           newText = text.replace(
             /\w\S*/g,
-            (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
+            (txt: string) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase()
           );
           break;
         case 'strip':
