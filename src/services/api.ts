@@ -56,6 +56,7 @@ export interface Note {
   updatedAt?: string;
   lastEdited?: string;
   wordCount?: number;
+  lastSyncedAt?: number;
 }
 
 export interface CloudItemMeta {
@@ -816,8 +817,8 @@ export const StorageService = {
 
   async syncWithVps(
     onProgress?: (message: string) => void
-  ): Promise<{ pulled: number; pushed: number; errors: string[] }> {
-    const result = { pulled: 0, pushed: 0, errors: [] as string[] };
+  ): Promise<{ pulled: number; pushed: number; conflicts: number; errors: string[] }> {
+    const result = { pulled: 0, pushed: 0, conflicts: 0, errors: [] as string[] };
 
     try {
       onProgress?.('Fetching VPS notes...');
@@ -839,9 +840,77 @@ export const StorageService = {
         const localTime = localNote?.updatedAt ? new Date(localNote.updatedAt).getTime() : 0;
 
         try {
-          if (vpsNote && (!localNote || vpsTime > localTime)) {
+          const lastSync = localNote?.lastSyncedAt || 0;
+          const TOLERANCE_MS = 5000;
+
+          let action: 'PULL' | 'PUSH' | 'CONFLICT' | 'NOOP' = 'NOOP';
+
+          if (!localNote && vpsNote) {
+             action = 'PULL';
+          } else if (localNote && !vpsNote) {
+             action = 'PUSH';
+          } else if (localNote && vpsNote) {
+             const hasLocalChanges = localTime > lastSync;
+             const hasServerChanges = vpsTime > (lastSync + TOLERANCE_MS);
+
+             if (hasLocalChanges && hasServerChanges) {
+                const remote = await vpsStorageAPI.readNote(name);
+                if (remote.content !== localNote.content) {
+                   action = 'CONFLICT';
+                } else {
+                   action = 'PULL'; // They're identical, just refresh local timestamps/meta
+                }
+             } else if (hasLocalChanges) {
+                action = 'PUSH';
+             } else if (hasServerChanges) {
+                action = 'PULL';
+             }
+          }
+
+          if (action === 'CONFLICT' && localNote && vpsNote) {
+             onProgress?.(`Conflict detected for "${name}"...`);
+             const remote = await vpsStorageAPI.readNote(name);
+
+             // 1. Save local as conflicted copy
+             const conflictId = `${name}_conflict_${Date.now()}`;
+             const conflictTitle = `${localNote.title} (Conflicted Copy)`;
+             const conflictNote: Note = {
+               ...localNote,
+               id: conflictId,
+               title: conflictTitle,
+               updatedAt: new Date().toISOString(),
+               lastSyncedAt: Date.now()
+             };
+             await db.set(STORE_NOTES_CONTENT, conflictId, conflictNote);
+
+             const conflictMeta: CloudItemMeta = {
+               id: conflictId,
+               name: conflictId,
+               author: conflictNote.subject,
+               date: conflictNote.updatedAt || new Date().toISOString(),
+               type: 'note',
+               description: createPackedDescription(conflictNote),
+             };
+             await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [conflictMeta, ...localMetaList]);
+             localMetaList.unshift(conflictMeta);
+
+             // 2. Push the conflict copy to the VPS as well so it's safely backed up
+             try {
+               await vpsStorageAPI.writeNote(conflictId, conflictNote.content);
+             } catch (e) {
+               console.warn('[Sync] Failed to push conflict copy', e);
+             }
+
+             // 3. Force overwrite the original local note with the remote note
+             action = 'PULL';
+             result.conflicts++;
+          }
+
+          if (action === 'PULL') {
             onProgress?.(`Pulling "${name}"...`);
             const remote = await vpsStorageAPI.readNote(name);
+            const newVpsTime = remote.updated_at ? new Date(remote.updated_at).getTime() : Date.now();
+
             const updatedNote: Note = {
               id: name,
               title: name,
@@ -850,6 +919,7 @@ export const StorageService = {
               section: localNote?.section || 'Inbox',
               tags: localNote?.tags || '',
               updatedAt: remote.updated_at,
+              lastSyncedAt: newVpsTime // Trust the server's clock
             };
             await db.set(STORE_NOTES_CONTENT, name, updatedNote);
 
@@ -872,9 +942,34 @@ export const StorageService = {
             }
             localMetaMap.set(name, meta);
             result.pulled++;
-          } else if (localNote && (!vpsNote || localTime > vpsTime)) {
+          } else if (action === 'PUSH' && localNote) {
             onProgress?.(`Pushing "${name}"...`);
             await vpsStorageAPI.writeNote(name, localNote.content);
+
+            const timeOfPush = Date.now();
+            localNote.lastSyncedAt = timeOfPush;
+
+            await db.set(STORE_NOTES_CONTENT, name, localNote);
+
+            // Also update STORE_NOTES_LIST to maintain consistency
+            const meta: CloudItemMeta = {
+              id: name,
+              name,
+              author: localNote.subject || 'User',
+              date: localNote.updatedAt || new Date(timeOfPush).toISOString(),
+              type: 'note',
+              description: createPackedDescription(localNote),
+            };
+
+            if (localMetaMap.has(name)) {
+              const newList = localMetaList.map(m => (m.id === name ? meta : m));
+              await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, newList);
+            } else {
+              await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [meta, ...localMetaList]);
+              localMetaList.unshift(meta);
+            }
+            localMetaMap.set(name, meta);
+
             result.pushed++;
           }
         } catch (err) {
