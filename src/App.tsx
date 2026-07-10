@@ -426,7 +426,7 @@ function App() {
       if (res.errors.length > 0) {
         addToast(`Sync completed with ${res.errors.length} errors`, 'error');
       } else {
-        addToast(`Synced: ${res.pulled} pulled, ${res.pushed} pushed`, 'success');
+        addToast(`Synced: ${res.pulled} pulled, ${res.pushed} pushed${res.conflicts > 0 ? `, ${res.conflicts} conflicts` : ''}`, res.conflicts > 0 ? 'info' : 'success');
       }
       // Refresh sidebar list after sync
       const fresh = await StorageService.getCachedNotes();
