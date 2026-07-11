@@ -11,52 +11,11 @@ import { TasksPlugin } from './tasks';
 import { ClusterPlugin } from './cluster';
 import { StorageService } from '../services/api';
 import { E2EPlugin } from './e2e';
+import { StatsPlugin } from './stats';
+
 
 // --- Stats Plugin ---
 
-export const StatsPlugin: Plugin = {
-  id: 'core-stats',
-  name: 'Statistics',
-  init: (ctx) => {
-    ctx.registerAction({
-      id: 'show-stats',
-      title: 'Show Note Statistics',
-      section: 'Actions',
-      icon: <span className="text-lg">📊</span>,
-      perform: () => {
-        const note = ctx.getCurrentNote();
-        if (!note) {
-            ctx.alert('No note selected');
-            return;
-        }
-
-        const content = note.content || '';
-        const words = content.trim().split(/\s+/).filter(Boolean).length;
-        const chars = content.length;
-        const lines = content.split('\n').length;
-
-        ctx.alert(`Statistics for "${note.title}"\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
-      }
-    });
-
-    ctx.registerCommand({
-      title: 'Note Statistics',
-      description: 'Show word count and stats',
-      searchTerms: ['stats', 'count', 'word'],
-      icon: <span className="text-lg">📊</span>,
-      command: async ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).run();
-
-        const content = editor.getText();
-        const words = content.trim().split(/\s+/).filter(Boolean).length;
-        const chars = content.length;
-        const lines = content.split('\n').length;
-
-        await ctx.alert(`Statistics\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
-      }
-    });
-  }
-};
 
 // --- Export Plugin ---
 
