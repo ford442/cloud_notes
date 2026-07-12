@@ -3,7 +3,6 @@ export const WORDS_PER_MINUTE = 200;
 export interface NoteStats {
   words: number;
   characters: number;
-  chars: number;
   lines: number;
   readingTimeMinutes: number;
 }
@@ -12,15 +11,10 @@ export function computeStats(content: string): NoteStats {
   const text = content || '';
   const words = text.trim().split(/\s+/).filter(Boolean).length;
   const characters = text.length;
-  const chars = text.length;
   const lines = text ? text.split('\n').length : 0;
   const readingTimeMinutes = words > 0 ? Math.ceil(words / WORDS_PER_MINUTE) : 0;
 
-  return { words, characters, chars, lines, readingTimeMinutes };
-}
-
-export function computeNoteStats(content: string): NoteStats {
-  return computeStats(content);
+  return { words, characters, lines, readingTimeMinutes };
 }
 
 export function formatReadingTime(minutes: number): string {
