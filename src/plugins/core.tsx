@@ -11,6 +11,7 @@ import { TasksPlugin } from './tasks';
 import { ClusterPlugin } from './cluster';
 import { StorageService } from '../services/api';
 import { E2EPlugin } from './e2e';
+
 import { StatsPlugin } from './stats';
 
 // --- Export Plugin ---

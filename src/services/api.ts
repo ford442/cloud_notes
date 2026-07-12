@@ -902,6 +902,7 @@ export const StorageService = {
 
           if (action === 'CONFLICT' && localNote && vpsNote) {
              onProgress?.(`Conflict detected for "${name}"...`);
+             await vpsStorageAPI.readNote(name);
 
              // 1. Save local as conflicted copy
              const conflictId = `${name}_conflict_${Date.now()}`;

@@ -13,13 +13,13 @@ export const StatsPlugin: Plugin = {
       perform: () => {
         const note = ctx.getCurrentNote();
         if (!note) {
-          ctx.alert('No note selected');
-          return;
+            ctx.alert('No note selected');
+            return;
         }
 
         const stats = computeStats(note.content || '');
         ctx.alert(formatStatsAlert(note.title || 'Untitled', stats));
-      },
+      }
     });
 
     ctx.registerCommand({
@@ -38,5 +38,5 @@ export const StatsPlugin: Plugin = {
         editor.chain().focus().insertContent(summary).run();
       },
     });
-  },
+  }
 };

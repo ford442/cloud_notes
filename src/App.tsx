@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react'
 import { StorageService } from './services/api'
 import { SyncBridge } from './services/SyncBridge'
 import { AIService } from './services/ai'
@@ -39,6 +39,8 @@ import { HistoryModal } from './components/HistoryModal'
 import { HoverLinkPreview } from './components/editor/HoverLinkPreview'
 
 import { LibraryPlugin } from './plugins/library'
+import { EditorStatusBar } from './components/EditorStatusBar'
+import { computeNoteStats, formatStatsSummary } from './utils/stats'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
@@ -589,7 +591,7 @@ function App() {
     addToast("Version restored. Don't forget to save!", "success");
   };
 
-  const wordCount = currentNote.content ? currentNote.content.trim().split(/\s+/).filter(Boolean).length : 0;
+  const statsSummary = useMemo(() => formatStatsSummary(computeNoteStats(currentNote.content || '')), [currentNote.content]);
 
   return (
     <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
@@ -687,7 +689,7 @@ function App() {
           {isFocusMode && (
              <div className="absolute bottom-6 right-6 z-50 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
                  <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-full shadow-lg text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-3">
-                     <span className="font-mono">{wordCount} words</span>
+                     <span className="font-mono">{statsSummary}</span>
                      <div className="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
                      <button
                        onClick={() => setIsFocusMode(false)}
@@ -1004,6 +1006,10 @@ function App() {
                   />
                 </div>
               </>
+            )}
+
+            {(editorMode === 'simple' || editorMode === 'rich') && !isFocusMode && (
+              <EditorStatusBar content={currentNote.content || ''} />
             )}
           </div>
 
