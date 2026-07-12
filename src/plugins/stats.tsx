@@ -13,13 +13,13 @@ export const StatsPlugin: Plugin = {
       perform: () => {
         const note = ctx.getCurrentNote();
         if (!note) {
-          ctx.alert('No note selected');
-          return;
+            ctx.alert('No note selected');
+            return;
         }
 
         const stats = computeNoteStats(note.content || '');
         ctx.alert(formatStatsAlert(note.title || 'Untitled', stats));
-      },
+      }
     });
 
     ctx.registerCommand({
@@ -30,9 +30,11 @@ export const StatsPlugin: Plugin = {
       command: async ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();
 
-        const stats = computeNoteStats(editor.getText());
-        await ctx.alert(formatStatsAlert('Current Note', stats));
-      },
+        const content = editor.getText();
+        const stats = computeNoteStats(content);
+
+        await ctx.alert(`Statistics\n\nWords: ${stats.words}\nCharacters: ${stats.chars}\nLines: ${stats.lines}\nReading Time: ~${stats.readingTimeMinutes} min`);
+      }
     });
-  },
+  }
 };
