@@ -13,10 +13,6 @@ import { StorageService } from '../services/api';
 import { E2EPlugin } from './e2e';
 import { StatsPlugin } from './stats';
 
-
-// --- Stats Plugin ---
-
-
 // --- Export Plugin ---
 
 const downloadFile = (filename: string, content: string, type: string) => {

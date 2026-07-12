@@ -5,7 +5,7 @@ import { AIService } from './services/ai'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
-import { EditorStatusBar } from './components/EditorStatusBar';
+import { EditorStatusBar } from './components/EditorStatusBar'
 
 // Lazy load heavy components
 const BlockEditor = lazy(() => import('./components/BlockEditor').then(m => ({ default: m.BlockEditor })))

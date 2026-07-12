@@ -1,5 +1,5 @@
 import type { Plugin } from '../services/plugin';
-import { computeStats, formatReadingTime } from '../utils/stats';
+import { computeStats, formatReadingTime, formatStatsAlert } from '../utils/stats';
 
 export const StatsPlugin: Plugin = {
   id: 'core-stats',
@@ -13,15 +13,13 @@ export const StatsPlugin: Plugin = {
       perform: () => {
         const note = ctx.getCurrentNote();
         if (!note) {
-            ctx.alert('No note selected');
-            return;
+          ctx.alert('No note selected');
+          return;
         }
 
-        const content = note.content || '';
-        const stats = computeStats(content);
-
-        ctx.alert(`Statistics for "${note.title}"\n\nWords: ${stats.words}\nCharacters: ${stats.characters}\nLines: ${stats.lines}\nReading Time: ${formatReadingTime(stats.readingTimeMinutes)}`);
-      }
+        const stats = computeStats(note.content || '');
+        ctx.alert(formatStatsAlert(note.title || 'Untitled', stats));
+      },
     });
 
     ctx.registerCommand({
@@ -35,11 +33,10 @@ export const StatsPlugin: Plugin = {
 
         const content = editor.getText();
         const stats = computeStats(content);
-
         const summary = `**Note Statistics:**\n- ${stats.words} words\n- ${stats.characters} characters\n- ${stats.lines} lines\n- ${formatReadingTime(stats.readingTimeMinutes)}`;
 
         editor.chain().focus().insertContent(summary).run();
       },
     });
-  }
+  },
 };
