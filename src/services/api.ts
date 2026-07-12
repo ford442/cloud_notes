@@ -32,6 +32,39 @@ function slugify(title: string): string {
 }
 
 // Storage Manager API endpoint
+
+// Network retry wrapper to handle timeouts/flakes
+async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 2, timeoutMs = 8000): Promise<Response> {
+  let lastError = new Error('fetchWithRetry failed');
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+
+      clearTimeout(id);
+      return response;
+    } catch (err: any) {
+      lastError = err;
+      if (err.name === 'AbortError') {
+        console.warn(`[Fetch Timeout] ${url} timed out on attempt ${i + 1}`);
+      } else {
+        console.warn(`[Fetch Error] ${url} failed on attempt ${i + 1}`, err);
+      }
+      // Wait before retrying (exponential backoff)
+      if (i < retries - 1) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export const API_BASE_URL = localStorage.getItem('api_url') || "https://storage.noahcohn.com";
 
 // 1. EXPANDED: Now handles creates, updates, and deletes
@@ -245,7 +278,7 @@ export const StorageService = {
   async getNotes(skipCacheUpdate = false): Promise<CloudItemMeta[]> {
     try {
       // Fetch note list from storage manager's named notes endpoint
-      const notesRes = await fetch(`${API_BASE_URL}/api/notes/list`);
+      const notesRes = await fetchWithRetry(`${API_BASE_URL}/api/notes/list`);
       if (!notesRes.ok) throw new Error("Failed to fetch notes list");
       
       const notes = await notesRes.json();
@@ -328,7 +361,7 @@ export const StorageService = {
       }
 
       // Fetch from storage manager's named notes endpoint
-      const res = await fetch(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(id)}`);
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(id)}`);
       if (!res.ok) throw new Error("Failed to load note");
       const data = await res.json();
       
@@ -479,7 +512,7 @@ export const StorageService = {
           };
           if (signature) headers['X-Signature-256'] = signature;
 
-          fetch(`${API_BASE_URL}/webhook/notes`, {
+          fetchWithRetry(`${API_BASE_URL}/webhook/notes`, {
               method: 'POST',
               headers,
               body: payloadStr
@@ -502,7 +535,7 @@ export const StorageService = {
           if (signature) headers['X-Signature-256'] = signature;
 
           // Fire and forget - we do not await this fetch so it doesn't block the UI
-          fetch(`${API_BASE_URL}/webhook/notes`, {
+          fetchWithRetry(`${API_BASE_URL}/webhook/notes`, {
               method: 'POST',
               headers,
               body: payloadStr
@@ -547,7 +580,7 @@ export const StorageService = {
       const noteName = slugify(note.title);
 
       // 1. Maintain Legacy API call (Synchronous truth)
-      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: note.content })
@@ -566,7 +599,7 @@ export const StorageService = {
       const noteName = slugify(id);
 
       // 1. Maintain Legacy API call (Synchronous truth)
-      const deleteRes = await fetch(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(noteName)}`, {
+      const deleteRes = await fetchWithRetry(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(noteName)}`, {
         method: 'DELETE'
       });
       if (!deleteRes.ok) throw new Error(await deleteRes.text());
@@ -591,7 +624,7 @@ export const StorageService = {
       }
 
       if (!skipWebhook) {
-        const res = await fetch(`${API_BASE_URL}/webhook/notes`, {
+        const res = await fetchWithRetry(`${API_BASE_URL}/webhook/notes`, {
           method: 'POST',
           headers,
           body: payloadStr
@@ -611,7 +644,7 @@ export const StorageService = {
       const noteName = slugify(id);
 
       // 1. Maintain Legacy API call (Synchronous truth)
-      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: note.content })
@@ -768,7 +801,7 @@ export const StorageService = {
 
   async listNamedNotes(): Promise<Array<{ name: string; updated_at: string; size: number }>> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes/list`);
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/list`);
       if (!res.ok) throw new Error(`listNamedNotes failed: ${res.status}`);
       return await res.json();
     } catch (e) {
@@ -779,7 +812,7 @@ export const StorageService = {
 
   async loadNamedNote(name: string): Promise<{ name: string; content: string; updated_at: string } | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(name)}`);
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(name)}`);
       if (!res.ok) throw new Error(`loadNamedNote(${name}) failed: ${res.status}`);
       return await res.json();
     } catch (e) {
@@ -790,7 +823,7 @@ export const StorageService = {
 
   async saveNamedNote(name: string, content: string): Promise<{ success: boolean; name: string; size: number; updated_at: string } | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(name)}`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(name)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
@@ -805,7 +838,7 @@ export const StorageService = {
 
   async deleteNamedNote(name: string): Promise<boolean> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(name)}`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(name)}`, {
         method: 'DELETE',
       });
       return res.ok;
@@ -994,7 +1027,7 @@ export const StorageService = {
       formData.append('author', author);
       formData.append('description', description);
 
-      const res = await fetch(`${API_BASE_URL}/api/samples`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/samples`, {
         method: 'POST',
         body: formData
       });

@@ -5,6 +5,7 @@ import { AIService } from './services/ai'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
+import { EditorStatusBar } from './components/EditorStatusBar'
 
 // Lazy load heavy components
 const BlockEditor = lazy(() => import('./components/BlockEditor').then(m => ({ default: m.BlockEditor })))
@@ -22,7 +23,6 @@ const LibraryBrowser = lazy(() => import('./components/LibraryBrowser').then(m =
 
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
-import { EditorStatusBar } from './components/EditorStatusBar'
 import { CommandPalette } from './components/CommandPalette'
 import { SearchModal } from './components/SearchModal'
 import { ChatModal } from './components/ChatModal'
@@ -985,11 +985,9 @@ function App() {
                   </div>
                 </div>
               )}
-            </div>
 
-            {(editorMode === 'simple' || editorMode === 'rich') && !isFocusMode && (
-              <EditorStatusBar content={currentNote.content || ''} />
-            )}
+              <EditorStatusBar currentNote={currentNote} focusMode={isFocusMode} />
+            </div>
 
             {(!isFocusMode && editorMode !== 'graph' && editorMode !== 'canvas') && (
               <>
