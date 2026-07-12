@@ -24,8 +24,8 @@ export const StatsPlugin: Plugin = {
 
     ctx.registerCommand({
       title: 'Note Statistics',
-      description: 'Show word count and stats',
-      searchTerms: ['stats', 'count', 'word'],
+      description: 'Show word count, reading time, and stats',
+      searchTerms: ['stats', 'count', 'word', 'reading', 'time'],
       icon: <span className="text-lg">📊</span>,
       command: async ({ editor, range }) => {
         editor.chain().focus().deleteRange(range).run();

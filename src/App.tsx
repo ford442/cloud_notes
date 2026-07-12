@@ -22,6 +22,7 @@ const LibraryBrowser = lazy(() => import('./components/LibraryBrowser').then(m =
 
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
+import { EditorStatusBar } from './components/EditorStatusBar'
 import { CommandPalette } from './components/CommandPalette'
 import { SearchModal } from './components/SearchModal'
 import { ChatModal } from './components/ChatModal'
@@ -985,6 +986,10 @@ function App() {
                 </div>
               )}
             </div>
+
+            {(editorMode === 'simple' || editorMode === 'rich') && !isFocusMode && (
+              <EditorStatusBar content={currentNote.content || ''} />
+            )}
 
             {(!isFocusMode && editorMode !== 'graph' && editorMode !== 'canvas') && (
               <>
