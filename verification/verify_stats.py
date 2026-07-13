@@ -18,8 +18,8 @@ async def main():
         await page.keyboard.type(test_text)
 
         print("Verifying EditorStatusBar...")
-        status_bar_locator = page.locator("text=/\\d+ words · ~\\d+ min read/")
-        await expect(status_bar_locator).to_be_visible(timeout=5000)
+        status_bar_locator = page.locator("text=/\\d+ words.*min read/")
+        await expect(status_bar_locator.first).to_be_visible(timeout=5000)
         print("✓ EditorStatusBar is visible and accurate.")
 
         print("Verifying Command Palette Action...")

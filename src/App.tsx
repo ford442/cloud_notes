@@ -39,8 +39,7 @@ import { HistoryModal } from './components/HistoryModal'
 import { HoverLinkPreview } from './components/editor/HoverLinkPreview'
 
 import { LibraryPlugin } from './plugins/library'
-import { EditorStatusBar } from './components/EditorStatusBar'
-import { computeNoteStats, formatStatsSummary } from './utils/stats'
+import { computeStats, formatStatsSummary } from './utils/stats'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
@@ -591,7 +590,7 @@ function App() {
     addToast("Version restored. Don't forget to save!", "success");
   };
 
-  const statsSummary = useMemo(() => formatStatsSummary(computeNoteStats(currentNote.content || '')), [currentNote.content]);
+  const statsSummary = useMemo(() => formatStatsSummary(computeStats(currentNote.content || '')), [currentNote.content]);
 
   return (
     <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
@@ -986,7 +985,6 @@ function App() {
                 </div>
               )}
 
-              <EditorStatusBar currentNote={currentNote} focusMode={isFocusMode} />
             </div>
 
             {(!isFocusMode && editorMode !== 'graph' && editorMode !== 'canvas') && (
