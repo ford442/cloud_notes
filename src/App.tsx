@@ -20,6 +20,7 @@ const ModSongsView = lazy(() => import('./components/ModSongsView').then(m => ({
 const PresetsPanel = lazy(() => import('./components/PresetsPanel').then(m => ({ default: m.PresetsPanel })))
 const TexturesPanel = lazy(() => import('./components/TexturesPanel').then(m => ({ default: m.TexturesPanel })))
 const LibraryBrowser = lazy(() => import('./components/LibraryBrowser').then(m => ({ default: m.LibraryBrowser })))
+const EffectsMediaPanel = lazy(() => import('./components/EffectsMediaPanel').then(m => ({ default: m.EffectsMediaPanel })))
 
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
@@ -39,12 +40,14 @@ import { HistoryModal } from './components/HistoryModal'
 import { HoverLinkPreview } from './components/editor/HoverLinkPreview'
 
 import { LibraryPlugin } from './plugins/library'
+import { EffectsMediaPlugin } from './plugins/effects-media'
 import { computeStats, formatStatsSummary } from './utils/stats'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
 PluginRegistry.register(MusicPlugin);
 PluginRegistry.register(LibraryPlugin);
+PluginRegistry.register(EffectsMediaPlugin);
 
 // Wrapper to provide toast context
 function AppWrapper() {
@@ -104,7 +107,7 @@ function App() {
   }, []);
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser'>('rich')
+  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser' | 'effects-media'>('rich')
 
 
 
@@ -181,7 +184,7 @@ function App() {
       }
     });
     PluginRegistry.setModeSetter((mode) => {
-       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets', 'textures', 'library-browser'].includes(mode)) {
+       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets', 'textures', 'library-browser', 'effects-media'].includes(mode)) {
 
           setEditorMode(mode as any);
        } else {
@@ -701,7 +704,7 @@ function App() {
           )}
 
           {/* Header Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' || editorMode === 'effects-media' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex-1 flex items-center gap-4 min-w-[300px]">
                  <input
@@ -803,6 +806,12 @@ function App() {
                     className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'textures' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     🖼️ Textures
+                  </button>
+                  <button
+                    onClick={() => setEditorMode('effects-media')}
+                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'effects-media' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    🎬 Effects
                   </button>
                 </div>
 
@@ -956,6 +965,8 @@ function App() {
                 <TexturesPanel onClose={() => setEditorMode('rich')} />
               ) : editorMode === 'library-browser' ? (
                 <LibraryBrowser onClose={() => setEditorMode('rich')} />
+              ) : editorMode === 'effects-media' ? (
+                <EffectsMediaPanel onClose={() => setEditorMode('rich')} />
               ) : editorMode === 'simple' ? (
                 <Editor
                   value={currentNote.content}
@@ -1012,7 +1023,7 @@ function App() {
           </div>
 
           {/* Footer Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' || editorMode === 'effects-media' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
