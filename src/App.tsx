@@ -996,7 +996,6 @@ function App() {
                 </div>
               )}
 
-              <EditorStatusBar currentNote={currentNote} focusMode={isFocusMode} />
             </div>
 
             {(!isFocusMode && editorMode !== 'graph' && editorMode !== 'canvas') && (
