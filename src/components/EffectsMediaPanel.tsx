@@ -252,29 +252,44 @@ export const EffectsMediaPanel = ({ onClose }: EffectsMediaPanelProps) => {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-6">
               {filteredItems.map(item => (
                 <div
                   key={item.path}
-                  className={`group relative rounded-xl overflow-hidden border transition-all cursor-pointer ${
+                  className={`group relative rounded-xl overflow-hidden border bg-slate-800/60 transition-all cursor-pointer ${
                     previewItem?.path === item.path
-                      ? 'border-amber-500/70 ring-2 ring-amber-500/30'
-                      : 'border-slate-700/60 hover:border-slate-500/60'
+                      ? 'border-amber-500/70 ring-2 ring-amber-500/30 shadow-lg shadow-amber-900/20'
+                      : 'border-slate-700/60 hover:border-slate-500/60 hover:shadow-xl hover:shadow-black/40'
                   }`}
                   onClick={() => setPreviewItem(item)}
                 >
-                  <div className="aspect-square bg-slate-800 overflow-hidden">
-                    <MediaThumbnail item={item} />
+                  <div className="aspect-square bg-slate-900 overflow-hidden relative">
+                    <div className="absolute inset-0 transition-transform duration-500 ease-out group-hover:scale-110">
+                      <MediaThumbnail item={item} />
+                    </div>
+                    {/* Media Type Badge */}
+                    <div className="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur-md rounded-md border border-white/10 flex items-center gap-1">
+                      <span className="text-[10px] leading-none uppercase font-bold tracking-wider text-slate-300">
+                        {item.mediaType === 'video' ? '🎥 Video' : '🖼️ Image'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="p-2 bg-slate-800/90">
-                    <p className="text-xs font-mono text-slate-200 truncate" title={item.name}>
+                  <div className="p-3 bg-slate-800/90 flex flex-col gap-1 relative z-10">
+                    <p className="text-sm font-medium text-slate-100 truncate" title={item.name}>
                       {item.name}
                     </p>
-                    <p className="text-xs text-slate-500">{formatBytes(item.size)}</p>
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-xs font-mono text-slate-400 bg-slate-900/50 px-2 py-0.5 rounded border border-slate-700/50">
+                        {formatBytes(item.size)}
+                      </span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wide">
+                        {new Date(item.modified_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
                   </div>
                   <button
                     onClick={e => { e.stopPropagation(); handleDelete(item); }}
-                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity px-2 py-1 bg-red-700/90 hover:bg-red-600 text-white text-xs rounded-lg font-medium"
+                    className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-all duration-200 translate-y-1 group-hover:translate-y-0 px-2.5 py-1.5 bg-red-600 hover:bg-red-500 text-white text-xs rounded-lg font-medium shadow-lg hover:shadow-red-900/50 border border-red-400/20 z-20"
                   >
                     Delete
                   </button>
