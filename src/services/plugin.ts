@@ -127,12 +127,21 @@ class PluginRegistryService {
   private initPlugin(plugin: Plugin) {
     const context: PluginContext = {
       registerCommand: (cmd) => {
-        this.commands.set(cmd.title, cmd);
+        const commandKey = `${plugin.id}:${cmd.section ?? 'general'}:${cmd.title}`;
+        if (this.commands.has(commandKey)) {
+          console.warn(`Command ${commandKey} is already registered.`);
+          return;
+        }
+        this.commands.set(commandKey, cmd);
       },
       registerCommandProvider: (provider) => {
         this.commandProviders.push(provider);
       },
       registerAction: (action) => {
+        if (this.actions.has(action.id)) {
+          console.warn(`Action ${action.id} is already registered.`);
+          return;
+        }
         this.actions.set(action.id, action);
       },
       getCurrentNote: () => this.noteGetter(),

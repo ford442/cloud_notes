@@ -43,6 +43,22 @@ import { LibraryPlugin } from './plugins/library'
 import { EffectsMediaPlugin } from './plugins/effects-media'
 import { computeStats, formatStatsSummary } from './utils/stats'
 
+type EditorMode = 'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser' | 'effects-media';
+
+function formatSyncMessage(res: { pulled: number; pushed: number; conflicts: number; errors: string[] }): { message: string; tone: 'error' | 'info' | 'success' } {
+  if (res.errors.length > 0) {
+    return {
+      message: `Sync completed with ${res.errors.length} errors`,
+      tone: 'error',
+    };
+  }
+
+  return {
+    message: `Synced: ${res.pulled} pulled, ${res.pushed} pushed${res.conflicts > 0 ? `, ${res.conflicts} conflicts` : ''}`,
+    tone: res.conflicts > 0 ? 'info' : 'success',
+  };
+}
+
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
 PluginRegistry.register(MusicPlugin);
@@ -107,7 +123,7 @@ function App() {
   }, []);
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser' | 'effects-media'>('rich')
+  const [editorMode, setEditorMode] = useState<EditorMode>('rich')
 
 
 
@@ -428,11 +444,8 @@ function App() {
   const handleVpsSync = async (onProgress?: (message: string) => void) => {
     try {
       const res = await StorageService.syncWithVps(onProgress);
-      if (res.errors.length > 0) {
-        addToast(`Sync completed with ${res.errors.length} errors`, 'error');
-      } else {
-        addToast(`Synced: ${res.pulled} pulled, ${res.pushed} pushed${res.conflicts > 0 ? `, ${res.conflicts} conflicts` : ''}`, res.conflicts > 0 ? 'info' : 'success');
-      }
+      const { message, tone } = formatSyncMessage(res);
+      addToast(message, tone);
       // Refresh sidebar list after sync
       const fresh = await StorageService.getCachedNotes();
       setNotes(fresh);

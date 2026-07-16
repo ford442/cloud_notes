@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useToast } from './Toast';
-import { effectsMediaAPI } from '../services/effectsMediaAPI';
+import { effectsMediaAPI, getGcsBucket } from '../services/effectsMediaAPI';
 import type { EffectsMediaItem, EffectsMediaType } from '../services/effectsMediaAPI';
 
 interface EffectsMediaPanelProps {
@@ -219,7 +219,7 @@ export const EffectsMediaPanel = ({ onClose }: EffectsMediaPanelProps) => {
           className="flex-1 max-w-md px-4 py-2 bg-slate-800 border border-slate-700/60 rounded-lg text-sm text-slate-200 placeholder-slate-500 outline-none focus:border-amber-500/50"
         />
         <span className="text-xs text-slate-500 hidden md:inline">
-          GCS: my-sd35-space-images-2025
+          GCS: {getGcsBucket()}
         </span>
       </div>
 

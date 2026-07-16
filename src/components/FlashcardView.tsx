@@ -3,6 +3,21 @@ import { db, STORE_NOTES_LIST } from '../utils/db';
 import type { CloudItemMeta } from '../services/api';
 import { StorageService } from '../services/api';
 
+const SM2_MIN_EASE = 1.3;
+const SM2_AGAIN_EASE_DECREMENT = 0.20;
+const SM2_HARD_EASE_DECREMENT = 0.15;
+const SM2_EASY_EASE_INCREMENT = 0.15;
+const SM2_EASY_INTERVAL_MULTIPLIER = 1.3;
+
+function encodeFlashcardId(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
 interface FlashcardViewProps {
   notes: CloudItemMeta[];
   onClose: () => void;
@@ -67,7 +82,7 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
                  const cleanQ = q.replace(/^[-*+]\s+/, '').trim();
 
                  if (cleanQ && a) {
-                   const id = btoa(unescape(encodeURIComponent(`${n.id}-${cleanQ}`))); // Simple hash
+                   const id = encodeFlashcardId(`${n.id}-${cleanQ}`);
                    foundCards.push({ id, question: cleanQ, answer: a, noteId: n.id });
                  }
                }
@@ -107,16 +122,16 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
 
      // SM-2 Algorithm refinement
      if (rating === 'again') {
-       nextInterval = 1; // Start over or review tomorrow
-       nextEase = Math.max(1.3, prev.easeFactor - 0.20);
+       nextInterval = 1; // Review again tomorrow
+       nextEase = Math.max(SM2_MIN_EASE, prev.easeFactor - SM2_AGAIN_EASE_DECREMENT);
      } else if (rating === 'hard') {
        nextInterval = Math.max(1, prev.interval * 1.2);
-       nextEase = Math.max(1.3, prev.easeFactor - 0.15);
+       nextEase = Math.max(SM2_MIN_EASE, prev.easeFactor - SM2_HARD_EASE_DECREMENT);
      } else if (rating === 'good') {
        nextInterval = Math.max(1, (prev.interval === 0 ? 1 : prev.interval) * 2.5);
      } else if (rating === 'easy') {
-       nextInterval = Math.max(1, (prev.interval === 0 ? 1 : prev.interval) * prev.easeFactor * 1.3);
-       nextEase = prev.easeFactor + 0.15;
+       nextInterval = Math.max(1, (prev.interval === 0 ? 1 : prev.interval) * prev.easeFactor * SM2_EASY_INTERVAL_MULTIPLIER);
+       nextEase = prev.easeFactor + SM2_EASY_EASE_INCREMENT;
      }
 
      // Round to 1 decimal place for interval
