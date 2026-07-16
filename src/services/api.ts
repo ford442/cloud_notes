@@ -7,6 +7,11 @@ import { BacklinkService } from './BacklinkService';
 import { createPackedDescription } from '../utils/metadata';
 import { vpsStorageAPI } from './vpsStorageAPI';
 
+const MAX_PENDING_OP_RETRIES = 5;
+const INITIAL_PENDING_OP_BACKOFF_MS = 1000;
+const MAX_PENDING_OP_BACKOFF_MS = 30000;
+const SYNC_CONFLICT_TOLERANCE_MS = 5000;
+
 
 async function saveToHistory(id: string, note: Note, author: string) {
     try {
@@ -224,18 +229,18 @@ export const StorageService = {
               await db.del(STORE_PENDING_OPS, k);
             }
           } else {
-            throw new Error(`[Sync Engine] Operation ${keys.join(', ')} failed and will be retried.`);
+            throw new Error(`[Sync Engine] Operation ${keys.join(', ')} failed.`);
           }
         } catch (e) {
           hasFailures = true;
           console.error(`[Sync Engine] Error processing op ${keys.join(', ')}`, e);
           for (const k of keys) {
               const retries = (op.retries || 0) + 1;
-              if (retries >= 5) {
+              if (retries >= MAX_PENDING_OP_RETRIES) {
                   console.error(`[Sync Engine] Max retries exceeded for ${k}. Dropping operation.`);
                   await db.del(STORE_PENDING_OPS, k);
               } else {
-                  const nextRetry = Date.now() + Math.min(30000, 1000 * Math.pow(2, retries));
+                  const nextRetry = Date.now() + Math.min(MAX_PENDING_OP_BACKOFF_MS, INITIAL_PENDING_OP_BACKOFF_MS * Math.pow(2, retries));
                   await db.set(STORE_PENDING_OPS, k, { ...op, retries, nextRetry });
               }
           }
@@ -869,7 +874,7 @@ export const StorageService = {
 
         try {
           const lastSync = localNote?.lastSyncedAt || 0;
-          const TOLERANCE_MS = 5000;
+          const TOLERANCE_MS = SYNC_CONFLICT_TOLERANCE_MS;
 
           let action: 'PULL' | 'PUSH' | 'CONFLICT' | 'NOOP' = 'NOOP';
 
@@ -896,10 +901,8 @@ export const StorageService = {
           }
 
           if (action === 'CONFLICT' && localNote && vpsNote) {
-             onProgress?.(`Conflict detected for "${name}"...`);
-             await vpsStorageAPI.readNote(name);
-
-             // 1. Save local as conflicted copy
+              onProgress?.(`Conflict detected for "${name}"...`);
+              // 1. Save local as conflicted copy
              const conflictId = `${name}_conflict_${Date.now()}`;
              const conflictTitle = `${localNote.title} (Conflicted Copy)`;
              const conflictNote: Note = {

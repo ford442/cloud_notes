@@ -43,6 +43,8 @@ import { LibraryPlugin } from './plugins/library'
 import { EffectsMediaPlugin } from './plugins/effects-media'
 import { computeStats, formatStatsSummary } from './utils/stats'
 
+type EditorMode = 'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser' | 'effects-media';
+
 function formatSyncMessage(res: { pulled: number; pushed: number; conflicts: number; errors: string[] }): { message: string; tone: 'error' | 'info' | 'success' } {
   if (res.errors.length > 0) {
     return {
@@ -121,7 +123,7 @@ function App() {
   }, []);
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser' | 'effects-media'>('rich')
+  const [editorMode, setEditorMode] = useState<EditorMode>('rich')
 
 
 

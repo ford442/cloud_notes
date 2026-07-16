@@ -127,7 +127,7 @@ class PluginRegistryService {
   private initPlugin(plugin: Plugin) {
     const context: PluginContext = {
       registerCommand: (cmd) => {
-        const commandKey = `${plugin.id}:${cmd.title}`;
+        const commandKey = `${plugin.id}:${cmd.section ?? 'general'}:${cmd.title}`;
         if (this.commands.has(commandKey)) {
           console.warn(`Command ${commandKey} is already registered.`);
           return;

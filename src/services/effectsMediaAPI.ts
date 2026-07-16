@@ -55,7 +55,7 @@ async function generateWebhookSignature(payload: string): Promise<string> {
   if (!secret) return '';
 
   const encoder = new TextEncoder();
-  const crypto = window.crypto || (window as unknown as { msCrypto?: Crypto }).msCrypto;
+  const crypto = window.crypto;
   if (!crypto?.subtle) return '';
 
   const key = await crypto.subtle.importKey(

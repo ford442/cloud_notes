@@ -3,6 +3,7 @@ import { cloudStorageApi } from '../services/cloudStorageApi';
 import type { MetaData } from '../services/cloudStorageApi';
 
 export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
+  const LIBRARY_PAGE_LIMIT = 100;
   const [activeTab, setActiveTab] = useState<'song' | 'pattern' | 'bank' | 'sample'>('song');
   const [items, setItems] = useState<MetaData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +22,7 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
         q: searchQuery || undefined,
         tags: tags || undefined,
         min_rating: minRating !== '' ? minRating : undefined,
-        limit: 100 // Example fixed pagination limit
+        limit: LIBRARY_PAGE_LIMIT
       });
       setItems(data || []);
     } catch (e) {

@@ -61,7 +61,7 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
             setIsSyncing(false);
             setSyncStatusText(status);
             if (status === 'Failed') {
-                addToast('Background sync failed.', 'error');
+                addToast('Background sync failed. Check your connection and try again.', 'error');
             }
         }
     };
