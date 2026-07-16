@@ -7,16 +7,21 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
   const [items, setItems] = useState<MetaData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [tagsQuery, setTagsQuery] = useState('');
   const [syncing, setSyncing] = useState(false);
+
+  const [tags, setTags] = useState('');
+  const [minRating, setMinRating] = useState<number | ''>('');
 
   const fetchItems = async () => {
     setLoading(true);
     try {
+      // Use advanced search params from cloudStorageApi
       const data = await cloudStorageApi.listLibrary({
         type: activeTab,
-        q: searchQuery,
-        tags: tagsQuery
+        q: searchQuery || undefined,
+        tags: tags || undefined,
+        min_rating: minRating !== '' ? minRating : undefined,
+        limit: 100 // Example fixed pagination limit
       });
       setItems(data || []);
     } catch (e) {
@@ -27,12 +32,16 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
+  // Debounce search/filter query to prevent spamming backend requests
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const handler = setTimeout(() => {
       fetchItems();
     }, 300);
-    return () => clearTimeout(timer);
-  }, [activeTab, searchQuery, tagsQuery]);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [activeTab, searchQuery, tags, minRating]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -46,14 +55,8 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
     }
   };
 
-  const filteredItems = items.filter(item =>
-    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900" data-testid="library-browser">
+    <div data-testid="library-browser" className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -82,11 +85,13 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg" data-testid="library-tabs">
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between p-4 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
           {(['song', 'pattern', 'bank', 'sample'] as const).map(tab => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
               data-testid={`tab-${tab}`}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors ${
@@ -99,26 +104,42 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
             </button>
           ))}
         </div>
-        <div className="flex gap-2 relative">
+
+        {/* Advanced Filters */}
+        <div className="flex flex-wrap items-center gap-3">
           <div className="relative">
             <input
               type="text"
               placeholder="Search items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 w-64 text-slate-900 dark:text-slate-100"
+              className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 w-48"
             />
             <span className="absolute left-3 top-2.5 text-slate-400">🔍</span>
           </div>
+
           <div className="relative">
+            <input
+              type="text"
+              placeholder="Tags (comma separated)..."
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 w-48"
+            />
+            <span className="absolute left-3 top-2.5 text-slate-400">🏷️</span>
+          </div>
+
+          <div className="relative flex items-center">
+             <span className="absolute left-3 text-slate-400">⭐</span>
              <input
-               type="text"
-               placeholder="Tags (comma separated)..."
-               value={tagsQuery}
-               onChange={(e) => setTagsQuery(e.target.value)}
-               className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 w-64 text-slate-900 dark:text-slate-100"
-             />
-             <span className="absolute left-3 top-2.5 text-slate-400">🏷️</span>
+              type="number"
+              placeholder="Min Rating"
+              min="1"
+              max="5"
+              value={minRating}
+              onChange={(e) => setMinRating(e.target.value ? parseInt(e.target.value) : '')}
+              className="pl-8 pr-2 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 w-32"
+            />
           </div>
         </div>
       </div>
@@ -130,14 +151,14 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
              Loading library items...
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-slate-500 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
             <span className="text-4xl mb-3">📭</span>
             <p>No {activeTab}s found.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredItems.map(item => (
+            {items.map(item => (
               <div
                 key={item.id}
                 className="bg-white dark:bg-slate-950 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition-colors group cursor-pointer"

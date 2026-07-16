@@ -440,6 +440,59 @@ const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavi
     return () => window.removeEventListener('insert-wiki-link', handleInsertLink);
   }, [editor]);
 
+  // Handle Text Tool events from Command Palette
+  useEffect(() => {
+    const handleTextTool = (e: Event) => {
+      if (!editor) return;
+      const customEvent = e as CustomEvent;
+      const { action } = customEvent.detail;
+
+      const { from, to } = editor.state.selection;
+
+      // If no selection, select the current node/block
+      if (from === to) {
+        editor.chain().focus().selectParentNode().run();
+      }
+
+      const selection = editor.state.selection;
+      const text = editor.state.doc.textBetween(selection.from, selection.to, '\n');
+
+      if (!text) return; // Nothing to operate on
+
+      let newText = text;
+
+      switch (action) {
+        case 'uppercase':
+          newText = text.toUpperCase();
+          break;
+        case 'lowercase':
+          newText = text.toLowerCase();
+          break;
+        case 'titlecase':
+          newText = text.replace(
+            /\w\S*/g,
+            (txt: string) => txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase()
+          );
+          break;
+        case 'strip':
+          // Insert as plain text, removing rich formatting
+          editor.chain().focus().insertContent(text).run();
+          return; // Exit early since insertContent handles replacement
+        case 'bullet-list':
+          editor.chain().focus().toggleBulletList().run();
+          return;
+      }
+
+      // For text transformations, replace the selection
+      if (newText !== text) {
+        editor.chain().focus().insertContent(newText).run();
+      }
+    };
+
+    window.addEventListener('text-tool', handleTextTool);
+    return () => window.removeEventListener('text-tool', handleTextTool);
+  }, [editor]);
+
   // Handle External Updates (e.g. Restore History)
   const lastProcessedRef = useRef<number | undefined>(undefined);
 
