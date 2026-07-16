@@ -174,5 +174,6 @@ export const TextToolsPlugin: Plugin = {
 };
 
 import { TexturesPlugin } from './textures';
+import { LibraryPlugin } from './library';
 
-export const CorePlugins = [TexturesPlugin, InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin, E2EPlugin];
+export const CorePlugins = [LibraryPlugin, TexturesPlugin, InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin, E2EPlugin];

@@ -21,12 +21,16 @@ export interface ItemPayload {
 export const cloudStorageApi = {
   /**
    * List JSON library items (songs, patterns, banks).
-   * @param type Optional filter by type (e.g., 'song', 'pattern', 'bank')
+   * @param params Optional filter parameters including type, query, and tags
    */
-  async listLibrary(type?: string): Promise<MetaData[]> {
+  async listLibrary(params?: { type?: string; q?: string; tags?: string } | string): Promise<MetaData[]> {
     const url = new URL(`${getVpsBaseUrl()}/api/songs`);
-    if (type) {
-      url.searchParams.append('type', type);
+    if (typeof params === 'string') {
+      url.searchParams.append('type', params);
+    } else if (params) {
+      if (params.type) url.searchParams.append('type', params.type);
+      if (params.q) url.searchParams.append('q', params.q);
+      if (params.tags) url.searchParams.append('tags', params.tags);
     }
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error(`Failed to list library: ${res.statusText}`);

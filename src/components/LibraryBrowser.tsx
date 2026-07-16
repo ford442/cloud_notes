@@ -7,12 +7,17 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
   const [items, setItems] = useState<MetaData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [tagsQuery, setTagsQuery] = useState('');
   const [syncing, setSyncing] = useState(false);
 
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const data = await cloudStorageApi.listLibrary(activeTab);
+      const data = await cloudStorageApi.listLibrary({
+        type: activeTab,
+        q: searchQuery,
+        tags: tagsQuery
+      });
       setItems(data || []);
     } catch (e) {
       console.error('Failed to fetch library items:', e);
@@ -23,8 +28,11 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
   };
 
   useEffect(() => {
-    fetchItems();
-  }, [activeTab]);
+    const timer = setTimeout(() => {
+      fetchItems();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [activeTab, searchQuery, tagsQuery]);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -45,7 +53,7 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
   );
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-900" data-testid="library-browser">
       {/* Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950">
         <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -75,10 +83,11 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
 
       {/* Toolbar */}
       <div className="flex items-center justify-between p-4 bg-white dark:bg-slate-950 border-b border-slate-200 dark:border-slate-800">
-        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+        <div className="flex gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-lg" data-testid="library-tabs">
           {(['song', 'pattern', 'bank', 'sample'] as const).map(tab => (
             <button
               key={tab}
+              data-testid={`tab-${tab}`}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors ${
                 activeTab === tab
@@ -90,15 +99,27 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
             </button>
           ))}
         </div>
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search items..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 w-64"
-          />
-          <span className="absolute left-3 top-2.5 text-slate-400">🔍</span>
+        <div className="flex gap-2 relative">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 w-64 text-slate-900 dark:text-slate-100"
+            />
+            <span className="absolute left-3 top-2.5 text-slate-400">🔍</span>
+          </div>
+          <div className="relative">
+             <input
+               type="text"
+               placeholder="Tags (comma separated)..."
+               value={tagsQuery}
+               onChange={(e) => setTagsQuery(e.target.value)}
+               className="pl-9 pr-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 w-64 text-slate-900 dark:text-slate-100"
+             />
+             <span className="absolute left-3 top-2.5 text-slate-400">🏷️</span>
+          </div>
         </div>
       </div>
 
