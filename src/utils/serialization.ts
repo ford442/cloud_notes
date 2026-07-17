@@ -93,11 +93,11 @@ const tiptapRenderer = {
       for (const t of token.tokens) {
         if (t.type === 'text') {
            let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : (this as any).parser.parseInline([t]).trim();
-           parsed = parsed.replace(/\u200B/g, '').trim();
+           parsed = parsed.trim();
            pContent += parsed;
         } else if (t.type === 'paragraph') {
            let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : (this as any).parser.parseInline([t]).trim();
-           parsed = parsed.replace(/\u200B/g, '').trim();
+           parsed = parsed.trim();
            pContent += parsed;
         } else if (t.type === 'list') {
            restContent += (this as any).list(t);
@@ -108,7 +108,7 @@ const tiptapRenderer = {
     }
 
     if (!pContent?.trim() && !restContent?.trim()) {
-        pContent = '&nbsp;';
+        pContent = '\u200B';
     }
 
     if (token.task) {
