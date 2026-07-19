@@ -20,7 +20,7 @@ def test_task_view():
             page.wait_for_timeout(500)
 
             print("Opening Task View...")
-            page.get_by_text("Tasks").click()
+            page.get_by_role("button", name="Tasks", exact=True).click()
             page.wait_for_timeout(1000)
 
             print("Taking screenshot...")

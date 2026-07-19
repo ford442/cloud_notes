@@ -39,7 +39,7 @@ def verify_task_view():
 
             # Navigate to Tasks View
             print("Opening Task View...")
-            page.get_by_text("Tasks", exact=True).click()
+            page.get_by_role("button", name="Tasks", exact=True).click()
 
             # Wait for task view to finish scanning
             page.wait_for_selector("text=Scanning notes for tasks...", state="detached", timeout=15000)
