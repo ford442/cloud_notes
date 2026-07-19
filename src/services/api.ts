@@ -7,6 +7,11 @@ import { BacklinkService } from './BacklinkService';
 import { createPackedDescription } from '../utils/metadata';
 import { vpsStorageAPI } from './vpsStorageAPI';
 
+const MAX_PENDING_OP_RETRIES = 5;
+const INITIAL_PENDING_OP_BACKOFF_MS = 1000;
+const MAX_PENDING_OP_BACKOFF_MS = 30000;
+const SYNC_CONFLICT_TOLERANCE_MS = 5000;
+
 
 async function saveToHistory(id: string, note: Note, author: string) {
     try {
@@ -32,6 +37,39 @@ function slugify(title: string): string {
 }
 
 // Storage Manager API endpoint
+
+// Network retry wrapper to handle timeouts/flakes
+async function fetchWithRetry(url: string, options: RequestInit = {}, retries = 2, timeoutMs = 8000): Promise<Response> {
+  let lastError = new Error('fetchWithRetry failed');
+
+  for (let i = 0; i < retries; i++) {
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+
+      clearTimeout(id);
+      return response;
+    } catch (err: any) {
+      lastError = err;
+      if (err.name === 'AbortError') {
+        console.warn(`[Fetch Timeout] ${url} timed out on attempt ${i + 1}`);
+      } else {
+        console.warn(`[Fetch Error] ${url} failed on attempt ${i + 1}`, err);
+      }
+      // Wait before retrying (exponential backoff)
+      if (i < retries - 1) {
+        await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export const API_BASE_URL = localStorage.getItem('api_url') || "https://storage.noahcohn.com";
 
 // 1. EXPANDED: Now handles creates, updates, and deletes
@@ -42,6 +80,8 @@ interface PendingOp {
   note?: Note;
   author?: string;
   timestamp: number;
+  retries?: number;
+  nextRetry?: number;
 }
 
 export interface Note {
@@ -54,6 +94,7 @@ export interface Note {
   updatedAt?: string;
   lastEdited?: string;
   wordCount?: number;
+  lastSyncedAt?: number;
 }
 
 export interface CloudItemMeta {
@@ -90,11 +131,27 @@ export const StorageService = {
   // --- THE SYNC ENGINE ---
 
   async syncPending() {
-    if (!navigator.onLine) return;
+    if (!navigator.onLine) {
+        window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Offline' }));
+        return;
+    }
 
     try {
-      const ops = await db.getAll<PendingOp>(STORE_PENDING_OPS);
-      if (ops.length === 0) return;
+      window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Syncing...' }));
+      const allOps = await db.getAll<PendingOp>(STORE_PENDING_OPS);
+      if (allOps.length === 0) {
+          window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Synced' }));
+          return;
+      }
+
+      const now = Date.now();
+      const ops = allOps.filter(item => !item.value.nextRetry || item.value.nextRetry <= now);
+
+      if (ops.length === 0) {
+          // Some ops exist but are waiting for backoff
+          window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Failed' }));
+          return;
+      }
 
       console.log(`[Sync Engine] Processing ${ops.length} offline operations...`);
 
@@ -132,6 +189,7 @@ export const StorageService = {
       // Map to track temporary offline IDs resolving to real server IDs
       const idMap = new Map<string, string>();
       const successfulOps: PendingOp[] = [];
+      let hasFailures = false;
 
       // We do not want the legacy network methods to fire individual webhooks
       // because we will fire one batch webhook at the end (or individual if only 1 op).
@@ -171,10 +229,21 @@ export const StorageService = {
               await db.del(STORE_PENDING_OPS, k);
             }
           } else {
-            console.warn(`[Sync Engine] Op ${keys.join(', ')} failed, keeping in queue for next retry.`);
+            throw new Error(`[Sync Engine] Operation ${keys.join(', ')} failed.`);
           }
         } catch (e) {
-          console.error(`[Sync Engine] Failed to process op ${keys.join(', ')}`, e);
+          hasFailures = true;
+          console.error(`[Sync Engine] Error processing op ${keys.join(', ')}`, e);
+          for (const k of keys) {
+              const retries = (op.retries || 0) + 1;
+              if (retries >= MAX_PENDING_OP_RETRIES) {
+                  console.error(`[Sync Engine] Max retries exceeded for ${k}. Dropping operation.`);
+                  await db.del(STORE_PENDING_OPS, k);
+              } else {
+                  const nextRetry = Date.now() + Math.min(MAX_PENDING_OP_BACKOFF_MS, INITIAL_PENDING_OP_BACKOFF_MS * Math.pow(2, retries));
+                  await db.set(STORE_PENDING_OPS, k, { ...op, retries, nextRetry });
+              }
+          }
         }
       }
 
@@ -195,8 +264,12 @@ export const StorageService = {
       if (consolidatedOps.length > 0) {
           this.getNotes(false).catch(console.warn);
       }
+
+      window.dispatchEvent(new CustomEvent('sync-status', { detail: hasFailures ? 'Failed' : 'Synced' }));
+
     } catch (e) {
       console.error('[Sync Engine] Failed to run sync queue', e);
+      window.dispatchEvent(new CustomEvent('sync-status', { detail: 'Failed' }));
     }
   },
 
@@ -205,7 +278,7 @@ export const StorageService = {
   async getNotes(skipCacheUpdate = false): Promise<CloudItemMeta[]> {
     try {
       // Fetch note list from storage manager's named notes endpoint
-      const notesRes = await fetch(`${API_BASE_URL}/api/notes/list`);
+      const notesRes = await fetchWithRetry(`${API_BASE_URL}/api/notes/list`);
       if (!notesRes.ok) throw new Error("Failed to fetch notes list");
       
       const notes = await notesRes.json();
@@ -288,7 +361,7 @@ export const StorageService = {
       }
 
       // Fetch from storage manager's named notes endpoint
-      const res = await fetch(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(id)}`);
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(id)}`);
       if (!res.ok) throw new Error("Failed to load note");
       const data = await res.json();
       
@@ -439,7 +512,7 @@ export const StorageService = {
           };
           if (signature) headers['X-Signature-256'] = signature;
 
-          fetch(`${API_BASE_URL}/webhook/notes`, {
+          fetchWithRetry(`${API_BASE_URL}/webhook/notes`, {
               method: 'POST',
               headers,
               body: payloadStr
@@ -462,7 +535,7 @@ export const StorageService = {
           if (signature) headers['X-Signature-256'] = signature;
 
           // Fire and forget - we do not await this fetch so it doesn't block the UI
-          fetch(`${API_BASE_URL}/webhook/notes`, {
+          fetchWithRetry(`${API_BASE_URL}/webhook/notes`, {
               method: 'POST',
               headers,
               body: payloadStr
@@ -507,7 +580,7 @@ export const StorageService = {
       const noteName = slugify(note.title);
 
       // 1. Maintain Legacy API call (Synchronous truth)
-      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: note.content })
@@ -526,7 +599,7 @@ export const StorageService = {
       const noteName = slugify(id);
 
       // 1. Maintain Legacy API call (Synchronous truth)
-      const deleteRes = await fetch(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(noteName)}`, {
+      const deleteRes = await fetchWithRetry(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(noteName)}`, {
         method: 'DELETE'
       });
       if (!deleteRes.ok) throw new Error(await deleteRes.text());
@@ -551,7 +624,7 @@ export const StorageService = {
       }
 
       if (!skipWebhook) {
-        const res = await fetch(`${API_BASE_URL}/webhook/notes`, {
+        const res = await fetchWithRetry(`${API_BASE_URL}/webhook/notes`, {
           method: 'POST',
           headers,
           body: payloadStr
@@ -571,7 +644,7 @@ export const StorageService = {
       const noteName = slugify(id);
 
       // 1. Maintain Legacy API call (Synchronous truth)
-      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(noteName)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: note.content })
@@ -728,7 +801,7 @@ export const StorageService = {
 
   async listNamedNotes(): Promise<Array<{ name: string; updated_at: string; size: number }>> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes/list`);
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/list`);
       if (!res.ok) throw new Error(`listNamedNotes failed: ${res.status}`);
       return await res.json();
     } catch (e) {
@@ -739,7 +812,7 @@ export const StorageService = {
 
   async loadNamedNote(name: string): Promise<{ name: string; content: string; updated_at: string } | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(name)}`);
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(name)}`);
       if (!res.ok) throw new Error(`loadNamedNote(${name}) failed: ${res.status}`);
       return await res.json();
     } catch (e) {
@@ -750,7 +823,7 @@ export const StorageService = {
 
   async saveNamedNote(name: string, content: string): Promise<{ success: boolean; name: string; size: number; updated_at: string } | null> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(name)}`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/write/${encodeURIComponent(name)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
@@ -765,7 +838,7 @@ export const StorageService = {
 
   async deleteNamedNote(name: string): Promise<boolean> {
     try {
-      const res = await fetch(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(name)}`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/delete/${encodeURIComponent(name)}`, {
         method: 'DELETE',
       });
       return res.ok;
@@ -777,8 +850,8 @@ export const StorageService = {
 
   async syncWithVps(
     onProgress?: (message: string) => void
-  ): Promise<{ pulled: number; pushed: number; errors: string[] }> {
-    const result = { pulled: 0, pushed: 0, errors: [] as string[] };
+  ): Promise<{ pulled: number; pushed: number; conflicts: number; errors: string[] }> {
+    const result = { pulled: 0, pushed: 0, conflicts: 0, errors: [] as string[] };
 
     try {
       onProgress?.('Fetching VPS notes...');
@@ -800,9 +873,75 @@ export const StorageService = {
         const localTime = localNote?.updatedAt ? new Date(localNote.updatedAt).getTime() : 0;
 
         try {
-          if (vpsNote && (!localNote || vpsTime > localTime)) {
+          const lastSync = localNote?.lastSyncedAt || 0;
+          const TOLERANCE_MS = SYNC_CONFLICT_TOLERANCE_MS;
+
+          let action: 'PULL' | 'PUSH' | 'CONFLICT' | 'NOOP' = 'NOOP';
+
+          if (!localNote && vpsNote) {
+             action = 'PULL';
+          } else if (localNote && !vpsNote) {
+             action = 'PUSH';
+          } else if (localNote && vpsNote) {
+             const hasLocalChanges = localTime > lastSync;
+             const hasServerChanges = vpsTime > (lastSync + TOLERANCE_MS);
+
+             if (hasLocalChanges && hasServerChanges) {
+                const remote = await vpsStorageAPI.readNote(name);
+                if (remote.content !== localNote.content) {
+                   action = 'CONFLICT';
+                } else {
+                   action = 'PULL'; // They're identical, just refresh local timestamps/meta
+                }
+             } else if (hasLocalChanges) {
+                action = 'PUSH';
+             } else if (hasServerChanges) {
+                action = 'PULL';
+             }
+          }
+
+          if (action === 'CONFLICT' && localNote && vpsNote) {
+              onProgress?.(`Conflict detected for "${name}"...`);
+              // 1. Save local as conflicted copy
+             const conflictId = `${name}_conflict_${Date.now()}`;
+             const conflictTitle = `${localNote.title} (Conflicted Copy)`;
+             const conflictNote: Note = {
+               ...localNote,
+               id: conflictId,
+               title: conflictTitle,
+               updatedAt: new Date().toISOString(),
+               lastSyncedAt: Date.now()
+             };
+             await db.set(STORE_NOTES_CONTENT, conflictId, conflictNote);
+
+             const conflictMeta: CloudItemMeta = {
+               id: conflictId,
+               name: conflictId,
+               author: conflictNote.subject,
+               date: conflictNote.updatedAt || new Date().toISOString(),
+               type: 'note',
+               description: createPackedDescription(conflictNote),
+             };
+             await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [conflictMeta, ...localMetaList]);
+             localMetaList.unshift(conflictMeta);
+
+             // 2. Push the conflict copy to the VPS as well so it's safely backed up
+             try {
+               await vpsStorageAPI.writeNote(conflictId, conflictNote.content);
+             } catch (e) {
+               console.warn('[Sync] Failed to push conflict copy', e);
+             }
+
+             // 3. Force overwrite the original local note with the remote note
+             action = 'PULL';
+             result.conflicts++;
+          }
+
+          if (action === 'PULL') {
             onProgress?.(`Pulling "${name}"...`);
             const remote = await vpsStorageAPI.readNote(name);
+            const newVpsTime = remote.updated_at ? new Date(remote.updated_at).getTime() : Date.now();
+
             const updatedNote: Note = {
               id: name,
               title: name,
@@ -811,6 +950,7 @@ export const StorageService = {
               section: localNote?.section || 'Inbox',
               tags: localNote?.tags || '',
               updatedAt: remote.updated_at,
+              lastSyncedAt: newVpsTime // Trust the server's clock
             };
             await db.set(STORE_NOTES_CONTENT, name, updatedNote);
 
@@ -833,9 +973,34 @@ export const StorageService = {
             }
             localMetaMap.set(name, meta);
             result.pulled++;
-          } else if (localNote && (!vpsNote || localTime > vpsTime)) {
+          } else if (action === 'PUSH' && localNote) {
             onProgress?.(`Pushing "${name}"...`);
             await vpsStorageAPI.writeNote(name, localNote.content);
+
+            const timeOfPush = Date.now();
+            localNote.lastSyncedAt = timeOfPush;
+
+            await db.set(STORE_NOTES_CONTENT, name, localNote);
+
+            // Also update STORE_NOTES_LIST to maintain consistency
+            const meta: CloudItemMeta = {
+              id: name,
+              name,
+              author: localNote.subject || 'User',
+              date: localNote.updatedAt || new Date(timeOfPush).toISOString(),
+              type: 'note',
+              description: createPackedDescription(localNote),
+            };
+
+            if (localMetaMap.has(name)) {
+              const newList = localMetaList.map(m => (m.id === name ? meta : m));
+              await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, newList);
+            } else {
+              await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [meta, ...localMetaList]);
+              localMetaList.unshift(meta);
+            }
+            localMetaMap.set(name, meta);
+
             result.pushed++;
           }
         } catch (err) {
@@ -860,7 +1025,7 @@ export const StorageService = {
       formData.append('author', author);
       formData.append('description', description);
 
-      const res = await fetch(`${API_BASE_URL}/api/samples`, {
+      const res = await fetchWithRetry(`${API_BASE_URL}/api/samples`, {
         method: 'POST',
         body: formData
       });

@@ -3,6 +3,7 @@ import { cloudStorageApi } from '../services/cloudStorageApi';
 import type { MetaData } from '../services/cloudStorageApi';
 
 export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
+  const LIBRARY_PAGE_LIMIT = 100;
   const [activeTab, setActiveTab] = useState<'song' | 'pattern' | 'bank' | 'sample'>('song');
   const [items, setItems] = useState<MetaData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +22,7 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
         q: searchQuery || undefined,
         tags: tags || undefined,
         min_rating: minRating !== '' ? minRating : undefined,
-        limit: 100 // Example fixed pagination limit
+        limit: LIBRARY_PAGE_LIMIT
       });
       setItems(data || []);
     } catch (e) {
@@ -54,9 +55,6 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
       setSyncing(false);
     }
   };
-
-  // Client-side filtering fallback is removed because filtering is now done on backend
-  const filteredItems = items;
 
   return (
     <div data-testid="library-browser" className="flex flex-col h-full bg-slate-50 dark:bg-slate-900">
@@ -94,6 +92,7 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
             <button
               key={tab}
               role="tab"
+              aria-selected={activeTab === tab}
               data-testid={`tab-${tab}`}
               onClick={() => setActiveTab(tab)}
               className={`px-4 py-1.5 text-sm font-medium rounded-md capitalize transition-colors ${
@@ -153,14 +152,14 @@ export const LibraryBrowser = ({ onClose }: { onClose: () => void }) => {
              <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
              Loading library items...
           </div>
-        ) : filteredItems.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-slate-500 bg-white dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 border-dashed">
             <span className="text-4xl mb-3">📭</span>
             <p>No {activeTab}s found.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredItems.map(item => (
+            {items.map(item => (
               <div
                 key={item.id}
                 className="bg-white dark:bg-slate-950 p-4 rounded-xl shadow-sm border border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 transition-colors group cursor-pointer"

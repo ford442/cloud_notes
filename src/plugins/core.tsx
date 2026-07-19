@@ -12,51 +12,7 @@ import { ClusterPlugin } from './cluster';
 import { StorageService } from '../services/api';
 import { E2EPlugin } from './e2e';
 
-// --- Stats Plugin ---
-
-export const StatsPlugin: Plugin = {
-  id: 'core-stats',
-  name: 'Statistics',
-  init: (ctx) => {
-    ctx.registerAction({
-      id: 'show-stats',
-      title: 'Show Note Statistics',
-      section: 'Actions',
-      icon: <span className="text-lg">📊</span>,
-      perform: () => {
-        const note = ctx.getCurrentNote();
-        if (!note) {
-            ctx.alert('No note selected');
-            return;
-        }
-
-        const content = note.content || '';
-        const words = content.trim().split(/\s+/).filter(Boolean).length;
-        const chars = content.length;
-        const lines = content.split('\n').length;
-
-        ctx.alert(`Statistics for "${note.title}"\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
-      }
-    });
-
-    ctx.registerCommand({
-      title: 'Note Statistics',
-      description: 'Show word count and stats',
-      searchTerms: ['stats', 'count', 'word'],
-      icon: <span className="text-lg">📊</span>,
-      command: async ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).run();
-
-        const content = editor.getText();
-        const words = content.trim().split(/\s+/).filter(Boolean).length;
-        const chars = content.length;
-        const lines = content.split('\n').length;
-
-        await ctx.alert(`Statistics\n\nWords: ${words}\nCharacters: ${chars}\nLines: ${lines}`);
-      }
-    });
-  }
-};
+import { StatsPlugin } from './stats';
 
 // --- Export Plugin ---
 
@@ -144,28 +100,99 @@ export const ExportPlugin: Plugin = {
 };
 
 // --- Text Tools Plugin ---
+export const NoteActionsPlugin: Plugin = {
+  id: 'core-note-actions',
+  name: 'Note Actions',
+  init: (ctx) => {
+    ctx.registerAction({
+      id: 'duplicate-note',
+      title: 'Duplicate Note',
+      section: 'Actions',
+      icon: <span className="text-lg">📋</span>,
+      perform: () => {
+        const note = ctx.getCurrentNote();
+        if (!note) {
+          ctx.alert('No note selected');
+          return;
+        }
+
+        ctx.createNote({
+          title: `[Copy] ${note.title || 'Untitled'}`,
+          content: note.content || '',
+          subject: note.subject,
+          section: note.section,
+          tags: note.tags,
+        });
+
+        ctx.alert(`Duplicated note: ${note.title}`);
+      }
+    });
+  }
+};
+
 export const TextToolsPlugin: Plugin = {
   id: 'core-text-tools',
   name: 'Text Tools',
   init: (ctx) => {
     ctx.registerAction({
+      id: 'text-uppercase',
+      title: 'Text: To UPPERCASE',
+      section: 'Editor',
+      icon: <span className="text-lg">🔠</span>,
+      perform: () => {
+        // Dispatch event for editor to catch and apply transform
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'uppercase' } }));
+      }
+    });
+
+    ctx.registerAction({
+      id: 'text-lowercase',
+      title: 'Text: To lowercase',
+      section: 'Editor',
+      icon: <span className="text-lg">🔡</span>,
+      perform: () => {
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'lowercase' } }));
+      }
+    });
+
+    ctx.registerAction({
+      id: 'text-titlecase',
+      title: 'Text: To Title Case',
+      section: 'Editor',
+      icon: <span className="text-lg">🔠</span>,
+      perform: () => {
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'titlecase' } }));
+      }
+    });
+
+    ctx.registerAction({
+      id: 'text-strip',
+      title: 'Text: Strip Formatting',
+      section: 'Editor',
+      icon: <span className="text-lg">🧹</span>,
+      perform: () => {
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'strip' } }));
+      }
+    });
+
+    ctx.registerAction({
+      id: 'text-bullet-list',
+      title: 'Text: To Bullet List',
+      section: 'Editor',
+      icon: <span className="text-lg">📝</span>,
+      perform: () => {
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'bullet-list' } }));
+      }
+    });
+
+    ctx.registerAction({
       id: 'append-signature',
-      title: 'Append Signature',
+      title: 'Text: Append Signature',
       section: 'Editor',
       icon: <span className="text-lg">✍️</span>,
       perform: () => {
         const note = ctx.getCurrentNote();
         if (!note) return;
-
-        // Note: note.author might not be on the Note interface strictly speaking, but we can try note.author or fallback
-        // Looking at api.ts Note interface: id, title, content, subject, section, tags.
-        // CloudItemMeta has author.
-        // App.tsx passes currentNote which matches Note.
-        // So author might not be available on 'note'.
-        // We will just use 'Me' or check if we can get it from somewhere else.
-        // Actually, App.tsx manages 'authorName' state but doesn't pass it to the Note object unless saved.
-        // But for now, we just append a static signature or "Me".
-
         const signature = `\n\n---\n*Signed*`;
         ctx.updateNote({ content: (note.content || '') + signature });
       }
@@ -175,4 +202,4 @@ export const TextToolsPlugin: Plugin = {
 
 import { TexturesPlugin } from './textures';
 
-export const CorePlugins = [TexturesPlugin, InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin, E2EPlugin];
+export const CorePlugins = [TexturesPlugin, InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, NoteActionsPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin, E2EPlugin];

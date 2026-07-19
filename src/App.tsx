@@ -1,10 +1,11 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react'
+import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react'
 import { StorageService } from './services/api'
 import { SyncBridge } from './services/SyncBridge'
 import { AIService } from './services/ai'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
 import { Editor } from './components/Editor'
+import { EditorStatusBar } from './components/EditorStatusBar'
 
 // Lazy load heavy components
 const BlockEditor = lazy(() => import('./components/BlockEditor').then(m => ({ default: m.BlockEditor })))
@@ -19,6 +20,7 @@ const ModSongsView = lazy(() => import('./components/ModSongsView').then(m => ({
 const PresetsPanel = lazy(() => import('./components/PresetsPanel').then(m => ({ default: m.PresetsPanel })))
 const TexturesPanel = lazy(() => import('./components/TexturesPanel').then(m => ({ default: m.TexturesPanel })))
 const LibraryBrowser = lazy(() => import('./components/LibraryBrowser').then(m => ({ default: m.LibraryBrowser })))
+const EffectsMediaPanel = lazy(() => import('./components/EffectsMediaPanel').then(m => ({ default: m.EffectsMediaPanel })))
 
 import { Backlinks } from './components/Backlinks'
 import { RelatedNotes } from './components/RelatedNotes'
@@ -38,11 +40,30 @@ import { HistoryModal } from './components/HistoryModal'
 import { HoverLinkPreview } from './components/editor/HoverLinkPreview'
 
 import { LibraryPlugin } from './plugins/library'
+import { EffectsMediaPlugin } from './plugins/effects-media'
+import { computeStats, formatStatsSummary } from './utils/stats'
+
+type EditorMode = 'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser' | 'effects-media';
+
+function formatSyncMessage(res: { pulled: number; pushed: number; conflicts: number; errors: string[] }): { message: string; tone: 'error' | 'info' | 'success' } {
+  if (res.errors.length > 0) {
+    return {
+      message: `Sync completed with ${res.errors.length} errors`,
+      tone: 'error',
+    };
+  }
+
+  return {
+    message: `Synced: ${res.pulled} pulled, ${res.pushed} pushed${res.conflicts > 0 ? `, ${res.conflicts} conflicts` : ''}`,
+    tone: res.conflicts > 0 ? 'info' : 'success',
+  };
+}
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
 PluginRegistry.register(MusicPlugin);
 PluginRegistry.register(LibraryPlugin);
+PluginRegistry.register(EffectsMediaPlugin);
 
 // Wrapper to provide toast context
 function AppWrapper() {
@@ -102,7 +123,7 @@ function App() {
   }, []);
 
   // Editor mode state
-  const [editorMode, setEditorMode] = useState<'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser'>('rich')
+  const [editorMode, setEditorMode] = useState<EditorMode>('rich')
 
 
 
@@ -179,7 +200,7 @@ function App() {
       }
     });
     PluginRegistry.setModeSetter((mode) => {
-       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets', 'textures', 'library-browser'].includes(mode)) {
+       if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets', 'textures', 'library-browser', 'effects-media'].includes(mode)) {
 
           setEditorMode(mode as any);
        } else {
@@ -423,11 +444,8 @@ function App() {
   const handleVpsSync = async (onProgress?: (message: string) => void) => {
     try {
       const res = await StorageService.syncWithVps(onProgress);
-      if (res.errors.length > 0) {
-        addToast(`Sync completed with ${res.errors.length} errors`, 'error');
-      } else {
-        addToast(`Synced: ${res.pulled} pulled, ${res.pushed} pushed`, 'success');
-      }
+      const { message, tone } = formatSyncMessage(res);
+      addToast(message, tone);
       // Refresh sidebar list after sync
       const fresh = await StorageService.getCachedNotes();
       setNotes(fresh);
@@ -588,7 +606,7 @@ function App() {
     addToast("Version restored. Don't forget to save!", "success");
   };
 
-  const wordCount = currentNote.content ? currentNote.content.trim().split(/\s+/).filter(Boolean).length : 0;
+  const statsSummary = useMemo(() => formatStatsSummary(computeStats(currentNote.content || '')), [currentNote.content]);
 
   return (
     <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
@@ -675,6 +693,7 @@ function App() {
             onMoveNote={handleMoveNote}
             onSearchOpen={() => setIsSearchOpen(true)}
             onVpsSync={handleVpsSync}
+            onToggleGraph={() => setEditorMode('graph')}
           />
         </div>
 
@@ -685,7 +704,7 @@ function App() {
           {isFocusMode && (
              <div className="absolute bottom-6 right-6 z-50 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
                  <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-full shadow-lg text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-3">
-                     <span className="font-mono">{wordCount} words</span>
+                     <span className="font-mono">{statsSummary}</span>
                      <div className="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
                      <button
                        onClick={() => setIsFocusMode(false)}
@@ -698,7 +717,7 @@ function App() {
           )}
 
           {/* Header Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' || editorMode === 'effects-media' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex-1 flex items-center gap-4 min-w-[300px]">
                  <input
@@ -800,6 +819,12 @@ function App() {
                     className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'textures' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
                   >
                     🖼️ Textures
+                  </button>
+                  <button
+                    onClick={() => setEditorMode('effects-media')}
+                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'effects-media' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    🎬 Effects
                   </button>
                 </div>
 
@@ -953,6 +978,8 @@ function App() {
                 <TexturesPanel onClose={() => setEditorMode('rich')} />
               ) : editorMode === 'library-browser' ? (
                 <LibraryBrowser onClose={() => setEditorMode('rich')} />
+              ) : editorMode === 'effects-media' ? (
+                <EffectsMediaPanel onClose={() => setEditorMode('rich')} />
               ) : editorMode === 'simple' ? (
                 <Editor
                   value={currentNote.content}
@@ -981,6 +1008,7 @@ function App() {
                   </div>
                 </div>
               )}
+
             </div>
 
             {(!isFocusMode && editorMode !== 'graph' && editorMode !== 'canvas') && (
@@ -1001,10 +1029,14 @@ function App() {
                 </div>
               </>
             )}
+
+            {(editorMode === 'simple' || editorMode === 'rich') && !isFocusMode && (
+              <EditorStatusBar content={currentNote.content || ''} />
+            )}
           </div>
 
           {/* Footer Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
+          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' || editorMode === 'effects-media' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 flex-1">
                 <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">

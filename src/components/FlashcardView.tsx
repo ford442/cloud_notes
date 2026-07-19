@@ -3,6 +3,21 @@ import { db, STORE_NOTES_LIST } from '../utils/db';
 import type { CloudItemMeta } from '../services/api';
 import { StorageService } from '../services/api';
 
+const SM2_MIN_EASE = 1.3;
+const SM2_AGAIN_EASE_DECREMENT = 0.20;
+const SM2_HARD_EASE_DECREMENT = 0.15;
+const SM2_EASY_EASE_INCREMENT = 0.15;
+const SM2_EASY_INTERVAL_MULTIPLIER = 1.3;
+
+function encodeFlashcardId(value: string): string {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
 interface FlashcardViewProps {
   notes: CloudItemMeta[];
   onClose: () => void;
@@ -48,16 +63,27 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
            const note = await StorageService.getNoteContent(n.id); // Tries cache first
            if (!note || !note.content) return;
 
+           // Robust parser for Question :: Answer
+           // Also handles basic multi-line answers if we eventually support them,
+           // but for now sticks to robust single-line parsing that ignores markdown table separators.
            const lines = note.content.split('\n');
            lines.forEach(line => {
+             // Skip markdown tables or empty lines
+             if (!line.trim() || line.trim().startsWith('|')) return;
+
              if (line.includes('::')) {
                const parts = line.split('::');
-               if (parts.length === 2) {
+               if (parts.length >= 2) {
                  const q = parts[0].trim();
-                 const a = parts[1].trim();
-                 if (q && a) {
-                   const id = btoa(unescape(encodeURIComponent(`${n.id}-${q}`))); // Simple hash
-                   foundCards.push({ id, question: q, answer: a, noteId: n.id });
+                 // Rejoin remaining parts in case the answer contains "::"
+                 const a = parts.slice(1).join('::').trim();
+
+                 // Remove markdown list prefixes if present (e.g. "- Q :: A")
+                 const cleanQ = q.replace(/^[-*+]\s+/, '').trim();
+
+                 if (cleanQ && a) {
+                   const id = encodeFlashcardId(`${n.id}-${cleanQ}`);
+                   foundCards.push({ id, question: cleanQ, answer: a, noteId: n.id });
                  }
                }
              }
@@ -94,20 +120,22 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
      let nextInterval = 1;
      let nextEase = prev.easeFactor;
 
-     // Simple SM-2 ish
+     // SM-2 Algorithm refinement
      if (rating === 'again') {
-       nextInterval = 0.5; // Review tomorrow (or soon)
+       nextInterval = 1; // Review again tomorrow
+       nextEase = Math.max(SM2_MIN_EASE, prev.easeFactor - SM2_AGAIN_EASE_DECREMENT);
      } else if (rating === 'hard') {
        nextInterval = Math.max(1, prev.interval * 1.2);
-       nextEase = Math.max(1.3, prev.easeFactor - 0.15);
+       nextEase = Math.max(SM2_MIN_EASE, prev.easeFactor - SM2_HARD_EASE_DECREMENT);
      } else if (rating === 'good') {
-       nextInterval = (prev.interval === 0 ? 1 : prev.interval) * 2.5;
+       nextInterval = Math.max(1, (prev.interval === 0 ? 1 : prev.interval) * 2.5);
      } else if (rating === 'easy') {
-       nextInterval = (prev.interval === 0 ? 1 : prev.interval) * 1.3 * prev.easeFactor;
-       nextEase = prev.easeFactor + 0.15;
+       nextInterval = Math.max(1, (prev.interval === 0 ? 1 : prev.interval) * prev.easeFactor * SM2_EASY_INTERVAL_MULTIPLIER);
+       nextEase = prev.easeFactor + SM2_EASY_EASE_INCREMENT;
      }
 
-     if (nextInterval < 1) nextInterval = 1; // Min 1 day
+     // Round to 1 decimal place for interval
+     nextInterval = Math.round(nextInterval * 10) / 10;
 
      const nextReview = Date.now() + (nextInterval * 24 * 60 * 60 * 1000);
 
