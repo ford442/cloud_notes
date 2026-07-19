@@ -478,6 +478,9 @@ const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavi
           // Insert as plain text, removing rich formatting
           editor.chain().focus().insertContent(text).run();
           return; // Exit early since insertContent handles replacement
+        case 'remove-extra-spaces':
+          newText = text.replace(/[ \t]+/g, ' ');
+          break;
         case 'bullet-list':
           editor.chain().focus().toggleBulletList().run();
           return;
