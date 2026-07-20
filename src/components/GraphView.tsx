@@ -1,6 +1,8 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import type { CloudItemMeta } from '../services/api';
+import { db, STORE_BACKLINKS } from '../utils/db';
+import type { BacklinkEntry } from '../services/BacklinkService';
 
 interface GraphViewProps {
   notes: CloudItemMeta[];
@@ -36,56 +38,96 @@ export const GraphView = ({ notes, currentId, onNodeClick, theme }: GraphViewPro
     };
   }, []);
 
-  const data = useMemo(() => {
-    const nodes = notes.map(note => {
-      const parts = (note.description || '').split(' ::: ');
-      const subject = parts[0] || 'General';
+  const [data, setData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
 
-      // Use the first tag as a secondary grouping if available
-      const tags = parts[2] ? parts[2].split(',')[0].trim() : '';
-      const group = tags || subject;
+  useEffect(() => {
+    let ignore = false;
 
-      return {
-        id: note.id,
-        name: note.name,
-        group: group,
-        isCurrent: note.id === currentId,
-        val: 1 // base size
-      };
-    });
+    const fetchGraphData = async () => {
+      const nodes = notes.map(note => {
+        const parts = (note.description || '').split(' ::: ');
+        const subject = parts[0] || 'General';
 
-    const links: { source: string; target: string }[] = [];
-    const nodeIds = new Set(nodes.map(n => n.id));
+        // Use the first tag as a secondary grouping if available
+        const tags = parts[2] ? parts[2].split(',')[0].trim() : '';
+        const group = tags || subject;
 
-    notes.forEach(note => {
-      const parts = (note.description || '').split(' ::: ');
-      // Format: Subject ::: Section ::: Tags ::: Link1|Link2
-      if (parts.length >= 4) {
-        const linksStr = parts[3];
-        if (linksStr) {
-          const targetIds = linksStr.split('|');
-          targetIds.forEach(targetId => {
-            if (nodeIds.has(targetId) && targetId !== note.id) {
-              links.push({ source: note.id, target: targetId });
-            }
-          });
+        return {
+          id: note.id,
+          name: note.name,
+          group: group,
+          isCurrent: note.id === currentId,
+          val: 1 // base size
+        };
+      });
+
+      const links: { source: string; target: string }[] = [];
+      const nodeIds = new Set(nodes.map(n => n.id));
+
+      // 1. Fallback / Legacy Links from note.description
+      notes.forEach(note => {
+        const parts = (note.description || '').split(' ::: ');
+        // Format: Subject ::: Section ::: Tags ::: Link1|Link2
+        if (parts.length >= 4) {
+          const linksStr = parts[3];
+          if (linksStr) {
+            const targetIds = linksStr.split('|');
+            targetIds.forEach(targetId => {
+              if (nodeIds.has(targetId) && targetId !== note.id) {
+                links.push({ source: note.id, target: targetId });
+              }
+            });
+          }
         }
+      });
+
+      // 2. Fetch the real relationships from STORE_BACKLINKS
+      try {
+        const allBacklinks = await db.getAll<BacklinkEntry[]>(STORE_BACKLINKS);
+
+        // STORE_BACKLINKS stores: key -> targetId, value -> array of { sourceId, sourceName }
+        allBacklinks.forEach(item => {
+          const targetId = item.key;
+          const entries = item.value;
+
+          if (entries && nodeIds.has(targetId)) {
+            entries.forEach(entry => {
+              if (nodeIds.has(entry.sourceId) && entry.sourceId !== targetId) {
+                // Ensure no duplicate link is added
+                const linkExists = links.some(l => l.source === entry.sourceId && l.target === targetId);
+                if (!linkExists) {
+                  links.push({ source: entry.sourceId, target: targetId });
+                }
+              }
+            });
+          }
+        });
+      } catch (e) {
+        console.error('Failed to fetch backlinks for graph:', e);
       }
-    });
 
-    // Calculate node value (size) based on connections
-    const connectionCount: Record<string, number> = {};
-    links.forEach(link => {
-      connectionCount[link.source] = (connectionCount[link.source] || 0) + 1;
-      connectionCount[link.target] = (connectionCount[link.target] || 0) + 1;
-    });
+      if (ignore) return;
 
-    nodes.forEach(node => {
-      const connections = connectionCount[node.id] || 0;
-      node.val = node.isCurrent ? 10 : Math.max(2, connections * 1.5);
-    });
+      // Calculate node value (size) based on connections
+      const connectionCount: Record<string, number> = {};
+      links.forEach(link => {
+        connectionCount[link.source] = (connectionCount[link.source] || 0) + 1;
+        connectionCount[link.target] = (connectionCount[link.target] || 0) + 1;
+      });
 
-    return { nodes, links };
+      nodes.forEach(node => {
+        const connections = connectionCount[node.id] || 0;
+        node.val = node.isCurrent ? 10 : Math.max(2, connections * 1.5);
+      });
+
+      setData({ nodes, links });
+    };
+
+    fetchGraphData();
+
+    return () => {
+      ignore = true;
+    };
   }, [notes, currentId]);
 
   // Center on selected node when it changes
@@ -115,6 +157,9 @@ export const GraphView = ({ notes, currentId, onNodeClick, theme }: GraphViewPro
         height={dimensions.height}
         graphData={data}
         nodeLabel="name"
+
+        linkDirectionalArrowLength={3.5}
+        linkDirectionalArrowRelPos={1}
 
         nodeColor={(node: any) => {
            if (node.isCurrent) return highlightColor;
