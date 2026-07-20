@@ -176,6 +176,16 @@ export const TextToolsPlugin: Plugin = {
     });
 
     ctx.registerAction({
+      id: 'text-remove-extra-spaces',
+      title: 'Text: Remove extra spaces',
+      section: 'Editor',
+      icon: <span className="text-lg">✂️</span>,
+      perform: () => {
+        window.dispatchEvent(new CustomEvent('text-tool', { detail: { action: 'remove-extra-spaces' } }));
+      }
+    });
+
+    ctx.registerAction({
       id: 'text-bullet-list',
       title: 'Text: To Bullet List',
       section: 'Editor',
