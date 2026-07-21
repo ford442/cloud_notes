@@ -227,7 +227,7 @@ function App() {
   // Global Command Palette Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (((e.metaKey || e.ctrlKey) && e.key === 'K' && e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'j')) {
+      if (((e.metaKey || e.ctrlKey) && e.key === 'L' && e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'j')) {
         e.preventDefault()
         setIsChatOpen(prev => !prev)
       } else if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K') && !e.shiftKey) {
@@ -692,6 +692,7 @@ function App() {
             isLoading={isLoading}
             onMoveNote={handleMoveNote}
             onSearchOpen={() => setIsSearchOpen(true)}
+            onChatOpen={() => setIsChatOpen(true)}
             onVpsSync={handleVpsSync}
             onToggleGraph={() => setEditorMode('graph')}
           />

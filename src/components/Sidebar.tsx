@@ -11,6 +11,7 @@ interface SidebarProps {
   isLoading: boolean;
   onMoveNote?: (id: string, newSubject: string, newSection: string) => void;
   onSearchOpen?: () => void;
+  onChatOpen?: () => void;
   onVpsSync?: (onProgress?: (message: string) => void) => Promise<{ pulled: number; pushed: number; errors: string[] }>;
   onToggleGraph?: () => void;
 }
@@ -37,7 +38,7 @@ const parseMeta = (desc: string) => {
   return { subject: parts[0] || 'General', section: parts[1] || 'Inbox' };
 };
 
-export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote, onSearchOpen, onVpsSync, onToggleGraph }: SidebarProps) => {
+export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote, onSearchOpen, onChatOpen, onVpsSync, onToggleGraph }: SidebarProps) => {
   const { addToast } = useToast();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState('');
@@ -140,6 +141,13 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" strokeWidth="2" />
                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" strokeWidth="2" />
               </svg>
+            </button>
+            <button
+              onClick={onChatOpen}
+              className="text-xs p-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition-all shadow-sm flex items-center justify-center"
+              title="Second Brain Q&A (Cmd+Shift+L / Cmd+J)"
+            >
+              <span className="w-4 h-4 flex items-center justify-center">🧠</span>
             </button>
             <button
               onClick={onSearchOpen}
