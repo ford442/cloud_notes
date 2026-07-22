@@ -42,6 +42,8 @@ self.addEventListener('message', async (e) => {
        await handleRagQuery(id, payload);
     } else if (type === 'transcribeAudio') {
        await handleTranscribeAudio(id, payload);
+    } else if (type === 'generateFlashcards') {
+       await handleGenerateFlashcards(id, payload);
     } else {
        throw new Error(`Unknown message type: ${type}`);
     }
@@ -201,6 +203,42 @@ async function handleTranscribeAudio(id: string, audioData: Float32Array) {
 
 
         self.postMessage({ id, status: 'complete', data: (output as any).text || '' });
+    } catch (e) {
+        throw new Error(e instanceof Error ? e.message : String(e));
+    }
+}
+
+async function handleGenerateFlashcards(id: string, { context }: { context: string }) {
+    if (!context.trim()) {
+        self.postMessage({ id, status: 'complete', data: '' });
+        return;
+    }
+
+    const reportProgress = (msg: string) => self.postMessage({ id, status: 'progress', data: msg });
+
+    try {
+        const generator = await getChatGenerator(reportProgress);
+        reportProgress('Generating flashcards...');
+
+        const prompt = `<|im_start|>system\nYou are an AI assistant that creates high-quality Anki-style flashcards from notes. Extract the 3 to 5 most important facts from the following text and format them strictly as:\nQuestion :: Answer\nDo not include any other text.<|im_end|>\n<|im_start|>user\nText:\n${context}<|im_end|>\n<|im_start|>assistant\n`;
+
+        const output = await generator(prompt, {
+            max_new_tokens: 300,
+            temperature: 0.4,
+            do_sample: true,
+            repetition_penalty: 1.1,
+        });
+
+        const fullText = output[0]?.generated_text || '';
+
+        let result = fullText;
+        if (fullText.includes('<|im_start|>assistant\n')) {
+            result = fullText.split('<|im_start|>assistant\n')[1];
+        }
+
+        result = result.replace(/<\|im_end\|>/g, '').trim();
+
+        self.postMessage({ id, status: 'complete', data: result });
     } catch (e) {
         throw new Error(e instanceof Error ? e.message : String(e));
     }
