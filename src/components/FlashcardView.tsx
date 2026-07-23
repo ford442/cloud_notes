@@ -63,30 +63,76 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
            const note = await StorageService.getNoteContent(n.id); // Tries cache first
            if (!note || !note.content) return;
 
-           // Robust parser for Question :: Answer
-           // Also handles basic multi-line answers if we eventually support them,
-           // but for now sticks to robust single-line parsing that ignores markdown table separators.
-           const lines = note.content.split('\n');
-           lines.forEach(line => {
-             // Skip markdown tables or empty lines
-             if (!line.trim() || line.trim().startsWith('|')) return;
+           const blocks = note.content.split(/\n\s*\n/);
 
-             if (line.includes('::')) {
-               const parts = line.split('::');
-               if (parts.length >= 2) {
-                 const q = parts[0].trim();
-                 // Rejoin remaining parts in case the answer contains "::"
-                 const a = parts.slice(1).join('::').trim();
+           blocks.forEach(block => {
+             if (block.trim().startsWith('|')) return;
 
-                 // Remove markdown list prefixes if present (e.g. "- Q :: A")
-                 const cleanQ = q.replace(/^[-*+]\s+/, '').trim();
+             // 1. Check for Multi-line Q & A (Q: ... A: ...)
+             const qMatch = block.match(/(?:^|\n)[Qq]:\s*([\s\S]+?)\n[Aa]:\s*([\s\S]+)$/);
+             if (qMatch) {
+               const q = qMatch[1].trim();
+               const a = qMatch[2].trim();
+               if (q && a) {
+                 const id = encodeFlashcardId(`${n.id}-Multiline-${q}`);
+                 foundCards.push({ id, question: q, answer: a, noteId: n.id });
+               }
+               return; // Skip line-by-line parsing if block matches Q/A
+             }
 
-                 if (cleanQ && a) {
-                   const id = encodeFlashcardId(`${n.id}-${cleanQ}`);
-                   foundCards.push({ id, question: cleanQ, answer: a, noteId: n.id });
+             // 2. Line-by-line parsing for single-line Q::A and Cloze
+             const lines = block.split('\n');
+             lines.forEach(line => {
+               if (!line.trim() || line.trim().startsWith('|')) return;
+
+               // Check for Cloze Deletions (e.g. {{c1::Answer}})
+               const clozeRegex = /{{c(\d+)::(.*?)}}/g;
+               let match;
+               const clozeIndices = new Set<string>();
+               let hasCloze = false;
+
+               while ((match = clozeRegex.exec(line)) !== null) {
+                 hasCloze = true;
+                 clozeIndices.add(match[1]);
+               }
+
+               if (hasCloze) {
+                 for (const idx of clozeIndices) {
+                   let qText = line;
+                   let aText = '';
+
+                   // Target cloze becomes [...]
+                   const specificClozeRegex = new RegExp(`{{c${idx}::(.*?)}}`, 'g');
+                   qText = qText.replace(specificClozeRegex, (_m, ans) => {
+                     if (!aText) aText = ans;
+                     return '[...]';
+                   });
+
+                   // Other clozes are revealed
+                   const otherClozeRegex = /{{c\d+::(.*?)}}/g;
+                   qText = qText.replace(otherClozeRegex, '$1');
+
+                   const cleanQ = qText.replace(/^[-*+]\s+/, '').trim();
+                   if (cleanQ && aText) {
+                     const id = encodeFlashcardId(`${n.id}-${cleanQ}-${idx}`);
+                     foundCards.push({ id, question: cleanQ, answer: aText.trim(), noteId: n.id });
+                   }
+                 }
+               } else if (line.includes('::')) {
+                 // Classic Single-line Q :: A
+                 const parts = line.split('::');
+                 if (parts.length >= 2) {
+                   const q = parts[0].trim();
+                   const a = parts.slice(1).join('::').trim();
+                   const cleanQ = q.replace(/^[-*+]\s+/, '').trim();
+
+                   if (cleanQ && a) {
+                     const id = encodeFlashcardId(`${n.id}-${cleanQ}`);
+                     foundCards.push({ id, question: cleanQ, answer: a, noteId: n.id });
+                   }
                  }
                }
-             }
+             });
            });
          } catch (e) {
            console.warn(`Failed to scan note ${n.name}`, e);
@@ -194,7 +240,7 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
             {/* Front */}
             <div className={`absolute inset-0 flex flex-col items-center justify-center p-12 backface-hidden ${isFlipped ? 'invisible' : ''}`} style={{ backfaceVisibility: 'hidden' }}>
                  <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-8">Question</div>
-                 <div className="text-3xl md:text-4xl font-serif text-slate-800 dark:text-slate-100 font-medium leading-relaxed">
+                 <div className="text-3xl md:text-4xl font-serif text-slate-800 dark:text-slate-100 font-medium leading-relaxed whitespace-pre-wrap text-center w-full max-h-64 overflow-y-auto">
                    {currentCard.question}
                  </div>
                  <div className="absolute bottom-8 text-slate-400 text-sm animate-pulse">Click to Reveal</div>
@@ -203,7 +249,7 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
             {/* Back */}
             <div className={`absolute inset-0 flex flex-col items-center justify-center p-12 backface-hidden rotate-y-180 ${!isFlipped ? 'invisible' : ''}`} style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
                  <div className="text-xs font-bold text-purple-500 uppercase tracking-widest mb-8">Answer</div>
-                 <div className="text-2xl md:text-3xl font-serif text-slate-700 dark:text-slate-200 leading-relaxed">
+                 <div className="text-2xl md:text-3xl font-serif text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap text-center w-full max-h-64 overflow-y-auto">
                    {currentCard.answer}
                  </div>
             </div>

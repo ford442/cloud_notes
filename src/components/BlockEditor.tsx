@@ -484,6 +484,11 @@ const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavi
         case 'bullet-list':
           editor.chain().focus().toggleBulletList().run();
           return;
+        case 'insert-html':
+          if (customEvent.detail.payload) {
+             editor.chain().focus('end').insertContent(customEvent.detail.payload).run();
+          }
+          return;
       }
 
       // For text transformations, replace the selection

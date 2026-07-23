@@ -62,4 +62,7 @@ export const AIService = {
 
   askQuestion: (query: string, context: string, onProgress?: (msg: string) => void) =>
     request<string>('ragQuery', { query, context }, onProgress),
+
+  generateFlashcards: (context: string, onProgress?: (msg: string) => void) =>
+    request<string>('generateFlashcards', { context }, onProgress),
 };
