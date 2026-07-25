@@ -144,6 +144,7 @@ function App() {
   // Expose for command palette workaround
   useEffect(() => {
     (window as any).__DEBUG_GET_CURRENT_NOTE = () => currentNoteRef.current;
+    (window as any).PluginRegistry = PluginRegistry;
   }, []);
   
   const [isLoading, setIsLoading] = useState(false)

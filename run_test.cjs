@@ -21,8 +21,8 @@ const { chromium } = require('playwright');
   await page.waitForSelector('.ProseMirror', { state: 'attached' });
 
   await page.evaluate(() => {
-      // simulate PluginRegistry.createNote
-      window.PluginRegistry.createNote({
+      // simulate PluginRegistry.noteCreator
+      window.PluginRegistry.noteCreator({
           title: 'Test Crash',
           content: '- [ ] ',
           subject: 'Test',
