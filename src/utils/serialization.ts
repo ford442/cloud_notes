@@ -89,7 +89,7 @@ const tiptapRenderer = {
     let pContent = '';
     let restContent = '';
 
-    if (token.tokens) {
+    if (token.tokens && typeof token.tokens[Symbol.iterator] === 'function') {
       for (const t of token.tokens) {
         if (t.type === 'text') {
            let parsed = t.tokens ? (this as any).parser.parseInline(t.tokens).trim() : (this as any).parser.parseInline([t]).trim();
