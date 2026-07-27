@@ -14,6 +14,8 @@ interface SidebarProps {
   onChatOpen?: () => void;
   onVpsSync?: (onProgress?: (message: string) => void) => Promise<{ pulled: number; pushed: number; errors: string[] }>;
   onToggleGraph?: () => void;
+  onToggleFlashcards?: () => void;
+  dueFlashcardsCount?: number;
 }
 
 // Icons
@@ -38,7 +40,7 @@ const parseMeta = (desc: string) => {
   return { subject: parts[0] || 'General', section: parts[1] || 'Inbox' };
 };
 
-export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote, onSearchOpen, onChatOpen, onVpsSync, onToggleGraph }: SidebarProps) => {
+export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveNote, onSearchOpen, onChatOpen, onVpsSync, onToggleGraph, onToggleFlashcards, dueFlashcardsCount }: SidebarProps) => {
   const { addToast } = useToast();
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [query, setQuery] = useState('');
@@ -129,6 +131,20 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
             <span className="text-blue-500 dark:text-blue-400 text-lg">📚</span> KNOWLEDGE
           </h1>
           <div className="flex items-center gap-2">
+            {onToggleFlashcards && (
+              <button
+                onClick={onToggleFlashcards}
+                className="relative text-xs p-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition-all shadow-sm flex items-center justify-center"
+                title="Review Flashcards"
+              >
+                <span className="w-4 h-4 flex items-center justify-center text-sm">🗂️</span>
+                {(dueFlashcardsCount ?? 0) > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-bold shadow-sm animate-in zoom-in">
+                    {dueFlashcardsCount}
+                  </span>
+                )}
+              </button>
+            )}
             <button
               onClick={onToggleGraph}
               className="text-xs p-1.5 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition-all shadow-sm flex items-center justify-center"

@@ -13,6 +13,8 @@ const CanvasEditor = lazy(() => import('./components/CanvasEditor').then(m => ({
 const GraphView = lazy(() => import('./components/GraphView').then(m => ({ default: m.GraphView })))
 const FlashcardView = lazy(() => import('./components/FlashcardView').then(m => ({ default: m.FlashcardView })))
 const TaskView = lazy(() => import('./components/TaskView').then(m => ({ default: m.TaskView })))
+
+import { getDueFlashcardsCount } from './components/FlashcardView'
 const NamedNotesBrowser = lazy(() => import('./components/NamedNotesBrowser').then(m => ({ default: m.NamedNotesBrowser })))
 const MusicLibraryView = lazy(() => import('./components/MusicLibraryView').then(m => ({ default: m.MusicLibraryView })))
 const PlaylistView = lazy(() => import('./components/PlaylistView').then(m => ({ default: m.PlaylistView })))
@@ -124,9 +126,12 @@ function App() {
 
   // Editor mode state
   const [editorMode, setEditorMode] = useState<EditorMode>('rich')
+  const [dueFlashcardsCount, setDueFlashcardsCount] = useState<number>(0)
 
-
-
+  // Fetch due count on mount and when editorMode changes (i.e. leaving flashcards)
+  useEffect(() => {
+    getDueFlashcardsCount().then(setDueFlashcardsCount);
+  }, [editorMode]);
 
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
@@ -696,6 +701,8 @@ function App() {
             onChatOpen={() => setIsChatOpen(true)}
             onVpsSync={handleVpsSync}
             onToggleGraph={() => setEditorMode('graph')}
+            onToggleFlashcards={() => setEditorMode('flashcards')}
+            dueFlashcardsCount={dueFlashcardsCount}
           />
         </div>
 
