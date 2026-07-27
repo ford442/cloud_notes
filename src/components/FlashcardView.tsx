@@ -9,8 +9,19 @@ const SM2_HARD_EASE_DECREMENT = 0.15;
 const SM2_EASY_EASE_INCREMENT = 0.15;
 const SM2_EASY_INTERVAL_MULTIPLIER = 1.3;
 
-function encodeFlashcardId(value: string): string {
+function encodeFlashcardIdLegacy(value: string): string {
   const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
+}
+
+function encodeFlashcardId(value: string): string {
+  // Stable identity: strip punctuation and lower case for resilience against minor typos
+  const stableValue = value.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  const bytes = new TextEncoder().encode(stableValue);
   let binary = '';
   for (const byte of bytes) {
     binary += String.fromCharCode(byte);
@@ -28,6 +39,7 @@ interface Flashcard {
   question: string;
   answer: string;
   noteId: string;
+  noteTitle: string; // Used for Deck filtering
 }
 
 interface ReviewData {
@@ -46,13 +58,15 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedDeck, setSelectedDeck] = useState<string>('All Decks');
 
   // Load progress and cards
   useEffect(() => {
     const load = async () => {
       // 1. Load progress
       const savedProgress = await db.get<ProgressMap>(STORE_NOTES_LIST, PROGRESS_KEY) || {};
-      setProgress(savedProgress);
+
+      let progressMigrated = false;
 
       // 2. Scan notes
       const foundCards: Flashcard[] = [];
@@ -65,6 +79,20 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
 
            const blocks = note.content.split(/\n\s*\n/);
 
+           const registerCard = (legacyRawId: string, q: string, a: string) => {
+             const legacyId = encodeFlashcardIdLegacy(legacyRawId);
+             const id = encodeFlashcardId(legacyRawId); // New stable ID
+
+             // Migration check
+             if (!savedProgress[id] && savedProgress[legacyId]) {
+                savedProgress[id] = savedProgress[legacyId];
+                delete savedProgress[legacyId];
+                progressMigrated = true;
+             }
+
+             foundCards.push({ id, question: q, answer: a, noteId: n.id, noteTitle: n.name });
+           };
+
            blocks.forEach(block => {
              if (block.trim().startsWith('|')) return;
 
@@ -74,8 +102,7 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
                const q = qMatch[1].trim();
                const a = qMatch[2].trim();
                if (q && a) {
-                 const id = encodeFlashcardId(`${n.id}-Multiline-${q}`);
-                 foundCards.push({ id, question: q, answer: a, noteId: n.id });
+                 registerCard(`${n.id}-Multiline-${q}`, q, a);
                }
                return; // Skip line-by-line parsing if block matches Q/A
              }
@@ -114,8 +141,7 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
 
                    const cleanQ = qText.replace(/^[-*+]\s+/, '').trim();
                    if (cleanQ && aText) {
-                     const id = encodeFlashcardId(`${n.id}-${cleanQ}-${idx}`);
-                     foundCards.push({ id, question: cleanQ, answer: aText.trim(), noteId: n.id });
+                     registerCard(`${n.id}-${cleanQ}-${idx}`, cleanQ, aText.trim());
                    }
                  }
                } else if (line.includes('::')) {
@@ -127,8 +153,7 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
                    const cleanQ = q.replace(/^[-*+]\s+/, '').trim();
 
                    if (cleanQ && a) {
-                     const id = encodeFlashcardId(`${n.id}-${cleanQ}`);
-                     foundCards.push({ id, question: cleanQ, answer: a, noteId: n.id });
+                     registerCard(`${n.id}-${cleanQ}`, cleanQ, a);
                    }
                  }
                }
@@ -140,6 +165,12 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
       });
 
       await Promise.all(promises);
+
+      if (progressMigrated) {
+          await db.set(STORE_NOTES_LIST, PROGRESS_KEY, savedProgress);
+      }
+
+      setProgress(savedProgress);
       setCards(foundCards);
       setIsLoading(false);
     };
@@ -151,13 +182,25 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
   const dueCards = useMemo(() => {
     const now = Date.now();
     return cards.filter(c => {
+      // 1. Filter by deck
+      if (selectedDeck !== 'All Decks' && c.noteTitle !== selectedDeck) {
+        return false;
+      }
+      // 2. Filter by due date
       const p = progress[c.id];
       if (!p) return true; // New card
       return p.nextReview <= now;
     });
-  }, [cards, progress]);
+  }, [cards, progress, selectedDeck]);
 
   const currentCard = dueCards[currentIndex];
+
+  // Available Decks
+  const decks = useMemo(() => {
+    const uniqueDecks = new Set<string>();
+    cards.forEach(c => uniqueDecks.add(c.noteTitle));
+    return ['All Decks', ...Array.from(uniqueDecks).sort()];
+  }, [cards]);
 
   const handleRate = async (rating: 'again' | 'hard' | 'good' | 'easy') => {
      if (!currentCard) return;
@@ -211,13 +254,52 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
   }
 
   if (!currentCard) {
+     const deckCards = selectedDeck === 'All Decks' ? cards : cards.filter(c => c.noteTitle === selectedDeck);
+     const totalProgressItems = Object.keys(progress).length;
+
      return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900 p-8 text-center animate-in fade-in zoom-in duration-300">
+      <div className="flex-1 flex flex-col items-center justify-center bg-slate-100 dark:bg-slate-900 p-8 text-center animate-in fade-in zoom-in duration-300 relative">
+        {/* Deck Selector */}
+        <div className="absolute top-6 left-6 z-10">
+          <select
+            value={selectedDeck}
+            onChange={(e) => {
+              setSelectedDeck(e.target.value);
+              setCurrentIndex(0);
+              setIsFlipped(false);
+            }}
+            className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 font-medium shadow-sm outline-none cursor-pointer focus:ring-2 focus:ring-blue-500/50 transition-all"
+          >
+            {decks.map(deck => (
+              <option key={deck} value={deck}>{deck}</option>
+            ))}
+          </select>
+        </div>
+
         <div className="text-6xl mb-6">🎉</div>
         <h2 className="text-3xl font-bold text-slate-800 dark:text-white mb-4">All Caught Up!</h2>
         <p className="text-slate-600 dark:text-slate-400 mb-8 max-w-md mx-auto">
           You have reviewed all due flashcards. Check back tomorrow to keep your streak alive!
         </p>
+
+        {/* Stats Panel */}
+        <div className="flex gap-6 mb-8 text-slate-600 dark:text-slate-400 text-sm bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-inner border border-slate-200 dark:border-slate-700">
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg text-slate-800 dark:text-slate-200">{deckCards.length}</span>
+            <span>Cards in Deck</span>
+          </div>
+          <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg text-green-500">0</span>
+            <span>Due Today</span>
+          </div>
+          <div className="w-px bg-slate-200 dark:bg-slate-700"></div>
+          <div className="flex flex-col items-center">
+            <span className="font-bold text-lg text-blue-500">{totalProgressItems}</span>
+            <span>Cards Reviewed</span>
+          </div>
+        </div>
+
         <button onClick={onClose} className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transition-all font-bold">
           Back to Notes
         </button>
@@ -230,6 +312,23 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
        <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white dark:bg-slate-800 rounded-full shadow-md text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all z-10">
          <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
        </button>
+
+       {/* Deck Selector */}
+       <div className="absolute top-6 left-6 z-10">
+         <select
+           value={selectedDeck}
+           onChange={(e) => {
+             setSelectedDeck(e.target.value);
+             setCurrentIndex(0);
+             setIsFlipped(false);
+           }}
+           className="bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 font-medium shadow-sm outline-none cursor-pointer focus:ring-2 focus:ring-blue-500/50 transition-all"
+         >
+           {decks.map(deck => (
+             <option key={deck} value={deck}>{deck}</option>
+           ))}
+         </select>
+       </div>
 
        <div className="w-full max-w-2xl perspective-1000">
          <div
@@ -279,3 +378,22 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
     </div>
   );
 };
+
+export async function getDueFlashcardsCount(): Promise<number> {
+  try {
+    const savedProgress = await db.get<ProgressMap>(STORE_NOTES_LIST, PROGRESS_KEY) || {};
+    const now = Date.now();
+    let dueCount = 0;
+
+    for (const key in savedProgress) {
+      if (savedProgress[key].nextReview <= now) {
+        dueCount++;
+      }
+    }
+
+    return dueCount;
+  } catch (e) {
+    console.error("Failed to get due flashcards count", e);
+    return 0;
+  }
+}
