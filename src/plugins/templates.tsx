@@ -52,6 +52,10 @@ export const InteractiveTemplatesPlugin: Plugin = {
       {
         title: 'Daily Journal',
         content: `## Journal: {{Date}}\n\n### Gratitude\n1. \n2. \n3. \n\n### Thoughts\n- `
+      },
+      {
+        title: 'Weekly Work Chart',
+        content: `## Weekly Work Chart\n\n### Monday\n- [ ] Code\n- [ ] Read\n- [ ] Exercise\n- [ ] Meditate\n\n### Tuesday\n- [ ] Code\n- [ ] Read\n- [ ] Exercise\n- [ ] Meditate\n\n### Wednesday\n- [ ] Code\n- [ ] Read\n- [ ] Exercise\n- [ ] Meditate\n\n### Thursday\n- [ ] Code\n- [ ] Read\n- [ ] Exercise\n- [ ] Meditate\n\n### Friday\n- [ ] Code\n- [ ] Read\n- [ ] Exercise\n- [ ] Meditate\n\n### Saturday\n- [ ] Code\n- [ ] Read\n- [ ] Exercise\n- [ ] Meditate\n\n### Sunday\n- [ ] Code\n- [ ] Read\n- [ ] Exercise\n- [ ] Meditate\n`
       }
     ];
 
