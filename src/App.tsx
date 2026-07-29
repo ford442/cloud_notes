@@ -233,7 +233,7 @@ function App() {
   // Global Command Palette Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (((e.metaKey || e.ctrlKey) && e.key === 'L' && e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key === 'j')) {
+      if (((e.metaKey || e.ctrlKey) && e.key === 'L' && e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j')) {
         e.preventDefault()
         setIsChatOpen(prev => !prev)
       } else if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K') && !e.shiftKey) {
@@ -677,8 +677,8 @@ function App() {
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}
         onNavigate={(id) => {
+            handleSelectNote(id);
             setIsChatOpen(false);
-            setSelectedId(id);
         }}
       />
 
