@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@import "highlight.js/styles/github.css";
+
 @variant dark (&:where(.dark, .dark *));
 
 @theme {
@@ -14,35 +16,249 @@ body {
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
-/* Custom Scrollbar */
+/* Dark mode override for highlight.js */
+.dark .hljs {
+  color: #c9d1d9;
+  background: #0d1117;
+}
+
+.dark .hljs-doctag,
+.dark .hljs-keyword,
+.dark .hljs-meta .hljs-keyword,
+.dark .hljs-template-tag,
+.dark .hljs-template-variable,
+.dark .hljs-type,
+.dark .hljs-variable.language_ {
+  color: #ff7b72;
+}
+
+.dark .hljs-title,
+.dark .hljs-title.class_,
+.dark .hljs-title.class_.inherited__,
+.dark .hljs-title.function_ {
+  color: #d2a8ff;
+}
+
+.dark .hljs-attr,
+.dark .hljs-attribute,
+.dark .hljs-literal,
+.dark .hljs-meta,
+.dark .hljs-number,
+.dark .hljs-operator,
+.dark .hljs-selector-attr,
+.dark .hljs-selector-class,
+.dark .hljs-selector-id,
+.dark .hljs-variable {
+  color: #79c0ff;
+}
+
+.dark .hljs-meta .hljs-string,
+.dark .hljs-regexp,
+.dark .hljs-string {
+  color: #a5d6ff;
+}
+
+.dark .hljs-built_in,
+.dark .hljs-symbol {
+  color: #ffa657;
+}
+
+.dark .hljs-code,
+.dark .hljs-comment,
+.dark .hljs-formula {
+  color: #8b949e;
+}
+
+.dark .hljs-name,
+.dark .hljs-quote,
+.dark .hljs-selector-pseudo,
+.dark .hljs-selector-tag {
+  color: #7ee787;
+}
+
+.dark .hljs-subst {
+  color: #c9d1d9;
+}
+
+.dark .hljs-section {
+  color: #1f6feb;
+  font-weight: 700;
+}
+
+.dark .hljs-bullet {
+  color: #f2cc60;
+}
+
+.dark .hljs-emphasis {
+  color: #c9d1d9;
+  font-style: italic;
+}
+
+.dark .hljs-strong {
+  color: #c9d1d9;
+  font-weight: 700;
+}
+
+.dark .hljs-addition {
+  color: #aff5b4;
+  background-color: #033a16;
+}
+
+.dark .hljs-deletion {
+  color: #ffd8d3;
+  background-color: #67060c;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+}
+
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-  background-color: transparent;
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background-color: rgba(156, 163, 175, 0.4);
-  border-radius: 10px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(156, 163, 175, 0.6);
-}
-
-.dark body {
-  background-color: #0f172a;
+  background: #cbd5e1;
+  border-radius: 4px;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background-color: rgba(71, 85, 105, 0.5);
+  background: #475569;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(71, 85, 105, 0.8);
+  background: #64748b;
 }
 
-/* Tiptap Task List Styles */
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+.prose img {
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  margin: 2rem auto;
+}
+
+/* Markdown internal links (Wiki links) */
+a.internal-wiki-link {
+  color: #3b82f6; /* blue-500 */
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 1px dashed transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+a.internal-wiki-link:hover {
+  border-bottom-color: #3b82f6;
+  background-color: rgba(59, 130, 246, 0.1);
+}
+
+.dark a.internal-wiki-link {
+  color: #60a5fa; /* blue-400 */
+}
+
+.dark a.internal-wiki-link:hover {
+  border-bottom-color: #60a5fa;
+  background-color: rgba(96, 165, 250, 0.15);
+}
+
+/* Custom Checkbox Styles */
+input[type="checkbox"] {
+  accent-color: #3b82f6;
+  width: 1.1em;
+  height: 1.1em;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+/* Custom Prompt Section Styles */
+div[data-type="prompt-section"] {
+  border-left: 4px solid #8b5cf6; /* violet-500 */
+  background: linear-gradient(to right, rgba(139, 92, 246, 0.1), transparent);
+  padding: 1rem 1.5rem;
+  margin: 1.5rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  position: relative;
+}
+
+.dark div[data-type="prompt-section"] {
+  border-left-color: #a78bfa; /* violet-400 */
+  background: linear-gradient(to right, rgba(167, 139, 250, 0.15), transparent);
+}
+
+div[data-type="prompt-section"]::before {
+  content: "Prompt";
+  position: absolute;
+  top: -10px;
+  left: -4px;
+  background-color: #8b5cf6;
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.dark div[data-type="prompt-section"]::before {
+  background-color: #a78bfa;
+}
+
+/* Character Count Limit Indicator */
+div[data-type="prompt-section"]::after {
+  content: attr(data-length) " / " attr(data-max-length);
+  position: absolute;
+  bottom: 4px;
+  right: 8px;
+  font-size: 0.65rem;
+  color: #94a3b8;
+  font-weight: 500;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+div[data-type="prompt-section"]:focus-within::after,
+div[data-type="prompt-section"]:hover::after {
+  opacity: 1;
+}
+
+/* Warning state for exceeding max length */
+div[data-type="prompt-section"][data-exceeded="true"] {
+  border-left-color: #ef4444; /* red-500 */
+  background: linear-gradient(to right, rgba(239, 68, 68, 0.05), transparent);
+}
+
+div[data-type="prompt-section"][data-exceeded="true"]::before {
+  background-color: #ef4444;
+}
+
+div[data-type="prompt-section"][data-exceeded="true"]::after {
+  color: #ef4444;
+  font-weight: 700;
+  opacity: 1;
+}
+
+/* Tiptap Task Lists */
 ul[data-type="taskList"] {
   list-style: none;
   padding: 0;
@@ -50,85 +266,16 @@ ul[data-type="taskList"] {
 
 ul[data-type="taskList"] li {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
 }
 
 ul[data-type="taskList"] li > label {
   margin-right: 0.5rem;
+  margin-top: 0.25rem;
   user-select: none;
 }
 
 ul[data-type="taskList"] li > div {
-  flex: 1 1 auto;
-}
-
-ul[data-type="taskList"] input[type="checkbox"] {
-  cursor: pointer;
-}
-
-/* Tiptap Placeholder */
-.ProseMirror p.is-editor-empty:first-child::before {
-  color: #adb5bd;
-  content: attr(data-placeholder);
-  float: left;
-  height: 0;
-  pointer-events: none;
-}
-
-.dark .ProseMirror p.is-editor-empty:first-child::before {
-  color: #475569;
-}
-
-/* AutoLink Ghost Text */
-.auto-link-ghost {
-  font-style: italic;
-  user-select: none;
-  pointer-events: none;
-}
-
-/* Completed Task Styles */
-ul[data-type="taskList"] li[data-checked="true"] > div {
-  text-decoration: line-through;
-  opacity: 0.6;
-}
-
-/* Wiki Link Badge Styles */
-.internal-wiki-link {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.125rem 0.375rem;
-  background-color: var(--color-blue-100, #dbeafe);
-  color: var(--color-blue-700, #1d4ed8);
-  border-radius: 9999px; /* Pill shape */
-  text-decoration: none !important;
-  font-weight: 500;
-  font-size: 0.9em;
-  transition: all 0.2s ease-in-out;
-  border: 1px solid var(--color-blue-200, #bfdbfe);
-  margin: 0 0.125rem;
-}
-
-.internal-wiki-link:hover {
-  background-color: var(--color-blue-200, #bfdbfe);
-  color: var(--color-blue-800, #1e40af);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1);
-}
-
-.internal-wiki-link::before {
-  content: '📄 ';
-  font-size: 0.9em;
-  opacity: 0.7;
-}
-
-.dark .internal-wiki-link {
-  background-color: rgba(59, 130, 246, 0.2); /* blue-500/20 */
-  color: var(--color-blue-300, #93c5fd);
-  border-color: rgba(59, 130, 246, 0.3); /* blue-500/30 */
-}
-
-.dark .internal-wiki-link:hover {
-  background-color: rgba(59, 130, 246, 0.3);
-  color: var(--color-blue-200, #bfdbfe);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  flex: 1;
 }

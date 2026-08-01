@@ -1,6 +1,8 @@
 import { useEditor, EditorContent } from '@tiptap/react'
 import { Extension } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight'
+import { common, createLowlight } from 'lowlight'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
 import Placeholder from '@tiptap/extension-placeholder'
@@ -157,6 +159,10 @@ const BlockEditorInner = ({ noteId, value, onChange, availableNotes = [], onNavi
       StarterKit.configure({
         history: false, // Disabled because we use Yjs + custom undo manager
         link: false, // Disable default Link so we can configure it separately without duplicate names
+        codeBlock: false, // Disable default codeBlock to use lowlight instead
+      }),
+      CodeBlockLowlight.configure({
+        lowlight: createLowlight(common),
       }),
       ...(ydoc ? [Collaboration.configure({
         document: ydoc,
