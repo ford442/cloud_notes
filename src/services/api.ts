@@ -347,10 +347,6 @@ export const StorageService = {
 
   async getNoteContent(id: string): Promise<Note> {
     try {
-      // 1. Try cache first to avoid fetching truncated notes from buggy backend
-      const cached = await this.getCachedNote(id);
-      if (cached) return cached;
-
       // Check pending ops first to prioritize local truth
       const pendingOps = await getPendingOps();
       for (const { value: op } of pendingOps) {
@@ -360,7 +356,7 @@ export const StorageService = {
         }
       }
 
-      // Fetch from storage manager's named notes endpoint
+      // 1. Prioritize network fetching to support cross-device sync
       const res = await fetchWithRetry(`${API_BASE_URL}/api/notes/read/${encodeURIComponent(id)}`);
       if (!res.ok) throw new Error("Failed to load note");
       const data = await res.json();
@@ -392,6 +388,9 @@ export const StorageService = {
              decryptedContent = await EncryptionService.decrypt(extractedEnc);
          } catch (e) {
              console.warn("Decryption failed safely:", e);
+             // Fallback to cache if payload cannot be decrypted
+             const cached = await this.getCachedNote(id);
+             if (cached) return cached;
          }
       }
 
