@@ -75,6 +75,35 @@ export const defaultCommands: CommandItem[] = [
     },
   },
   {
+    title: 'Table of Contents',
+    icon: <strong>📄</strong>,
+    section: 'Blocks',
+    command: ({ editor, range }) => {
+      const headings: { level: number, text: string }[] = []
+
+      editor.state.doc.descendants((node: any) => {
+        if (node.type.name === 'heading') {
+          headings.push({ level: node.attrs.level, text: node.textContent })
+        }
+      })
+
+      if (headings.length === 0) {
+         editor.chain().focus().deleteRange(range).insertContent('*(No headings found for Table of Contents)*').run()
+         return
+      }
+
+      let tocHtml = '<h3>Table of Contents</h3><ul>'
+      headings.forEach(h => {
+        // Use non-breaking spaces for visual indentation based on heading level
+        const indent = '&nbsp;&nbsp;&nbsp;&nbsp;'.repeat(h.level - 1)
+        tocHtml += `<li><p>${indent}${h.text}</p></li>`
+      })
+      tocHtml += '</ul><p></p>'
+
+      editor.chain().focus().deleteRange(range).insertContent(tocHtml).run()
+    },
+  },
+  {
     title: 'Divider',
     icon: <strong>—</strong>,
     section: 'Text',
