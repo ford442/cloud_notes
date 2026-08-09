@@ -13,6 +13,7 @@ import { StorageService } from '../services/api';
 import { E2EPlugin } from './e2e';
 
 import { StatsPlugin } from './stats';
+import { TimeTravelPlugin } from './time-travel';
 
 // --- Export Plugin ---
 
@@ -212,4 +213,4 @@ export const TextToolsPlugin: Plugin = {
 
 import { TexturesPlugin } from './textures';
 
-export const CorePlugins = [TexturesPlugin, InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, NoteActionsPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin, E2EPlugin];
+export const CorePlugins = [TexturesPlugin, InteractiveTemplatesPlugin, StatsPlugin, ExportPlugin, NoteActionsPlugin, CanvasToolsPlugin, TextToolsPlugin, AIPlugin, DailyNotesPlugin, FlashcardsPlugin, ReadwisePlugin, VoicePlugin, FocusPlugin, TasksPlugin, ClusterPlugin, E2EPlugin, TimeTravelPlugin];

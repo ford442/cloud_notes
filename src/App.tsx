@@ -230,6 +230,12 @@ function App() {
     return () => window.removeEventListener('online', handleOnline);
   }, []);
 
+  useEffect(() => {
+    const handleOpenHistory = () => setIsHistoryOpen(true);
+    window.addEventListener('open-history', handleOpenHistory);
+    return () => window.removeEventListener('open-history', handleOpenHistory);
+  }, []);
+
   // Global Command Palette Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -609,7 +615,12 @@ function App() {
   const handleRestore = (content: string) => {
     setCurrentNote(prev => ({ ...prev, content }));
     setLastRestoreTs(Date.now());
-    addToast("Version restored. Don't forget to save!", "success");
+    PluginRegistry.updateNote({ content }).then(() => {
+      addToast("Version restored.", "success");
+    }).catch((e) => {
+      console.error("Failed to persist restored note:", e);
+      addToast("Version restored, but auto-save failed. Don't forget to save!", "error");
+    });
   };
 
   const statsSummary = useMemo(() => formatStatsSummary(computeStats(currentNote.content || '')), [currentNote.content]);
