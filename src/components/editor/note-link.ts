@@ -6,7 +6,7 @@ import tippy from 'tippy.js'
 import type { Instance as TippyInstance } from 'tippy.js'
 import { NoteLinkList } from './NoteLinkList'
 import type { Editor, Range } from '@tiptap/core'
-import type { CloudItemMeta } from '../../services/api'
+import { type CloudItemMeta, StorageService } from '../../services/api'
 import { PluginKey } from '@tiptap/pm/state'
 
 interface NoteLinkOptions {
@@ -23,6 +23,20 @@ export const NoteLink = Extension.create<NoteLinkOptions>({
         command: ({ editor, range, props }: { editor: Editor; range: Range; props: CloudItemMeta }) => {
           // Insert a link with the note ID
           const linkText = props.name || 'Untitled';
+          let linkId = props.id;
+
+          if (props.id === 'CREATE_NEW') {
+              linkId = crypto.randomUUID();
+              // Create note in background
+              StorageService.saveNote({
+                  id: linkId,
+                  title: props.name,
+                  content: '',
+                  subject: 'General',
+                  section: 'Inbox',
+                  tags: ''
+              }, 'User').catch(e => console.error('Failed to create linked note', e));
+          }
 
           editor
             .chain()
@@ -36,9 +50,10 @@ export const NoteLink = Extension.create<NoteLinkOptions>({
                   {
                     type: 'link',
                     attrs: {
-                      href: props.id, // Store ID in href for now
+                      href: linkId, // Store ID in href for now
                       target: '_self',
                       class: 'internal-wiki-link',
+                      'data-id': linkId,
                     },
                   },
                 ],
@@ -67,12 +82,25 @@ export const NoteLink = Extension.create<NoteLinkOptions>({
 
 export const getNoteLinkSuggestionOptions = (items: CloudItemMeta[]): Omit<SuggestionOptions, 'editor'> => ({
   items: ({ query }: { query: string }) => {
-    return items.filter((item) => {
+    const results = items.filter((item) => {
       const parts = (item.description || '').split(' ::: ');
       const subject = parts[0] || '';
       return (item.name || '').toLowerCase().includes(query.toLowerCase()) ||
              subject.toLowerCase().includes(query.toLowerCase());
-    }).slice(0, 10)
+    }).slice(0, 10);
+
+    const exactMatch = results.find(i => (i.name || '').toLowerCase() === query.toLowerCase());
+    if (!exactMatch && query.trim().length > 0) {
+        results.push({
+            id: 'CREATE_NEW',
+            name: query,
+            description: 'Create new note ::: Actions',
+            author: 'System',
+            date: new Date().toISOString(),
+            type: 'note'
+        });
+    }
+    return results;
   },
 
   render: () => {
