@@ -69,7 +69,7 @@ function App() {
   // Fetch due count on mount and when editorMode changes (i.e. leaving flashcards)
   useEffect(() => {
     getDueFlashcardsCount().then(setDueFlashcardsCount);
-  }, [editorMode, getDueFlashcardsCount]);
+  }, [editorMode]);
 
   // Initialize with default Subject/Section
   const [currentNote, setCurrentNote] = useState<Note>({ 
