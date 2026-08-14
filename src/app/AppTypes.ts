@@ -1,0 +1,1 @@
+export type EditorMode = 'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser' | 'effects-media';
