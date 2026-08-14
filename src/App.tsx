@@ -63,7 +63,7 @@ function App() {
 
   // Editor mode state
   const [editorMode, setEditorMode] = useState<EditorMode>('rich')
-  const { getDueFlashcardsCount } = useFlashcardStats(editorMode)
+  const { getDueFlashcardsCount } = useFlashcardStats()
   const [dueFlashcardsCount, setDueFlashcardsCount] = useState<number>(0)
 
   // Fetch due count on mount and when editorMode changes (i.e. leaving flashcards)
@@ -647,7 +647,7 @@ function App() {
 }
 
 // Helper hook to import getDueFlashcardsCount
-function useFlashcardStats(editorMode: EditorMode) {
+function useFlashcardStats() {
   const [getDueFlashcardsCount, setGetDueFlashcardsCount] = useState<() => Promise<number>>(() => () => Promise.resolve(0))
   
   useEffect(() => {
