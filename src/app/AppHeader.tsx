@@ -18,7 +18,6 @@ interface AppHeaderProps {
   onDelete: () => void;
   onSummarize: () => void;
   onOpenHistory: () => void;
-  statsSummary: string;
 }
 
 export function AppHeader({
@@ -38,7 +37,6 @@ export function AppHeader({
   onDelete,
   onSummarize,
   onOpenHistory,
-  statsSummary,
 }: AppHeaderProps) {
   return (
     <div

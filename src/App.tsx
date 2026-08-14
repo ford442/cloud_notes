@@ -14,6 +14,7 @@ import { HoverLinkPreview } from './components/editor/HoverLinkPreview'
 import { LibraryPlugin } from './plugins/library'
 import { EffectsMediaPlugin } from './plugins/effects-media'
 import { computeStats, formatStatsSummary } from './utils/stats'
+import { getDueFlashcardsCount } from './components/FlashcardView'
 
 import type { EditorMode } from './app/AppTypes'
 import { formatSyncMessage } from './app/AppHelpers'
@@ -63,7 +64,6 @@ function App() {
 
   // Editor mode state
   const [editorMode, setEditorMode] = useState<EditorMode>('rich')
-  const { getDueFlashcardsCount } = useFlashcardStats()
   const [dueFlashcardsCount, setDueFlashcardsCount] = useState<number>(0)
 
   // Fetch due count on mount and when editorMode changes (i.e. leaving flashcards)
@@ -611,7 +611,6 @@ function App() {
             onDelete={handleDelete}
             onSummarize={handleSummarize}
             onOpenHistory={() => setIsHistoryOpen(true)}
-            statsSummary={statsSummary}
           />
 
           <AppEditors
@@ -644,19 +643,6 @@ function App() {
       </div>
     </div>
   )
-}
-
-// Helper hook to import getDueFlashcardsCount
-function useFlashcardStats() {
-  const [getDueFlashcardsCount, setGetDueFlashcardsCount] = useState<() => Promise<number>>(() => () => Promise.resolve(0))
-  
-  useEffect(() => {
-    import('./components/FlashcardView').then(m => {
-      setGetDueFlashcardsCount(() => m.getDueFlashcardsCount)
-    })
-  }, [])
-
-  return { getDueFlashcardsCount }
 }
 
 export default AppWrapper
