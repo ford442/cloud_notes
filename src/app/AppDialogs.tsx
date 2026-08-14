@@ -68,6 +68,8 @@ export function AppDialogs({
 }: AppDialogsProps) {
   // Setup global dialog handler
   useEffect(() => {
+    // Register dialog handler once on mount. AppDialogs is unconditionally rendered
+    // in App.tsx, so this component is never unmounted during the app lifecycle.
     PluginRegistry.setDialogHandler((request) => {
       return new Promise((resolve) => {
         setDialogConfig({
