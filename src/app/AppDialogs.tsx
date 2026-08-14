@@ -7,7 +7,7 @@ import { CommandPalette } from '../components/CommandPalette';
 import { SearchModal } from '../components/SearchModal';
 import { ChatModal } from '../components/ChatModal';
 import { PluginRegistry } from '../services/plugin';
-import type { Note, CloudItemMeta } from '../services/api';
+import type { CloudItemMeta } from '../services/api';
 
 export interface DialogConfig {
   isOpen: boolean;
