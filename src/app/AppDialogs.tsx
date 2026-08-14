@@ -82,7 +82,7 @@ export function AppDialogs({
         });
       });
     });
-  }, [setDialogConfig]);
+  }, []);
 
   return (
     <>

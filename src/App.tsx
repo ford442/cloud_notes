@@ -607,8 +607,8 @@ function App() {
             isAiLoading={isAiLoading}
             autoSaveStatus={autoSaveStatus}
             selectedId={selectedId}
-            onSave={handleSave}
-            onDelete={handleDelete}
+            onSave={() => handleSave()}
+            onDelete={() => handleDelete()}
             onSummarize={handleSummarize}
             onOpenHistory={() => setIsHistoryOpen(true)}
           />
