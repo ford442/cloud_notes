@@ -36,6 +36,7 @@ interface AppEditorsProps {
   aiStatus: string;
   lastRestoreTs: number;
   statsSummary: string;
+  onExitFocusMode: () => void;
 }
 
 export function AppEditors({
@@ -52,6 +53,7 @@ export function AppEditors({
   aiStatus,
   lastRestoreTs,
   statsSummary,
+  onExitFocusMode,
 }: AppEditorsProps) {
   return (
     <>
@@ -62,7 +64,7 @@ export function AppEditors({
             <span className="font-mono">{statsSummary}</span>
             <div className="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
             <button
-              onClick={() => isFocusMode ? null : null}
+              onClick={onExitFocusMode}
               className="hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               Exit Focus

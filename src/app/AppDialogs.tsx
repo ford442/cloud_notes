@@ -140,7 +140,7 @@ export function AppDialogs({
         onSearchOpen={() => setIsSearchOpen(true)}
       />
 
-      {/* Search Modal */}
+      {/* Chat Modal */}
       <ChatModal
         isOpen={isChatOpen}
         onClose={() => setIsChatOpen(false)}

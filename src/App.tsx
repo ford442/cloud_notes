@@ -628,6 +628,7 @@ function App() {
             aiStatus={aiStatus}
             lastRestoreTs={lastRestoreTs}
             statsSummary={statsSummary}
+            onExitFocusMode={() => setIsFocusMode(false)}
           />
 
           <AppFooter
@@ -647,7 +648,7 @@ function App() {
 
 // Helper hook to import getDueFlashcardsCount
 function useFlashcardStats(editorMode: EditorMode) {
-  const [getDueFlashcardsCount, setGetDueFlashcardsCount] = useState<() => Promise<number>>(() => Promise.resolve(0))
+  const [getDueFlashcardsCount, setGetDueFlashcardsCount] = useState<() => Promise<number>>(() => () => Promise.resolve(0))
   
   useEffect(() => {
     import('./components/FlashcardView').then(m => {
