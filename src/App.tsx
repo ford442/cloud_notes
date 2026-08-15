@@ -1,65 +1,27 @@
-import { useState, useEffect, useRef, lazy, Suspense, useMemo } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { StorageService } from './services/api'
 import { SyncBridge } from './services/SyncBridge'
 import { AIService } from './services/ai'
 import type { Note, CloudItemMeta } from './services/api'
 import { Sidebar } from './components/Sidebar'
-import { Editor } from './components/Editor'
-import { EditorStatusBar } from './components/EditorStatusBar'
-
-// Lazy load heavy components
-const BlockEditor = lazy(() => import('./components/BlockEditor').then(m => ({ default: m.BlockEditor })))
-const CanvasEditor = lazy(() => import('./components/CanvasEditor').then(m => ({ default: m.CanvasEditor })))
-const GraphView = lazy(() => import('./components/GraphView').then(m => ({ default: m.GraphView })))
-const FlashcardView = lazy(() => import('./components/FlashcardView').then(m => ({ default: m.FlashcardView })))
-const TaskView = lazy(() => import('./components/TaskView').then(m => ({ default: m.TaskView })))
-
-import { getDueFlashcardsCount } from './components/FlashcardView'
-const NamedNotesBrowser = lazy(() => import('./components/NamedNotesBrowser').then(m => ({ default: m.NamedNotesBrowser })))
-const MusicLibraryView = lazy(() => import('./components/MusicLibraryView').then(m => ({ default: m.MusicLibraryView })))
-const PlaylistView = lazy(() => import('./components/PlaylistView').then(m => ({ default: m.PlaylistView })))
-const ModSongsView = lazy(() => import('./components/ModSongsView').then(m => ({ default: m.ModSongsView })))
-const PresetsPanel = lazy(() => import('./components/PresetsPanel').then(m => ({ default: m.PresetsPanel })))
-const TexturesPanel = lazy(() => import('./components/TexturesPanel').then(m => ({ default: m.TexturesPanel })))
-const LibraryBrowser = lazy(() => import('./components/LibraryBrowser').then(m => ({ default: m.LibraryBrowser })))
-const EffectsMediaPanel = lazy(() => import('./components/EffectsMediaPanel').then(m => ({ default: m.EffectsMediaPanel })))
-
-import { Backlinks } from './components/Backlinks'
-import { RelatedNotes } from './components/RelatedNotes'
-import { CommandPalette } from './components/CommandPalette'
-import { SearchModal } from './components/SearchModal'
-import { ChatModal } from './components/ChatModal'
 import { PluginRegistry } from './services/plugin'
 import { CorePlugins } from './plugins/core'
 import { MusicPlugin } from './plugins/music'
 import { ToastProvider, useToast } from './components/Toast'
 import { SemanticService } from './services/semantic'
-import { SettingsModal } from './components/SettingsModal'
 import { createPackedDescription } from './utils/metadata'
-import { Dialog } from './components/Dialog'
-import type { DialogType } from './components/Dialog'
-import { HistoryModal } from './components/HistoryModal'
 import { HoverLinkPreview } from './components/editor/HoverLinkPreview'
-
 import { LibraryPlugin } from './plugins/library'
 import { EffectsMediaPlugin } from './plugins/effects-media'
 import { computeStats, formatStatsSummary } from './utils/stats'
+import { getDueFlashcardsCount } from './components/FlashcardView'
 
-type EditorMode = 'simple' | 'rich' | 'graph' | 'canvas' | 'flashcards' | 'tasks' | 'named-notes' | 'music' | 'playlists' | 'mod-songs' | 'presets' | 'textures' | 'library-browser' | 'effects-media';
-
-function formatSyncMessage(res: { pulled: number; pushed: number; conflicts: number; errors: string[] }): { message: string; tone: 'error' | 'info' | 'success' } {
-  if (res.errors.length > 0) {
-    return {
-      message: `Sync completed with ${res.errors.length} errors`,
-      tone: 'error',
-    };
-  }
-
-  return {
-    message: `Synced: ${res.pulled} pulled, ${res.pushed} pushed${res.conflicts > 0 ? `, ${res.conflicts} conflicts` : ''}`,
-    tone: res.conflicts > 0 ? 'info' : 'success',
-  };
-}
+import type { EditorMode } from './app/AppTypes'
+import { formatSyncMessage } from './app/AppHelpers'
+import { AppDialogs, type DialogConfig } from './app/AppDialogs'
+import { AppHeader } from './app/AppHeader'
+import { AppFooter } from './app/AppFooter'
+import { AppEditors } from './app/AppEditors'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
@@ -98,31 +60,7 @@ function App() {
   const [lastRestoreTs, setLastRestoreTs] = useState(0)
 
   // Global Dialog State
-  const [dialogConfig, setDialogConfig] = useState<{
-    isOpen: boolean;
-    type: DialogType;
-    message: string;
-    defaultValue?: string;
-
-    resolve: (value: any) => void;
-  } | null>(null);
-
-  useEffect(() => {
-     PluginRegistry.setDialogHandler((request) => {
-         return new Promise((resolve) => {
-             setDialogConfig({
-                 isOpen: true,
-                 type: request.type,
-                 message: request.message,
-                 defaultValue: request.defaultValue,
-                 resolve: (val) => {
-                     setDialogConfig(null);
-                     resolve(val);
-                 }
-             });
-         });
-     });
-  }, []);
+  const [dialogConfig, setDialogConfig] = useState<DialogConfig | null>(null);
 
   // Editor mode state
   const [editorMode, setEditorMode] = useState<EditorMode>('rich')
@@ -207,7 +145,6 @@ function App() {
     });
     PluginRegistry.setModeSetter((mode) => {
        if (['simple', 'rich', 'graph', 'canvas', 'flashcards', 'tasks', 'named-notes', 'music', 'playlists', 'mod-songs', 'presets', 'textures', 'library-browser', 'effects-media'].includes(mode)) {
-
           setEditorMode(mode as any);
        } else {
          console.warn(`Plugin attempted to set invalid mode: ${mode}`);
@@ -287,7 +224,6 @@ function App() {
     let loadedFromCache = false;
 
     try {
-
       // 1. Try Cache First
       const cached = await StorageService.getCachedNote(id);
       if (cached) {
@@ -298,10 +234,8 @@ function App() {
         loadedFromCache = true;
       }
 
-
       // 2. Fetch Fresh Content
       const content = await StorageService.getNoteContent(id)
-
 
       // Only update if we didn't have cache, or if we want to force update
       // For now, let's always update to ensure freshness, but user won't see a spinner if cached
@@ -318,7 +252,6 @@ function App() {
     }
   }
 
-
   const handleNew = () => {
     setSelectedId(null)
     // Keep current subject/section for rapid entry, or reset to defaults
@@ -329,8 +262,6 @@ function App() {
     setCurrentNote(newNoteState);
     lastSavedNoteRef.current = newNoteState;
   }
-
-
 
   const handleDelete = async (id?: string) => {
     // If it's a click event, `id` might be the event object, so ensure it's a string
@@ -353,13 +284,11 @@ function App() {
     }
   }
 
-
   const handleSave = async (isAutoSave = false) => {
     if (!currentNote.title.trim()) return addToast("Title required", "error")
     
     if (!isAutoSave) setIsSaving(true)
 
-    
     // Stamp updatedAt so sync comparisons are reliable
     const noteToSave = { ...currentNote, updatedAt: new Date().toISOString() };
     setCurrentNote(noteToSave);
@@ -415,8 +344,6 @@ function App() {
              description: packedDesc
           };
 
-
-
           setNotes(prev => {
               // If updating, replace. If new, add to top.
               // Note: If title changed (Save As), we might want to keep the old one too?
@@ -469,8 +396,6 @@ function App() {
     }
   };
 
-
-
   // Auto-save logic
   const handleSaveRef = useRef(handleSave);
   handleSaveRef.current = handleSave;
@@ -505,11 +430,6 @@ function App() {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
     };
   }, [currentNote]);
-
-
-
-
-
 
   const handleAutoTag = async () => {
     if (!currentNote.content.trim()) return addToast("Write some content first!", "info");
@@ -629,74 +549,29 @@ function App() {
     <div className={`h-screen w-screen overflow-hidden ${theme === 'dark' ? 'dark' : ''}`}>
       <div className="h-full w-full bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex transition-colors duration-200">
         
-        {/* Settings Modal */}
-        {isSettingsOpen && (
-           <SettingsModal
-             isOpen={isSettingsOpen}
-             onClose={() => setIsSettingsOpen(false)}
-             authorName={authorName}
-             setAuthorName={setAuthorName}
-             theme={theme}
-             setTheme={(t) => setTheme(t as 'light' | 'dark')}
-             onVpsSync={handleVpsSync}
-           />
-        )}
-
-        {/* History Modal */}
-        {isHistoryOpen && selectedId && (
-            <HistoryModal
-              isOpen={isHistoryOpen}
-              onClose={() => setIsHistoryOpen(false)}
-              noteId={selectedId}
-              onRestore={handleRestore}
-            />
-        )}
-
-        {/* Global Dialog */}
-        {dialogConfig && (
-            <Dialog
-                key={dialogConfig.message + dialogConfig.type}
-                isOpen={dialogConfig.isOpen}
-                type={dialogConfig.type}
-                message={dialogConfig.message}
-                defaultValue={dialogConfig.defaultValue}
-                onConfirm={(val) => {
-                    if (dialogConfig.type === 'confirm') dialogConfig.resolve(true);
-                    else if (dialogConfig.type === 'prompt') dialogConfig.resolve(val);
-                    else dialogConfig.resolve(undefined); // alert
-                }}
-                onCancel={() => {
-                    if (dialogConfig.type === 'confirm') dialogConfig.resolve(false);
-                    else dialogConfig.resolve(null); // prompt or alert
-                }}
-            />
-        )}
-
-        {/* Command Palette */}
-        <CommandPalette
-          isOpen={isCmdPaletteOpen}
-          onClose={() => setIsCmdPaletteOpen(false)}
+        <AppDialogs
+          isSettingsOpen={isSettingsOpen}
+          setIsSettingsOpen={setIsSettingsOpen}
+          isHistoryOpen={isHistoryOpen}
+          setIsHistoryOpen={setIsHistoryOpen}
+          isCmdPaletteOpen={isCmdPaletteOpen}
+          setIsCmdPaletteOpen={setIsCmdPaletteOpen}
+          isSearchOpen={isSearchOpen}
+          setIsSearchOpen={setIsSearchOpen}
+          isChatOpen={isChatOpen}
+          setIsChatOpen={setIsChatOpen}
+          dialogConfig={dialogConfig}
+          setDialogConfig={setDialogConfig}
+          authorName={authorName}
+          setAuthorName={setAuthorName}
+          theme={theme}
+          setTheme={setTheme}
           notes={notes}
-          onNavigate={handleSelectNote}
-          actions={PluginRegistry.getActions()}
+          selectedId={selectedId}
+          onSelectNote={handleSelectNote}
           onNewNote={handleNew}
-          onSearchOpen={() => setIsSearchOpen(true)}
-        />
-
-        {/* Search Modal */}
-        <ChatModal
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        onNavigate={(id) => {
-            handleSelectNote(id);
-            setIsChatOpen(false);
-        }}
-      />
-
-      <SearchModal
-        isOpen={isSearchOpen}
-          onClose={() => setIsSearchOpen(false)}
-          onNavigate={handleSelectNote}
+          onVpsSync={handleVpsSync}
+          onRestore={handleRestore}
         />
 
         {/* Sidebar */}
@@ -719,382 +594,51 @@ function App() {
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col h-full min-w-0 p-4 gap-4 relative transition-all duration-300">
+          <AppHeader
+            isFocusMode={isFocusMode}
+            editorMode={editorMode}
+            setEditorMode={setEditorMode}
+            currentNote={currentNote}
+            setCurrentNote={setCurrentNote}
+            theme={theme}
+            setTheme={setTheme}
+            isLoading={isLoading}
+            isSaving={isSaving}
+            isAiLoading={isAiLoading}
+            autoSaveStatus={autoSaveStatus}
+            selectedId={selectedId}
+            onSave={() => handleSave()}
+            onDelete={() => handleDelete()}
+            onSummarize={handleSummarize}
+            onOpenHistory={() => setIsHistoryOpen(true)}
+          />
 
-          {/* Focus Mode Overlay Controls */}
-          {isFocusMode && (
-             <div className="absolute bottom-6 right-6 z-50 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-4">
-                 <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur border border-slate-200 dark:border-slate-700 px-4 py-2 rounded-full shadow-lg text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center gap-3">
-                     <span className="font-mono">{statsSummary}</span>
-                     <div className="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
-                     <button
-                       onClick={() => setIsFocusMode(false)}
-                       className="hover:text-slate-900 dark:hover:text-white transition-colors"
-                     >
-                        Exit Focus
-                     </button>
-                 </div>
-             </div>
-          )}
+          <AppEditors
+            isFocusMode={isFocusMode}
+            editorMode={editorMode}
+            setEditorMode={setEditorMode}
+            currentNote={currentNote}
+            setCurrentNote={setCurrentNote}
+            selectedId={selectedId}
+            notes={notes}
+            onSelectNote={handleSelectNote}
+            theme={theme}
+            isAiLoading={isAiLoading}
+            aiStatus={aiStatus}
+            lastRestoreTs={lastRestoreTs}
+            statsSummary={statsSummary}
+            onExitFocusMode={() => setIsFocusMode(false)}
+          />
 
-          {/* Header Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' || editorMode === 'effects-media' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200 z-10`}>
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex-1 flex items-center gap-4 min-w-[300px]">
-                 <input
-                   value={currentNote.title}
-                   onChange={e => setCurrentNote({...currentNote, title: e.target.value})}
-                   placeholder="Note Title..."
-                   className="text-3xl font-extrabold tracking-tight bg-transparent outline-none w-full placeholder:text-slate-300 dark:placeholder:text-slate-600 transition-colors"
-                 />
-                 <div className="flex gap-2">
-                   <input
-                     value={currentNote.subject}
-                     onChange={e => setCurrentNote({...currentNote, subject: e.target.value})}
-                     placeholder="Subject"
-                     className="bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1.5 rounded-xl text-xs font-medium w-24 outline-none transition-colors text-center focus:ring-2 focus:ring-blue-500/50"
-                   />
-                   <input
-                     value={currentNote.section}
-                     onChange={e => setCurrentNote({...currentNote, section: e.target.value})}
-                     placeholder="Section"
-                     className="bg-slate-200/50 dark:bg-slate-700/50 px-3 py-1.5 rounded-xl text-xs font-medium w-24 outline-none transition-colors text-center focus:ring-2 focus:ring-blue-500/50"
-                   />
-                 </div>
-              </div>
-
-              <div className="flex items-center gap-3">
-                 {/* AI Actions */}
-                 <button
-                   onClick={handleSummarize}
-                   disabled={isAiLoading || !currentNote.content}
-                   className="p-2 text-slate-400 hover:text-blue-500 transition-colors disabled:opacity-30"
-                   title="Summarize Note"
-                 >
-                   <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16m-7 6h7" />
-                   </svg>
-                 </button>
-
-                 <button
-                   onClick={() => setIsHistoryOpen(true)}
-                   disabled={!selectedId}
-                   className="p-2 text-slate-400 hover:text-blue-500 transition-colors disabled:opacity-30"
-                   title="View History"
-                 >
-                   <span className="text-xl">🕰️</span>
-                 </button>
-
-                 {/* Editor Mode Toggle */}
-                 <div className="bg-slate-100 dark:bg-slate-700 p-1.5 rounded-xl flex text-xs font-medium shadow-inner">
-                  <button
-                    onClick={() => setEditorMode('simple')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'simple' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Simple
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('rich')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'rich' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Rich
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('graph')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'graph' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Graph
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('canvas')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'canvas' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Canvas
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('tasks')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'tasks' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Tasks
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('named-notes')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'named-notes' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Cloud Notes
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('music')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'music' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    Music
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('presets')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'presets' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    🎨 Presets
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('textures')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'textures' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    🖼️ Textures
-                  </button>
-                  <button
-                    onClick={() => setEditorMode('effects-media')}
-                    className={`px-3 py-2 rounded-lg transition-all ${editorMode === 'effects-media' ? 'bg-white dark:bg-slate-600 shadow-sm text-slate-900 dark:text-white font-semibold' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
-                  >
-                    🎬 Effects
-                  </button>
-                </div>
-
-                {/* Theme Toggle */}
-                <select
-                  value={theme}
-                  onChange={(e) => setTheme(e.target.value as 'light' | 'dark')}
-                  className="bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-200 text-sm rounded-lg border border-slate-200 dark:border-slate-600 px-3 py-3 outline-none cursor-pointer transition-colors"
-                >
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
-                </select>
-
-
-                <div className="flex items-center gap-3">
-                  {isLoading && (
-                    <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 text-sm font-medium animate-pulse bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                      Syncing...
-                    </div>
-                  )}
-
-                  <button
-                    onClick={() => handleDelete()}
-                    disabled={isSaving || !selectedId}
-                    className="px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800/50 hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50"
-                  >
-                    Delete
-                  </button>
-
-                  <div className="flex items-center gap-3">
-                    {autoSaveStatus && (
-                      <span className="text-xs font-medium text-slate-400 dark:text-slate-500 animate-in fade-in transition-opacity">
-                        {autoSaveStatus === 'saving' ? 'Saving...' : 'Saved'}
-                      </span>
-                    )}
-                    <button
-                      onClick={() => handleSave()}
-                      disabled={isSaving}
-                      className={`px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-lg ${
-                        isSaving
-                          ? 'bg-amber-600/20 text-amber-600 dark:text-amber-400 border border-amber-500/30'
-                          : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-blue-500/25'
-                      }`}
-                    >
-                      {isSaving ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 border-2 border-amber-400 border-t-transparent rounded-full animate-spin"></div>
-                          Saving...
-                        </div>
-                      ) : 'Save Note'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Editor Card */}
-          <div className={`flex-1 flex flex-col transition-all duration-300 ${
-              isFocusMode
-              ? 'max-w-4xl mx-auto w-full bg-transparent'
-              : 'bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl shadow-2xl overflow-hidden'
-          }`}>
-            <div className="flex-1 relative min-h-0">
-              <Suspense fallback={
-                <div className="flex items-center justify-center h-full">
-                  <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                </div>
-              }>
-              {editorMode === 'graph' ? (
-                <GraphView
-                  notes={notes}
-                  currentId={selectedId}
-                  onNodeClick={(id) => {
-                    handleSelectNote(id);
-                    setEditorMode('rich');
-                  }}
-                  theme={theme}
-                />
-              ) : editorMode === 'canvas' ? (
-                <CanvasEditor
-                  key={selectedId || 'new'}
-                  initialData={currentNote.content}
-                  onChange={val => setCurrentNote({...currentNote, content: val})}
-                  theme={theme}
-                />
-              ) : editorMode === 'flashcards' ? (
-                <FlashcardView
-                  notes={notes}
-                  onClose={() => setEditorMode('rich')}
-                />
-              ) : editorMode === 'tasks' ? (
-                <TaskView
-                  notes={notes}
-                  onClose={() => setEditorMode('rich')}
-                  onNavigate={(id) => {
-                      handleSelectNote(id);
-                      setEditorMode('rich');
-                  }}
-                />
-              ) : editorMode === 'named-notes' ? (
-                <NamedNotesBrowser />
-              ) : editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' ? (
-                <div className="h-full flex flex-col">
-                  <div className="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900">
-                    <button
-                      onClick={() => setEditorMode('music')}
-                      className={`px-4 py-2 font-medium transition-colors ${
-                        editorMode === 'music'
-                          ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      Library
-                    </button>
-                    <button
-                      onClick={() => setEditorMode('playlists')}
-                      className={`px-4 py-2 font-medium transition-colors ${
-                        editorMode === 'playlists'
-                          ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      Playlists
-                    </button>
-                    <button
-                      onClick={() => setEditorMode('mod-songs')}
-                      className={`px-4 py-2 font-medium transition-colors ${
-                        editorMode === 'mod-songs'
-                          ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
-                      }`}
-                    >
-                      MOD Songs
-                    </button>
-                  </div>
-                  <div className="flex-1 overflow-auto">
-                    {editorMode === 'music' ? (
-                      <MusicLibraryView onClose={() => setEditorMode('rich')} />
-                    ) : editorMode === 'playlists' ? (
-                      <PlaylistView onClose={() => setEditorMode('rich')} />
-                    ) : (
-                      <ModSongsView onClose={() => setEditorMode('rich')} />
-                    )}
-                  </div>
-                </div>
-              ) : editorMode === 'presets' ? (
-                <PresetsPanel onClose={() => setEditorMode('rich')} />
-              ) : editorMode === 'textures' ? (
-                <TexturesPanel onClose={() => setEditorMode('rich')} />
-              ) : editorMode === 'library-browser' ? (
-                <LibraryBrowser onClose={() => setEditorMode('rich')} />
-              ) : editorMode === 'effects-media' ? (
-                <EffectsMediaPanel onClose={() => setEditorMode('rich')} />
-              ) : editorMode === 'simple' ? (
-                <Editor
-                  value={currentNote.content}
-                  onChange={val => setCurrentNote({...currentNote, content: val})}
-                />
-              ) : (
-                <BlockEditor
-                  key={selectedId || 'new'}
-                  noteId={selectedId || 'draft'}
-                  value={currentNote.content}
-                  onChange={val => setCurrentNote({...currentNote, content: val})}
-                  availableNotes={notes}
-                  onNavigate={handleSelectNote}
-                  lastExternalUpdate={lastRestoreTs}
-                />
-              )}
-              </Suspense>
-
-              {isAiLoading && (
-                <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-20">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <div className="text-blue-500 dark:text-blue-400 font-medium">
-                      {aiStatus || 'AI is thinking...'}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-            </div>
-
-            {(!isFocusMode && editorMode !== 'graph' && editorMode !== 'canvas') && (
-              <>
-                <RelatedNotes
-                  notes={notes}
-                  currentId={selectedId}
-                  content={currentNote.content}
-                  onNavigate={handleSelectNote}
-                />
-                <div id="backlinks-panel">
-                  <Backlinks
-                    notes={notes}
-                    currentId={selectedId}
-
-                    onNavigate={handleSelectNote}
-                  />
-                </div>
-              </>
-            )}
-
-            {(editorMode === 'simple' || editorMode === 'rich') && !isFocusMode && (
-              <EditorStatusBar content={currentNote.content || ''} />
-            )}
-          </div>
-
-          {/* Footer Card */}
-          <div className={`${isFocusMode || editorMode === 'named-notes' || editorMode === 'music' || editorMode === 'playlists' || editorMode === 'mod-songs' || editorMode === 'presets' || editorMode === 'textures' || editorMode === 'library-browser' || editorMode === 'effects-media' ? 'hidden' : 'block'} bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl transition-colors duration-200`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 flex-1">
-                <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-                  <svg width="16" height="16" className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
-                  </svg>
-                  <span className="text-sm font-medium">Tags</span>
-                </div>
-                <input 
-                  value={currentNote.tags}
-                  onChange={e => setCurrentNote({...currentNote, tags: e.target.value})}
-                  placeholder="Add tags separated by commas..."
-                  className="bg-transparent text-sm text-slate-600 dark:text-slate-300 flex-1 outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:text-slate-900 dark:focus:text-white transition-colors"
-                />
-
-                {/* AI Tag Button */}
-                <button
-                  onClick={handleAutoTag}
-                  disabled={isAiLoading || !currentNote.content}
-                  className="p-2 text-purple-500 hover:text-purple-600 dark:text-purple-400 dark:hover:text-purple-300 transition-colors disabled:opacity-50"
-                  title="Auto-Suggest Tags"
-                >
-                  <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400">
-                <button
-                  onClick={() => setIsSettingsOpen(true)}
-                  className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-colors text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                  title="Settings"
-                >
-                   <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                </button>
-              </div>
-            </div>
-          </div>
+          <AppFooter
+            isFocusMode={isFocusMode}
+            editorMode={editorMode}
+            currentNote={currentNote}
+            setCurrentNote={setCurrentNote}
+            isAiLoading={isAiLoading}
+            onAutoTag={handleAutoTag}
+            onSettingsOpen={() => setIsSettingsOpen(true)}
+          />
         </div>
       </div>
     </div>
