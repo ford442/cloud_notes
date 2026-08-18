@@ -14,6 +14,7 @@ import { E2EPlugin } from './e2e';
 
 import { StatsPlugin } from './stats';
 import { TimeTravelPlugin } from './time-travel';
+import { markdownToHtml } from '../utils/serialization';
 
 // --- Export Plugin ---
 
@@ -60,6 +61,69 @@ export const ExportPlugin: Plugin = {
             return;
         }
         downloadFile(`${note.title || 'untitled'}.json`, JSON.stringify(note, null, 2), 'application/json');
+      }
+    });
+
+    ctx.registerAction({
+      id: 'export-to-pdf',
+      title: 'Export as PDF',
+      section: 'Actions',
+      icon: <span className="text-lg">📄</span>,
+      perform: () => {
+        const note = ctx.getCurrentNote();
+        if (!note) {
+            ctx.alert('No note selected');
+            return;
+        }
+
+        const htmlContent = markdownToHtml(note.content || '');
+
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow?.document;
+        if (doc) {
+          doc.open();
+          doc.write(`
+            <html>
+              <head>
+                <title>${note.title || 'Note'}</title>
+                <style>
+                  body { font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+                  h1, h2, h3 { border-bottom: 1px solid #eee; padding-bottom: 0.3em; }
+                  code { background: #f4f4f4; padding: 2px 4px; border-radius: 4px; }
+                  pre { background: #f4f4f4; padding: 10px; overflow-x: auto; border-radius: 4px; }
+                  blockquote { border-left: 4px solid #ddd; margin: 0; padding-left: 10px; color: #666; }
+                  img { max-width: 100%; height: auto; }
+                  @media print {
+                    body { max-width: none; margin: 0; padding: 0; }
+                  }
+                </style>
+              </head>
+              <body>
+                <h1>${note.title || 'Untitled Note'}</h1>
+                ${htmlContent}
+              </body>
+            </html>
+          `);
+          doc.close();
+
+          iframe.contentWindow?.focus();
+          setTimeout(() => {
+            iframe.contentWindow?.print();
+            setTimeout(() => {
+              document.body.removeChild(iframe);
+            }, 100);
+          }, 250);
+        } else {
+          ctx.alert('Failed to generate PDF.');
+        }
       }
     });
 
