@@ -22,6 +22,7 @@ import { AppDialogs, type DialogConfig } from './app/AppDialogs'
 import { AppHeader } from './app/AppHeader'
 import { AppFooter } from './app/AppFooter'
 import { AppEditors } from './app/AppEditors'
+import { ChatModal } from './components/ChatModal'
 
 // Initialize Core Plugins once
 PluginRegistry.registerAll(CorePlugins);
@@ -173,13 +174,24 @@ function App() {
     return () => window.removeEventListener('open-history', handleOpenHistory);
   }, []);
 
+  // Global Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+J or Ctrl+J toggles the Second Brain Q&A Chat Modal
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        setIsChatOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Global Command Palette Listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (((e.metaKey || e.ctrlKey) && e.key === 'L' && e.shiftKey) || ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j')) {
-        e.preventDefault()
-        setIsChatOpen(prev => !prev)
-      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K') && !e.shiftKey) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K') && !e.shiftKey) {
         e.preventDefault()
         setIsCmdPaletteOpen(prev => !prev)
       }
@@ -558,8 +570,6 @@ function App() {
           setIsCmdPaletteOpen={setIsCmdPaletteOpen}
           isSearchOpen={isSearchOpen}
           setIsSearchOpen={setIsSearchOpen}
-          isChatOpen={isChatOpen}
-          setIsChatOpen={setIsChatOpen}
           dialogConfig={dialogConfig}
           setDialogConfig={setDialogConfig}
           authorName={authorName}
@@ -591,6 +601,16 @@ function App() {
             dueFlashcardsCount={dueFlashcardsCount}
           />
         </div>
+
+        {/* Local RAG Chat Modal Overlay */}
+        <ChatModal
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          onNavigate={(noteId: string) => {
+            handleSelectNote(noteId);
+            setIsChatOpen(false);
+          }}
+        />
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col h-full min-w-0 p-4 gap-4 relative transition-all duration-300">

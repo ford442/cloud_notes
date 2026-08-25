@@ -5,7 +5,6 @@ import { Dialog } from '../components/Dialog';
 import type { DialogType } from '../components/Dialog';
 import { CommandPalette } from '../components/CommandPalette';
 import { SearchModal } from '../components/SearchModal';
-import { ChatModal } from '../components/ChatModal';
 import { PluginRegistry } from '../services/plugin';
 import type { CloudItemMeta } from '../services/api';
 
@@ -26,8 +25,6 @@ interface AppDialogsProps {
   setIsCmdPaletteOpen: (open: boolean) => void;
   isSearchOpen: boolean;
   setIsSearchOpen: (open: boolean) => void;
-  isChatOpen: boolean;
-  setIsChatOpen: (open: boolean) => void;
   dialogConfig: DialogConfig | null;
   setDialogConfig: (config: DialogConfig | null) => void;
   authorName: string;
@@ -51,8 +48,6 @@ export function AppDialogs({
   setIsCmdPaletteOpen,
   isSearchOpen,
   setIsSearchOpen,
-  isChatOpen,
-  setIsChatOpen,
   dialogConfig,
   setDialogConfig,
   authorName,
@@ -140,16 +135,6 @@ export function AppDialogs({
         actions={PluginRegistry.getActions()}
         onNewNote={onNewNote}
         onSearchOpen={() => setIsSearchOpen(true)}
-      />
-
-      {/* Chat Modal */}
-      <ChatModal
-        isOpen={isChatOpen}
-        onClose={() => setIsChatOpen(false)}
-        onNavigate={(id) => {
-          onSelectNote(id);
-          setIsChatOpen(false);
-        }}
       />
 
       <SearchModal
