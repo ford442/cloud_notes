@@ -439,9 +439,11 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
                     )}
                     {(extendedItem.snippet || item.section === 'Semantic' || contentMatch) && (
                         <div className="text-xs text-slate-400 dark:text-slate-500 truncate flex items-center gap-2 mt-0.5">
-                          {item.section === 'Semantic' && (
+                          {item.section === 'Semantic' ? (
                               <span className="text-amber-500/90 font-bold text-[9px] uppercase tracking-widest border border-amber-500/30 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded-sm shrink-0">Semantic Match</span>
-                          )}
+                          ) : ['Notes', 'View', 'Editor', 'Commands', 'Actions', 'Integrations'].includes(item.section) && contentMatch ? (
+                              <span className="text-green-500/90 font-bold text-[9px] uppercase tracking-widest border border-green-500/30 bg-green-50 dark:bg-green-500/10 px-1.5 py-0.5 rounded-sm shrink-0">Exact Match</span>
+                          ) : null}
                           {renderSnippet(contentMatch, extendedItem.snippet)}
                         </div>
                     )}

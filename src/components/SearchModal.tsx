@@ -240,8 +240,10 @@ export const SearchModal = ({ isOpen, onClose, onNavigate }: SearchModalProps) =
                     <div className="flex items-center justify-between">
                         <div className={`font-semibold ${index === selectedIndex ? 'text-blue-700 dark:text-blue-300' : 'text-slate-800 dark:text-slate-200'} flex items-center gap-2`}>
                            {result.item.title || 'Untitled Note'}
-                           {result.isSemantic && (
+                           {result.isSemantic ? (
                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50">✨ Semantic Match</span>
+                           ) : (
+                             <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 border border-green-200 dark:border-green-800/50">🎯 Exact Match</span>
                            )}
                         </div>
                         <div className="text-xs text-slate-400 uppercase tracking-wider font-medium">
