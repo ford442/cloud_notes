@@ -17,15 +17,6 @@ async def test_rag_chat():
                 const req = indexedDB.open('CloudNotesDB');
                 req.onsuccess = (e) => {
                     const db = e.target.result;
-
-                    if (db.objectStoreNames.contains('embeddings')) {
-                         const tx = db.transaction('embeddings', 'readwrite');
-                         const store = tx.objectStore('embeddings');
-                         // We need a dummy float array that works with cosineSimilarity
-                         const dummyVector = Array.from({length: 384}, () => 0.1);
-                         store.put(dummyVector, 'rag-test-note-1');
-                    }
-
                     if (db.objectStoreNames.contains('notes_content')) {
                         const tx = db.transaction('notes_content', 'readwrite');
                         const store = tx.objectStore('notes_content');
@@ -36,55 +27,31 @@ async def test_rag_chat():
                             updatedAt: new Date().toISOString()
                         });
                     }
-                    if (db.objectStoreNames.contains('notes_list')) {
-                        const tx = db.transaction('notes_list', 'readwrite');
-                        const store = tx.objectStore('notes_list');
-                        store.put({
-                            id: 'rag-test-note-1',
-                            name: 'Contabo Server Architecture',
-                            description: '',
-                            author: 'System',
-                            date: new Date().toISOString(),
-                            type: 'note'
-                        });
-                    }
                 };
             }
         """)
 
-        print("3. Triggering Cmd+J keyboard shortcut to open ChatModal...")
-        # Try finding the brain button and click it to open chat modal since shortcut might not work headless
-        brain_btn = page.locator('button[title*="Second Brain"]')
-        if await brain_btn.count() > 0:
-             await brain_btn.first.click()
-        else:
-             await page.keyboard.press("Control+j")
-             await page.keyboard.press("Meta+j")
+        print("3. Triggering Cmd+J / Ctrl+J keyboard shortcut to open ChatModal...")
+        await page.keyboard.press("Control+j")
 
         print("4. Verifying ChatModal visibility...")
-        chat_modal = page.locator('div.fixed.inset-0.z-\\[100\\]').first
-        await expect(chat_modal).to_be_visible(timeout=5000)
+        chat_modal_title = page.get_by_text("Second Brain Q&A", exact=False)
+        await expect(chat_modal_title).to_be_visible(timeout=5000)
 
         print("5. Submitting query to Local RAG Pipeline...")
-        chat_input = page.locator('input[placeholder*="synthesize"]')
-        if await chat_input.count() == 0:
-            chat_input = page.locator('input[placeholder*="ask"]')
-        if await chat_input.count() == 0:
-            chat_input = page.locator('input[type="text"]').last
+        chat_input = page.locator('input[placeholder="Ask a question to synthesize your notes..."]')
         await chat_input.fill("What algorithm is used for Contabo webhook signatures?")
         await page.keyboard.press("Enter")
 
         print("6. Waiting for RAG answer and source citations...")
-        # it might take a while to answer
-        # Look for either the answer or the "I couldn't find any notes" message
-        try:
-            no_notes_msg = page.get_by_text("I couldn't find any notes relevant", exact=False).first
-            await expect(no_notes_msg).to_be_visible(timeout=45000)
-            print("✅ Handled missing semantic matches gracefully")
-        except Exception as e:
-            print("❌ Test failed to handle the response.")
-            print(f"Details: {str(e)}")
-            raise
+        source_chip = page.get_by_role("button", name="Contabo Server Architecture", exact=False)
+        await expect(source_chip).to_be_visible(timeout=20000)
+
+        print("7. Testing navigation by clicking source chip...")
+        await source_chip.click()
+        await expect(chat_modal_title).not_to_be_visible(timeout=3000)
+
+        print("✅ Local RAG UI Integration Test Passed Successfully!")
 
         await browser.close()
 
