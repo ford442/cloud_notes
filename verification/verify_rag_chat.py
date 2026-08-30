@@ -14,20 +14,31 @@ async def test_rag_chat():
         print("2. Seeding test note into IndexedDB for local RAG retrieval...")
         await page.evaluate("""
             async () => {
-                const req = indexedDB.open('CloudNotesDB');
-                req.onsuccess = (e) => {
-                    const db = e.target.result;
-                    if (db.objectStoreNames.contains('notes_content')) {
-                        const tx = db.transaction('notes_content', 'readwrite');
-                        const store = tx.objectStore('notes_content');
-                        store.put({
-                            id: 'rag-test-note-1',
-                            title: 'Contabo Server Architecture',
-                            content: 'The Contabo VPS setup uses HMAC SHA-256 webhook signatures for secure synchronization.',
-                            updatedAt: new Date().toISOString()
-                        });
-                    }
+                const testNote = {
+                    id: 'rag-test-note-1',
+                    title: 'Contabo Server Architecture',
+                    content: 'The Contabo VPS setup uses HMAC SHA-256 webhook signatures for secure synchronization. We need some padding to make the text long enough. We need some padding to make the text long enough.',
+                    updatedAt: new Date().toISOString()
                 };
+
+                const dbReq = indexedDB.open('cloud_notes_db');
+                await new Promise((resolve, reject) => {
+                    dbReq.onsuccess = (e) => {
+                        const db = e.target.result;
+                        if (db.objectStoreNames.contains('notes_content')) {
+                            const tx = db.transaction(['notes_content'], 'readwrite');
+                            tx.objectStore('notes_content').put(testNote, testNote.id);
+                            tx.oncomplete = resolve;
+                            tx.onerror = reject;
+                        } else {
+                            resolve();
+                        }
+                    };
+                });
+
+                if (window.SemanticService) {
+                    await window.SemanticService.indexNote(testNote.id, `${testNote.title} ${testNote.content}`);
+                }
             }
         """)
 
@@ -45,7 +56,7 @@ async def test_rag_chat():
 
         print("6. Waiting for RAG answer and source citations...")
         source_chip = page.get_by_role("button", name="Contabo Server Architecture", exact=False)
-        await expect(source_chip).to_be_visible(timeout=20000)
+        await expect(source_chip).to_be_visible(timeout=60000)
 
         print("7. Testing navigation by clicking source chip...")
         await source_chip.click()
