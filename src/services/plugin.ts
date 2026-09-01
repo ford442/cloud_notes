@@ -45,7 +45,7 @@ class PluginRegistryService {
   private noteGetter: () => Note | null = () => null;
   private allNotesGetter: () => CloudItemMeta[] = () => [];
   private noteUpdater: (updates: Partial<Note>) => Promise<void> | void = () => {};
-  private noteCreator: (note: Partial<Note>) => Promise<void> | void = () => {};
+  public noteCreator: (note: Partial<Note>) => Promise<void> | void = () => {};
   private noteDeleter: (id: string) => Promise<void> = async () => {};
   private navigator: (id: string) => void = () => {};
   private modeSetter: (mode: string) => void = () => {};
