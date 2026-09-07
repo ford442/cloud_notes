@@ -283,3 +283,14 @@ python deploy.py
 5. **Plugin context uses refs.** `App.tsx` passes getter functions to avoid stale closures.
 6. **Editor changes need serialization updates.** Modify both `src/components/editor/` and `src/utils/serialization.ts` for Markdown round-trip.
 7. **Web Crypto APIs require secure context** (HTTPS or localhost).
+
+---
+
+## Known Issues / Blockers
+
+_Added 2026-09-07 — this doc had drifted ~80 days behind the code; these are things that will trip up an agent following it literally._
+
+- **The documented deploy path is gone.** `deploy.py` and `api_updated.py` are referenced throughout this doc (Directory Structure, Security Considerations, Deployment, Common Pitfalls #2) but **neither file exists in the repo anymore** — confirmed via `ls`. There is currently no working, documented way to ship a build from this repo. Either a replacement deploy path exists elsewhere and needs to be documented here, or one needs to be rebuilt before `npm run build` output can actually be deployed.
+- **`verification/` has grown to 33 ad-hoc Python/Playwright scripts** run sequentially by `run_all_tests.sh` with no pass/fail summary (just per-script log files). Several look like overlapping/duplicate one-off debug sessions rather than a maintained regression suite: `verify_sync.py` + `verify_sync2.py`, `verify_task_view.py` + `verify_task_view_2.py` + `verify_tasks.py` + `verify_tasks_crash.py`, `verify_excalidraw.py` + `verify_excalidraw_debug.py`. Worth a pass to retire the stale ones and label which scripts are the actual regression set vs throwaway debugging.
+- **Three test scripts sit at repo root outside `verification/` and outside `package.json` scripts**: `run_test.py`, `run_test2.py`, `run_test.cjs`. Not referenced anywhere in this doc; unclear if they're still needed or leftovers.
+- Recent `git log` and a `TODO`/`FIXME`/`HACK` grep across `src/` turned up nothing else notable — no known-broken feature work in flight.

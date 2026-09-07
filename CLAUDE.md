@@ -82,7 +82,7 @@ npx eslint src/components/MyComponent.tsx
 
 ## Testing & Verification
 
-No test suite is currently set up. Verification scripts exist in `src/verification/` for specific features. Manual testing in the dev server is the primary method.
+No unit test suite is currently set up. Verification scripts exist in `verification/` (repo root, not `src/verification/`) for specific features — 33 of them as of 2026-09, run via `run_all_tests.sh`. Manual testing in the dev server is still the primary method beyond that.
 
 ## Type Safety
 
@@ -110,3 +110,4 @@ No test suite is currently set up. Verification scripts exist in `src/verificati
 - React Compiler is not enabled (impacts build performance).
 - Relaxed ESLint rules; future refactor may tighten type checking.
 - Web Worker AI has latency; long operations may block briefly.
+- **The documented deploy path is broken**: `deploy.py` (SFTP upload script) no longer exists in the repo, despite being the documented way to ship `dist/`. Same for `api_updated.py`, the deprecated backend it warns not to deploy — also gone. No working deploy path is currently documented. See AGENTS.md's "Known Issues / Blockers" section (added 2026-09-07) for more on this and on `verification/`'s 33 ad-hoc scripts.
