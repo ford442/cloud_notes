@@ -1,0 +1,45 @@
+name: Deploy
+
+# Ships the production build to the VPS notes host.
+#
+# Manual by default so a deploy is always a deliberate act. Uncomment the
+# `push` trigger below to deploy every green commit on main instead.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'List what would be uploaded without writing anything'
+        type: boolean
+        default: false
+  # push:
+  #   branches: [main]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & upload dist/
+    runs-on: ubuntu-latest
+    # Set up a "production" environment in repo Settings → Environments to add
+    # a required reviewer and scope the secrets below to it.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Build and upload
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PORT: ${{ secrets.DEPLOY_PORT }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: ./scripts/deploy.sh
