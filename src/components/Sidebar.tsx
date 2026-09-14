@@ -126,11 +126,11 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
     <div className="w-80 bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50 flex flex-col h-full shrink-0 select-none text-sm m-6 mr-0 rounded-2xl shadow-2xl transition-colors duration-200">
       {/* Header */}
       <div className="p-4 border-b border-slate-200/50 dark:border-slate-700/50 space-y-4 transition-colors">
-        <div className="flex justify-between items-center">
-          <h1 className="font-bold text-gray-800 dark:text-gray-100 text-sm tracking-widest flex items-center gap-3">
+        <div className="flex justify-between items-center gap-2">
+          <h1 className="font-bold text-gray-800 dark:text-gray-100 text-sm tracking-widest flex items-center gap-3 min-w-0 truncate">
             <span className="text-blue-500 dark:text-blue-400 text-lg">📚</span> KNOWLEDGE
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {onToggleFlashcards && (
               <button
                 onClick={onToggleFlashcards}

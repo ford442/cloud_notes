@@ -103,14 +103,18 @@ cloud-notes/
 │   ├── main.tsx              # React entry point
 │   ├── index.css             # Tailwind imports, custom styles
 │   └── App.css               # Component-scoped styles
-├── verification/             # Playwright-based Python verification scripts
+├── e2e/                      # Playwright smoke suite (npm test)
+│   ├── fixtures.ts           # Mocks the VPS notes host and GCS for hermetic runs
+│   └── smoke.spec.ts         # 10 smokes across the major surfaces
+├── verification/             # Standalone Python/Playwright script (RAG chat only)
+├── scripts/deploy.sh         # Build + rsync dist/ to the VPS (env-driven, no secrets in repo)
+├── .github/workflows/        # ci.yml (lint/build/smokes), deploy.yml (manual ship)
 ├── public/                   # Vite public assets
 ├── dist/                     # Production build output
-├── api_updated.py            # DEPRECATED GCS/FastAPI backend (do not deploy)
-├── deploy.py                 # SFTP deployment script
 ├── package.json
+├── playwright.config.ts
 ├── vite.config.ts
-├── tsconfig.json / tsconfig.app.json / tsconfig.node.json
+├── tsconfig.json / tsconfig.app.json / tsconfig.node.json / tsconfig.e2e.json
 ├── eslint.config.js
 └── index.html
 ```
@@ -126,7 +130,7 @@ npm install
 # Start dev server (http://localhost:5173)
 npm run dev
 
-# Production build (outputs to dist/)
+# Production build: typechecks src/, vite.config.ts and e2e/, then builds to dist/
 npm run build
 
 # Lint with ESLint
@@ -134,6 +138,9 @@ npm run lint
 
 # Preview production build locally
 npm run preview
+
+# Playwright smoke suite (boots the dev server itself)
+npm test
 ```
 
 Custom script:
@@ -200,7 +207,8 @@ npm run index-mods   # Runs python scripts/index_mods.py in ../contabo_storage_m
 
 ### Backends
 - **Primary**: `contabo_storage_manager` VPS at `https://storage.noahcohn.com`.
-- **Legacy**: `api_updated.py` (GCS/FastAPI) is **deprecated** — do not deploy.
+- There is no in-repo backend. The VPS service lives in the separate
+  `contabo_storage_manager` project; this repo only consumes its HTTP API.
 
 ### VPS API Endpoints
 - `GET /api/notes/list`
@@ -229,23 +237,28 @@ npm run index-mods   # Runs python scripts/index_mods.py in ../contabo_storage_m
 ## Testing Strategy
 
 - **No unit test runner** (Jest/Vitest) is installed.
-- **End-to-end verification** via Playwright scripts in `verification/`.
-- To run: start `npm run dev`, then `python verification/verify_<feature>.py`.
-- Examples:
-  - `verify_sync.py` — offline creation + online replay
-  - `verify_e2ee.py` — encryption flow
-  - `verify_block_menu.py` — block action menu
-  - `verify_ai_commands.py` — AI slash commands
-  - `verify_canvas_export.py` — Excalidraw export
-  - `verify_delete_api.py` — note deletion
-  - `verify_music_view.py` — music library UI
+- **`npm test`** runs the Playwright smoke suite in `e2e/`. Playwright starts the dev
+  server itself, so no second terminal is needed.
+- The suite is hermetic: `e2e/fixtures.ts` intercepts every request to the VPS notes host
+  and to Google Cloud Storage and answers from an in-memory store. No credentials, no
+  outbound network. Keep it that way when adding smokes.
+- Current coverage (`e2e/smoke.spec.ts`): app shell + rich editor mount, note list from the
+  VPS, create/save, command palette (`Cmd/Ctrl+K`), sync success toast, sync failure toast,
+  AES-GCM encrypt/decrypt round trip, effects media panel, RAG chat (`Cmd/Ctrl+J`), graph view.
+- Run one smoke with `npx playwright test -g "command palette"`; run against the production
+  build with `E2E_USE_PREVIEW=1 E2E_PORT=4173 npm test`.
+- `verification/verify_rag_chat.py` is the one remaining standalone Python/Playwright
+  script. Start `npm run dev` first, then `python verification/verify_rag_chat.py`.
+  Prefer adding new coverage to `e2e/` in TypeScript rather than new Python scripts.
 
 ---
 
 ## Security Considerations
 
-- **`deploy.py` contains hardcoded SFTP credentials** (plaintext password). Do not increase exposure.
-- **`api_updated.py` is obsolete** — do not deploy.
+- **Never commit deployment credentials.** `scripts/deploy.sh` reads host, user, path and
+  SSH key from the environment only, and writes the key to a `mktemp -d` directory that is
+  removed on exit. In CI they come from repository secrets. An earlier `deploy.py` with a
+  hardcoded SFTP password was deleted — do not reintroduce that pattern.
 - **Client-side encryption**: AES-GCM-256 + PBKDF2 (100k iterations). Key password stored in `localStorage` under `cloud_notes_encryption_key`.
 - **Webhook signatures**: HMAC-SHA-256 via `X-Signature-256` header when `webhook_secret` is set in `localStorage`.
 
@@ -253,13 +266,19 @@ npm run index-mods   # Runs python scripts/index_mods.py in ../contabo_storage_m
 
 ## Deployment
 
+`npm run build` emits a fully static `dist/` (`base: './'`, so it works from any
+subdirectory). [`scripts/deploy.sh`](scripts/deploy.sh) builds and rsyncs it over SSH:
+
 ```bash
-npm run build
-python deploy.py
+DEPLOY_HOST=your.host DEPLOY_USER=deploy DEPLOY_PATH=/var/www/notes ./scripts/deploy.sh
 ```
 
-- Uploads `dist/` via Paramiko SFTP to `test.1ink.us/notes`.
-- Skips `.git` directories.
+- Required: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH`.
+- Optional: `DEPLOY_PORT`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, `DEPLOY_SKIP_BUILD`,
+  `DEPLOY_DRY_RUN`.
+- `.github/workflows/deploy.yml` runs the same script on `workflow_dispatch` with those
+  values supplied as repository secrets.
+- Always do a `DEPLOY_DRY_RUN=1` pass first — the sync uses `--delete`.
 
 ---
 
@@ -276,8 +295,9 @@ python deploy.py
 
 ## Common Pitfalls for Agents
 
-1. **No unit test runner exists.** Verification is Playwright-only.
-2. **Do not deploy `api_updated.py`.** It is deprecated.
+1. **No unit test runner exists.** Verification is Playwright-only (`npm test`).
+2. **Keep the smokes hermetic.** Never let a test depend on the real VPS or GCS being up;
+   extend the mocks in `e2e/fixtures.ts` instead.
 3. **ESLint is intentionally permissive.** `any` is allowed; hooks rules are off.
 4. **Offline logic is pervasive.** Changes to `StorageService` must consider pending ops and optimistic cache updates.
 5. **Plugin context uses refs.** `App.tsx` passes getter functions to avoid stale closures.

@@ -10,9 +10,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev           # Start dev server (Vite HMR enabled)
-npm run build         # TypeScript compilation + Vite production build
+npm run build         # Typecheck src/, vite.config.ts and e2e/, then Vite production build
 npm run lint          # Run ESLint on all TS/TSX files
 npm run preview       # Preview production build locally
+npm test              # Playwright smoke suite (starts the dev server itself)
+npm run test:ui       # Playwright interactive UI mode
 npm run index-mods    # Index mods (runs Python script in sibling contabo_storage_manager)
 ```
 
@@ -79,10 +81,31 @@ npx eslint src/components/MyComponent.tsx
 - **Tailwind CSS v4**: Compiled via `@tailwindcss/vite` plugin.
 - **Transformers.js**: Runs in a Web Worker (`ai.worker.ts`) to avoid blocking the UI.
 - **ESLint**: Relaxed rules (no unused vars, no explicit any checks, relaxed React Hooks rules) to allow rapid development. See `eslint.config.js`.
+- **Cross-origin isolation**: COOP/COEP headers are wired into `vite.config.ts` but are off
+  by default, because `require-corp` blocks cross-origin subresources this app does not
+  control (VPS media URLs, the public GCS bucket, Hugging Face model weights, Excalidraw
+  assets). Opt in for local WASM measurement with `VITE_CROSS_ORIGIN_ISOLATED=1 npm run dev`;
+  the default single-threaded WASM path is the fallback.
 
 ## Testing & Verification
 
-No test suite is currently set up. Verification scripts exist in `src/verification/` for specific features. Manual testing in the dev server is the primary method.
+There is no unit test runner. `npm test` runs a Playwright smoke suite from `e2e/`:
+
+- `e2e/smoke.spec.ts` — 10 smokes: app shell + rich editor mount, note list from the VPS,
+  create/save a note, command palette (`Cmd/Ctrl+K`), sync success toast, sync failure
+  toast, AES-GCM encrypt/decrypt round trip, effects media panel, RAG chat (`Cmd/Ctrl+J`),
+  graph view.
+- `e2e/fixtures.ts` — mocks the VPS notes host and the Google Cloud Storage JSON API so the
+  suite is hermetic: no credentials, no outbound network. **Keep new smokes that way** —
+  extend the mocks rather than reaching for the real services.
+- Playwright's `webServer` boots Vite, so no second terminal is needed. Run a single smoke
+  with `npx playwright test -g "command palette"`, or run everything against the production
+  build with `E2E_USE_PREVIEW=1 E2E_PORT=4173 npm test`.
+
+`verification/verify_rag_chat.py` is a standalone Python/Playwright script for the RAG chat
+flow and needs `npm run dev` running. Prefer adding TypeScript smokes under `e2e/`.
+
+CI (`.github/workflows/ci.yml`) runs lint, build and the smokes on every pull request.
 
 ## Type Safety
 
@@ -104,9 +127,24 @@ No test suite is currently set up. Verification scripts exist in `src/verificati
 4. **Storage**: Use `StorageService.getInstance()` to read/write notes. Mutations are automatically queued and synced.
 5. **Styling**: Use Tailwind classes. Add custom CSS in component files (scoped CSS-in-JS or .css files alongside components).
 
+## Deployment
+
+`npm run build` emits a static `dist/` (`base: './'`, so it works from any subdirectory).
+`scripts/deploy.sh` builds and rsyncs it over SSH, reading everything from the environment:
+
+```bash
+DEPLOY_HOST=your.host DEPLOY_USER=deploy DEPLOY_PATH=/var/www/notes ./scripts/deploy.sh
+```
+
+Optional: `DEPLOY_PORT`, `DEPLOY_SSH_KEY`, `DEPLOY_KNOWN_HOSTS`, `DEPLOY_SKIP_BUILD`,
+`DEPLOY_DRY_RUN`. The sync uses `--delete`, so do a `DEPLOY_DRY_RUN=1` pass first.
+`.github/workflows/deploy.yml` runs the same script on `workflow_dispatch` with repository
+secrets. **Never commit deployment credentials.**
+
 ## Known Limitations & TODOs
 
-- No built-in test framework; manual testing only.
+- No unit test framework; coverage is the Playwright smoke suite plus manual testing.
 - React Compiler is not enabled (impacts build performance).
 - Relaxed ESLint rules; future refactor may tighten type checking.
+- Several bundle chunks exceed 500 kB; `vite build` warns about this.
 - Web Worker AI has latency; long operations may block briefly.

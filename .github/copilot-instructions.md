@@ -3,10 +3,13 @@
 ## Build, lint, and verification
 
 - `npm run dev` starts the Vite app on `http://localhost:5173`.
-- `npm run build` runs `tsc -b && vite build`.
+- `npm run build` typechecks `src/`, `vite.config.ts` and `e2e/`, then runs `vite build` into `dist/`.
 - `npm run lint` runs `eslint .`.
-- There is no Jest/Vitest test runner in this repo. UI verification is done with Playwright-based Python scripts in `verification/`, and those scripts hardcode `http://localhost:5173`, so start `npm run dev` first.
-- Run a single verification script with `python verification/verify_sync.py`. Other targeted checks follow the same pattern, for example `python verification/verify_e2ee.py`, `python verification/verify_ai_commands.py`, or `python verification/verify_block_menu.py`.
+- There is no Jest/Vitest test runner in this repo. `npm test` runs a Playwright smoke suite from `e2e/`; Playwright starts the Vite dev server itself, so you do not need to run `npm run dev` first.
+- The smokes are hermetic — `e2e/fixtures.ts` intercepts every call to the VPS notes host and to Google Cloud Storage and answers from an in-memory store, so no credentials or outbound network access are needed. Keep new smokes that way.
+- Run one smoke with `npx playwright test -g "command palette"`, or the whole suite against the production build with `E2E_USE_PREVIEW=1 E2E_PORT=4173 npm test`.
+- `verification/` holds a single standalone Python/Playwright script, `verify_rag_chat.py`, which hardcodes `http://localhost:5173` and needs `npm run dev` running. Prefer adding TypeScript smokes under `e2e/` over new Python scripts.
+- CI (`.github/workflows/ci.yml`) runs lint, build and the smokes on every pull request.
 - For Copilot cloud-agent sessions, Playwright MCP is already available by default and is limited to `localhost` / `127.0.0.1`, which matches this repo's verification flow.
 
 ## High-level architecture
@@ -24,4 +27,5 @@
 - Plugin features should be added through `PluginRegistry` and the plugin context API (`registerCommand`, `registerAction`, `updateNote`, `navigateTo`, `setMode`, etc.). `App.tsx` wires these callbacks through refs to avoid stale closures; follow that pattern instead of reaching into component state directly.
 - Changes to editor capabilities usually need updates in more than one place: the Tiptap extension/component code and the Markdown/HTML conversion rules in `src/utils/serialization.ts`.
 - Sync-related edits must preserve optimistic IndexedDB updates, pending-op replay, and temporary offline IDs. Do not treat `StorageService` as a simple CRUD wrapper.
-- `api_updated.py` is legacy and should not be used for current storage or deployment work; the active integration is the VPS named-notes API used by `StorageService`.
+- There is no backend or deployment code in this repo beyond `scripts/deploy.sh`; the active integration is the VPS named-notes API used by `StorageService`, served by the separate `contabo_storage_manager` project.
+- Deployment is `scripts/deploy.sh` — it builds and rsyncs `dist/` over SSH, reading `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_PATH` and optional SSH credentials from the environment. Never hardcode credentials in this repo; CI supplies them as repository secrets.
