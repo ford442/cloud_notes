@@ -378,22 +378,3 @@ export const FlashcardView = ({ notes, onClose }: FlashcardViewProps) => {
     </div>
   );
 };
-
-export async function getDueFlashcardsCount(): Promise<number> {
-  try {
-    const savedProgress = await db.get<ProgressMap>(STORE_NOTES_LIST, PROGRESS_KEY) || {};
-    const now = Date.now();
-    let dueCount = 0;
-
-    for (const key in savedProgress) {
-      if (savedProgress[key].nextReview <= now) {
-        dueCount++;
-      }
-    }
-
-    return dueCount;
-  } catch (e) {
-    console.error("Failed to get due flashcards count", e);
-    return 0;
-  }
-}
