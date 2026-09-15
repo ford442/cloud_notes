@@ -14,7 +14,7 @@ import { HoverLinkPreview } from './components/editor/HoverLinkPreview'
 import { LibraryPlugin } from './plugins/library'
 import { EffectsMediaPlugin } from './plugins/effects-media'
 import { computeStats, formatStatsSummary } from './utils/stats'
-import { getDueFlashcardsCount } from './components/FlashcardView'
+import { getDueFlashcardsCount } from './utils/flashcards'
 
 import type { EditorMode } from './app/AppTypes'
 import { formatSyncMessage } from './app/AppHelpers'
