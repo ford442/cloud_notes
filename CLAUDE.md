@@ -91,6 +91,9 @@ npx eslint src/components/MyComponent.tsx
 
 There is no unit test runner. `npm test` runs a Playwright smoke suite from `e2e/`:
 
+- On a fresh machine, install the browser once with
+  `npx playwright install --with-deps chromium`. CI already does this in
+  `.github/workflows/ci.yml`.
 - `e2e/smoke.spec.ts` — 10 smokes: app shell + rich editor mount, note list from the VPS,
   create/save a note, command palette (`Cmd/Ctrl+K`), sync success toast, sync failure
   toast, AES-GCM encrypt/decrypt round trip, effects media panel, RAG chat (`Cmd/Ctrl+J`),

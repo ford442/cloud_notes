@@ -82,6 +82,9 @@ Web Crypto requires a secure context, so the app must be served over HTTPS or fr
 `npm test` runs a Playwright smoke suite from `e2e/`. It boots the Vite dev server
 itself (via Playwright's `webServer`), so no separate terminal is needed.
 
+On a fresh machine, install the browser once with `npx playwright install --with-deps chromium`.
+CI already does this in `.github/workflows/ci.yml`.
+
 The suite is hermetic: `e2e/fixtures.ts` intercepts every request to the VPS notes host
 and to Google Cloud Storage and serves them from an in-memory store, so the tests need no
 credentials and no outbound network access. Ten smokes cover the app shell and rich
