@@ -239,6 +239,9 @@ npm run index-mods   # Runs python scripts/index_mods.py in ../contabo_storage_m
 - **No unit test runner** (Jest/Vitest) is installed.
 - **`npm test`** runs the Playwright smoke suite in `e2e/`. Playwright starts the dev
   server itself, so no second terminal is needed.
+- On a fresh machine, install the browser once with
+  `npx playwright install --with-deps chromium`. CI already does this in
+  `.github/workflows/ci.yml`.
 - The suite is hermetic: `e2e/fixtures.ts` intercepts every request to the VPS notes host
   and to Google Cloud Storage and answers from an in-memory store. No credentials, no
   outbound network. Keep it that way when adding smokes.

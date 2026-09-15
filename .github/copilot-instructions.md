@@ -6,6 +6,7 @@
 - `npm run build` typechecks `src/`, `vite.config.ts` and `e2e/`, then runs `vite build` into `dist/`.
 - `npm run lint` runs `eslint .`.
 - There is no Jest/Vitest test runner in this repo. `npm test` runs a Playwright smoke suite from `e2e/`; Playwright starts the Vite dev server itself, so you do not need to run `npm run dev` first.
+- On a fresh machine, install the browser once with `npx playwright install --with-deps chromium`. CI already does this in `.github/workflows/ci.yml`.
 - The smokes are hermetic — `e2e/fixtures.ts` intercepts every call to the VPS notes host and to Google Cloud Storage and answers from an in-memory store, so no credentials or outbound network access are needed. Keep new smokes that way.
 - Run one smoke with `npx playwright test -g "command palette"`, or the whole suite against the production build with `E2E_USE_PREVIEW=1 E2E_PORT=4173 npm test`.
 - `verification/` holds a single standalone Python/Playwright script, `verify_rag_chat.py`, which hardcodes `http://localhost:5173` and needs `npm run dev` running. Prefer adding TypeScript smokes under `e2e/` over new Python scripts.
