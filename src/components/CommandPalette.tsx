@@ -42,7 +42,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
   const [fullNotesContent, setFullNotesContent] = useState<Map<string, Note>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input and load content when opened
+  // 1. Data Loading Effect
   useEffect(() => {
     if (isOpen) {
       const loadContents = async () => {
@@ -62,13 +62,23 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
           console.error("Failed to load full note content for command palette", e);
         }
       };
+      // Fire and forget the async load so it doesn't block the render cycle
       loadContents();
+    }
+  }, [isOpen]);
 
-      setTimeout(() => {
-        inputRef.current?.focus();
-        setQuery('');
-        setSelectedIndex(0);
-      }, 50);
+  // 2. Focus Management Effect
+  useEffect(() => {
+    if (isOpen) {
+      setQuery('');
+      setSelectedIndex(0);
+      if (inputRef.current) {
+        // requestAnimationFrame ensures the DOM has painted the input element
+        // before we attempt to capture the browser's focus.
+        requestAnimationFrame(() => {
+          inputRef.current?.focus();
+        });
+      }
     }
   }, [isOpen]);
 

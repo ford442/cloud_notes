@@ -55,14 +55,17 @@ test('command palette opens on Cmd/Ctrl+K and filters', async ({ app }) => {
   await app.keyboard.press('ControlOrMeta+k');
 
   const input = app.getByPlaceholder('Type to search notes, commands, or ask AI...');
-  await expect(input).toBeVisible();
 
-  // CommandPalette focuses the input and clears its query from a 50ms timeout
+  // Explicitly wait for the input to be attached, visible, and ready for events
+  await input.waitFor({ state: 'visible', timeout: 10000 });
+
+  // CommandPalette focuses the input from a requestAnimationFrame
   // after opening; typing before that lands would be silently discarded.
   await expect(input).toBeFocused();
 
   await expect(app.getByText('New Note')).toBeVisible();
 
+  // Now fill the input safely
   await input.fill('backlinks');
   await expect(app.getByText('Show Backlinks')).toBeVisible();
   await expect(app.getByText('New Note')).toBeHidden();
