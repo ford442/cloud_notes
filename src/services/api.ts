@@ -27,6 +27,80 @@ async function saveToHistory(id: string, note: Note, author: string) {
     }
 }
 
+/**
+ * Safely merges a server note into the local IndexedDB.
+ * Forks the note if a simultaneous offline edit is detected.
+ */
+export async function resolveAndSaveNote(serverNote: Note, localLastSyncTime: string): Promise<void> {
+  const serverId = serverNote.id;
+  if (!serverId) return;
+
+  const localNote = await db.get<Note>(STORE_NOTES_CONTENT, serverId);
+
+  if (!localNote) {
+    // Note doesn't exist locally, safe to insert
+    await db.set(STORE_NOTES_CONTENT, serverId, serverNote);
+    return;
+  }
+
+  const serverTime = new Date(serverNote.updatedAt || 0).getTime();
+  const localTime = new Date(localNote.updatedAt || 0).getTime();
+  const syncTime = new Date(localLastSyncTime || 0).getTime();
+
+  // Condition 1: Server and Local are identical (No action needed)
+  if (serverTime === localTime) {
+    return;
+  }
+
+  // Condition 2: Local note hasn't changed since last sync, safe to overwrite with server updates
+  if (localTime <= syncTime) {
+    await db.set(STORE_NOTES_CONTENT, serverId, serverNote);
+    return;
+  }
+
+  // Condition 3: Server hasn't changed, local is newer (Handled by the push queue, no action needed here)
+  if (serverTime <= syncTime) {
+    return;
+  }
+
+  // Condition 4: CONFLICT. Both changed independently after the last sync.
+  console.warn(`[Sync] Conflict detected for note: ${localNote.id}`);
+
+  // Create a fork of the local note to preserve the user's un-synced edits
+  const conflictId = `${localNote.id}-conflict-${Date.now()}`;
+  const conflictFork: Note = {
+    ...localNote,
+    id: conflictId,
+    title: `${localNote.title || 'Untitled'} (Conflict copy)`,
+    updatedAt: new Date().toISOString()
+  };
+
+  // 1. Save the local un-synced edits as a new independent note
+  await db.set(STORE_NOTES_CONTENT, conflictId, conflictFork);
+
+  // 2. Overwrite the original ID with the server's truth to maintain sync parity
+  await db.set(STORE_NOTES_CONTENT, serverId, serverNote);
+
+  // Also need to update the metadata cache for the fork so it shows in the list
+  try {
+    const metaList = await db.get<CloudItemMeta[]>(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES) || [];
+
+    const conflictMeta: CloudItemMeta = {
+      id: conflictId,
+      name: conflictFork.title || conflictId,
+      author: conflictFork.subject || 'User',
+      date: conflictFork.updatedAt || new Date().toISOString(),
+      type: 'note',
+      description: createPackedDescription(conflictFork),
+    };
+
+    // Add to metadata cache
+    await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [conflictMeta, ...metaList]);
+  } catch(e) {
+    console.warn("Failed to update cache for conflict fork", e);
+  }
+}
+
 function slugify(title: string): string {
     return title
         .toLowerCase()
@@ -875,7 +949,7 @@ export const StorageService = {
           const lastSync = localNote?.lastSyncedAt || 0;
           const TOLERANCE_MS = SYNC_CONFLICT_TOLERANCE_MS;
 
-          let action: 'PULL' | 'PUSH' | 'CONFLICT' | 'NOOP' = 'NOOP';
+          let action: 'PULL' | 'PUSH' | 'NOOP' = 'NOOP';
 
           if (!localNote && vpsNote) {
              action = 'PULL';
@@ -888,7 +962,7 @@ export const StorageService = {
              if (hasLocalChanges && hasServerChanges) {
                 const remote = await vpsStorageAPI.readNote(name);
                 if (remote.content !== localNote.content) {
-                   action = 'CONFLICT';
+                   action = 'PULL'; // resolveAndSaveNote will handle the conflict resolution internally
                 } else {
                    action = 'PULL'; // They're identical, just refresh local timestamps/meta
                 }
@@ -897,43 +971,6 @@ export const StorageService = {
              } else if (hasServerChanges) {
                 action = 'PULL';
              }
-          }
-
-          if (action === 'CONFLICT' && localNote && vpsNote) {
-              onProgress?.(`Conflict detected for "${name}"...`);
-              // 1. Save local as conflicted copy
-             const conflictId = `${name}_conflict_${Date.now()}`;
-             const conflictTitle = `${localNote.title} (Conflicted Copy)`;
-             const conflictNote: Note = {
-               ...localNote,
-               id: conflictId,
-               title: conflictTitle,
-               updatedAt: new Date().toISOString(),
-               lastSyncedAt: Date.now()
-             };
-             await db.set(STORE_NOTES_CONTENT, conflictId, conflictNote);
-
-             const conflictMeta: CloudItemMeta = {
-               id: conflictId,
-               name: conflictId,
-               author: conflictNote.subject,
-               date: conflictNote.updatedAt || new Date().toISOString(),
-               type: 'note',
-               description: createPackedDescription(conflictNote),
-             };
-             await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [conflictMeta, ...localMetaList]);
-             localMetaList.unshift(conflictMeta);
-
-             // 2. Push the conflict copy to the VPS as well so it's safely backed up
-             try {
-               await vpsStorageAPI.writeNote(conflictId, conflictNote.content);
-             } catch (e) {
-               console.warn('[Sync] Failed to push conflict copy', e);
-             }
-
-             // 3. Force overwrite the original local note with the remote note
-             action = 'PULL';
-             result.conflicts++;
           }
 
           if (action === 'PULL') {
@@ -951,8 +988,21 @@ export const StorageService = {
               updatedAt: remote.updated_at,
               lastSyncedAt: newVpsTime // Trust the server's clock
             };
-            await db.set(STORE_NOTES_CONTENT, name, updatedNote);
 
+            // Calculate localLastSyncTime as ISO string, or provide 0 string equivalent
+            const localLastSyncStr = new Date(lastSync).toISOString();
+
+            // Delegate conflict detection and resolution to resolveAndSaveNote
+            if (localNote && vpsNote && localTime > lastSync && vpsTime > (lastSync + TOLERANCE_MS) && remote.content !== localNote.content) {
+                result.conflicts++;
+            }
+            await resolveAndSaveNote(updatedNote, localLastSyncStr);
+
+            // Note: because resolveAndSaveNote might fork the note, its metadata was added.
+            // We need to refresh localMetaList to reflect that before mutating it.
+            const currentMetaList = await db.get<CloudItemMeta[]>(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES) || [];
+
+            // Ensure local metadata matches updated remote state
             const packedDesc = createPackedDescription(updatedNote);
             const meta: CloudItemMeta = {
               id: name,
@@ -964,11 +1014,10 @@ export const StorageService = {
             };
 
             if (localMetaMap.has(name)) {
-              const newList = localMetaList.map(m => (m.id === name ? meta : m));
+              const newList = currentMetaList.map(m => (m.id === name ? meta : m));
               await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, newList);
             } else {
-              await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [meta, ...localMetaList]);
-              localMetaList.unshift(meta);
+              await db.set(STORE_NOTES_LIST, CACHE_KEYS.ALL_NOTES, [meta, ...currentMetaList]);
             }
             localMetaMap.set(name, meta);
             result.pulled++;
