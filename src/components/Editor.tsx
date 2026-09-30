@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { marked } from 'marked';
 
 interface EditorProps {
@@ -29,6 +29,24 @@ export const Editor = ({ value, onChange }: EditorProps) => {
   const [slashQuery, setSlashQuery] = useState('');
   const [slashIndex, setSlashIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Early encrypted detection - do this on the raw string
+  const [isEncrypted, setIsEncrypted] = useState(value.includes('---ENCRYPTED_V1---') || value.trim().startsWith('---ENCRYPTED_V1---'));
+
+  useEffect(() => {
+    setIsEncrypted(value.includes('---ENCRYPTED_V1---') || value.trim().startsWith('---ENCRYPTED_V1---'));
+  }, [value]);
+
+  useEffect(() => {
+    const handleEncrypted = () => setIsEncrypted(true);
+    const handleDecrypted = () => setIsEncrypted(false);
+    window.addEventListener('note-encrypted', handleEncrypted);
+    window.addEventListener('note-decrypted', handleDecrypted);
+    return () => {
+      window.removeEventListener('note-encrypted', handleEncrypted);
+      window.removeEventListener('note-decrypted', handleDecrypted);
+    };
+  }, []);
 
   const htmlContent = mode === 'preview' ? marked.parse(value || '') as string : '';
 
@@ -104,6 +122,20 @@ export const Editor = ({ value, onChange }: EditorProps) => {
     }
     setSlashMenuOpen(false);
   };
+
+  if (isEncrypted) {
+    return (
+      <div className="w-full h-full flex items-center justify-center p-10 bg-slate-50 dark:bg-slate-900" data-testid="encrypted-screen">
+        <div className="text-center max-w-md">
+           <div className="text-5xl mb-4">🔒</div>
+           <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Encrypted Note</h2>
+           <p className="text-slate-500 dark:text-slate-400 mb-6">
+             The contents of this note are encrypted. To view or edit it, press <strong>Cmd+K</strong> (or Ctrl+K), search for <strong>Decrypt Note</strong>, and enter your password.
+           </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full h-full bg-transparent relative">
