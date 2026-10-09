@@ -75,9 +75,11 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
       if (inputRef.current) {
         // requestAnimationFrame ensures the DOM has painted the input element
         // before we attempt to capture the browser's focus.
-        requestAnimationFrame(() => {
+        // Use a slight delay or multiple requestAnimationFrames if needed, but for now we wait for the paint.
+        // A short timeout works well in React + Framer Motion modals.
+        setTimeout(() => {
           inputRef.current?.focus();
-        });
+        }, 50);
       }
     }
   }, [isOpen]);
