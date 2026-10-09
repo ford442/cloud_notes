@@ -226,7 +226,7 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                     e.preventDefault();
                     setDragOverTarget(null);
                     const id = e.dataTransfer.getData('text/plain');
-                    if (id && onMoveNote) onMoveNote(id, subject, 'Inbox');
+                    if (id && id !== 'Block Move' && onMoveNote) onMoveNote(id, subject, 'Inbox');
                 }}
                 className={`flex items-center gap-3 p-3 rounded-xl cursor-pointer text-slate-700 dark:text-slate-200 transition-all group ${
                     dragOverTarget === subject
@@ -260,7 +260,7 @@ export const Sidebar = ({ notes, selectedId, onSelect, onNew, isLoading, onMoveN
                             e.preventDefault();
                             setDragOverTarget(null);
                             const id = e.dataTransfer.getData('text/plain');
-                            if (id && onMoveNote) onMoveNote(id, subject, section);
+                            if (id && id !== 'Block Move' && onMoveNote) onMoveNote(id, subject, section);
                         }}
                         className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-colors ${
                             dragOverTarget === `${subject}-${section}`
