@@ -171,7 +171,7 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
     // Ensure Decrypt Note is always available if any note is selected
     let finalActions = [...defaultActions, ...actions, ...noteItems];
     const currentNote = typeof window !== 'undefined' ? ((window as any).__DEBUG_GET_CURRENT_NOTE ? (window as any).__DEBUG_GET_CURRENT_NOTE() : PluginRegistry.getCurrentNote()) : null;
-    if ((currentNote && currentNote.content && currentNote.content.includes('---ENCRYPTED_V1---')) || (typeof window !== 'undefined' && (window as any).__E2E_NOTE_IS_ENCRYPTED)) {
+    if ((currentNote && currentNote.content && currentNote.content.trim().startsWith('---ENCRYPTED_V1---')) || (typeof window !== 'undefined' && (window as any).__E2E_NOTE_IS_ENCRYPTED)) {
         const decryptAction = actions.find(a => a.id === 'decrypt-note');
         if (decryptAction) {
             finalActions = [decryptAction, ...finalActions.filter(a => a.id !== 'decrypt-note')];
