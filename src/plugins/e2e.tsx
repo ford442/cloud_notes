@@ -17,7 +17,7 @@ export const E2EPlugin: Plugin = {
           return;
         }
 
-        if (note.content.includes('---ENCRYPTED_V1---')) {
+        if ((note.content || '').trim().startsWith('---ENCRYPTED_V1---')) {
           ctx.alert('This note is already encrypted.');
           return;
         }
@@ -55,7 +55,7 @@ export const E2EPlugin: Plugin = {
           }
         }
 
-        if ((note && !note.content.includes('---ENCRYPTED_V1---')) && !(typeof window !== 'undefined' && (window as any).__E2E_NOTE_IS_ENCRYPTED)) {
+        if ((note && !(note.content || '').trim().startsWith('---ENCRYPTED_V1---')) && !(typeof window !== 'undefined' && (window as any).__E2E_NOTE_IS_ENCRYPTED)) {
           ctx.alert('This note is not encrypted.');
           return;
         }

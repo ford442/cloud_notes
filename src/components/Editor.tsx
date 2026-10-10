@@ -31,22 +31,7 @@ export const Editor = ({ value, onChange }: EditorProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Early encrypted detection - do this on the raw string
-  const [isEncrypted, setIsEncrypted] = useState(value.includes('---ENCRYPTED_V1---') || value.trim().startsWith('---ENCRYPTED_V1---'));
-
-  useEffect(() => {
-    setIsEncrypted(value.includes('---ENCRYPTED_V1---') || value.trim().startsWith('---ENCRYPTED_V1---'));
-  }, [value]);
-
-  useEffect(() => {
-    const handleEncrypted = () => setIsEncrypted(true);
-    const handleDecrypted = () => setIsEncrypted(false);
-    window.addEventListener('note-encrypted', handleEncrypted);
-    window.addEventListener('note-decrypted', handleDecrypted);
-    return () => {
-      window.removeEventListener('note-encrypted', handleEncrypted);
-      window.removeEventListener('note-decrypted', handleDecrypted);
-    };
-  }, []);
+  const isEncrypted = (value || '').trim().startsWith('---ENCRYPTED_V1---') || (typeof window !== 'undefined' && (window as any).__E2E_NOTE_IS_ENCRYPTED);
 
   const htmlContent = mode === 'preview' ? marked.parse(value || '') as string : '';
 
