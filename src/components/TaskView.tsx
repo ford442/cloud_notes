@@ -125,14 +125,14 @@ export const TaskView = ({ notes, onClose, onNavigate }: TaskViewProps) => {
       let updated = false;
 
       // Primary match by line index
-      if (lines[task.lineIndex]?.includes(task.content) && lines[task.lineIndex].match(/\[\s*\]/)) {
-        lines[task.lineIndex] = lines[task.lineIndex].replace(/\[\s*\]/, '[x]');
+      if (lines[task.lineIndex]?.includes(task.content) && lines[task.lineIndex].match(/^(\s*[-*]\s*)\[\s*\]/)) {
+        lines[task.lineIndex] = lines[task.lineIndex].replace(/^(\s*[-*]\s*)\[\s*\]/, '$1[x]');
         updated = true;
       } else {
         // Fallback: search by content
         for (let i = 0; i < lines.length; i++) {
-          if (lines[i].includes(task.content) && lines[i].match(/\[\s*\]/)) {
-            lines[i] = lines[i].replace(/\[\s*\]/, '[x]');
+          if (lines[i].includes(task.content) && lines[i].match(/^(\s*[-*]\s*)\[\s*\]/)) {
+            lines[i] = lines[i].replace(/^(\s*[-*]\s*)\[\s*\]/, '$1[x]');
             updated = true;
             break;
           }
