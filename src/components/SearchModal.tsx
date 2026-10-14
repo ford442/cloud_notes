@@ -26,6 +26,16 @@ export const SearchModal = ({ isOpen, onClose, onNavigate }: SearchModalProps) =
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen && !prevIsOpen) {
+    setQuery('');
+    setSemanticResults([]);
+    setSelectedIndex(0);
+    setPrevIsOpen(true);
+  } else if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false);
+  }
+
   // Load all notes from local DB when opened
   useEffect(() => {
     if (isOpen) {
@@ -44,9 +54,6 @@ export const SearchModal = ({ isOpen, onClose, onNavigate }: SearchModalProps) =
 
       setTimeout(() => {
         inputRef.current?.focus();
-        setQuery('');
-        setSemanticResults([]);
-        setSelectedIndex(0);
       }, 50);
     }
   }, [isOpen]);

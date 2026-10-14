@@ -60,7 +60,7 @@ test('command palette opens on Cmd/Ctrl+K and filters', async ({ app }) => {
   await input.waitFor({ state: 'visible', timeout: 10000 });
 
   // CommandPalette focuses the input from a requestAnimationFrame
-  // after opening; typing before that lands would be silently discarded.
+  // after opening; typing before that lands would be silently discarded. (No longer true, but focus still happens async)
   await expect(input).toBeFocused();
 
   await expect(app.getByText('New Note')).toBeVisible();

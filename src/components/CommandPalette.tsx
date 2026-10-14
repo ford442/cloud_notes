@@ -68,10 +68,20 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
   }, [isOpen]);
 
   // 2. Focus Management Effect
+  // Initialize synchronously on mount rather than via effect to prevent race conditions
+  // that erase characters if a user types during the setTimeout delay.
+  // We use a state to track the previous isOpen value.
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen && !prevIsOpen) {
+    setQuery('');
+    setSelectedIndex(0);
+    setPrevIsOpen(true);
+  } else if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false);
+  }
+
   useEffect(() => {
     if (isOpen) {
-      setQuery('');
-      setSelectedIndex(0);
       if (inputRef.current) {
         // requestAnimationFrame ensures the DOM has painted the input element
         // before we attempt to capture the browser's focus.
