@@ -26,6 +26,16 @@ export const ChatModal = ({ isOpen, onClose, onNavigate }: ChatModalProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Synchronously reset query state on mount to prevent race conditions
+  // that erase characters typed during the setTimeout focus delay.
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen && !prevIsOpen) {
+    setQuery('');
+    setPrevIsOpen(true);
+  } else if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false);
+  }
+
   // Focus input when opened and show greeting
   useEffect(() => {
     if (isOpen) {
