@@ -42,6 +42,16 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
   const [fullNotesContent, setFullNotesContent] = useState<Map<string, Note>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (isOpen && !prevIsOpen) {
+    setQuery('');
+    setResults([]);
+    setSelectedIndex(0);
+    setPrevIsOpen(true);
+  } else if (!isOpen && prevIsOpen) {
+    setPrevIsOpen(false);
+  }
+
   // 1. Data Loading Effect
   useEffect(() => {
     if (isOpen) {
@@ -68,18 +78,6 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
   }, [isOpen]);
 
   // 2. Focus Management Effect
-  // Initialize synchronously on mount rather than via effect to prevent race conditions
-  // that erase characters if a user types during the setTimeout delay.
-  // We use a state to track the previous isOpen value.
-  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
-  if (isOpen && !prevIsOpen) {
-    setQuery('');
-    setSelectedIndex(0);
-    setPrevIsOpen(true);
-  } else if (!isOpen && prevIsOpen) {
-    setPrevIsOpen(false);
-  }
-
   useEffect(() => {
     if (isOpen) {
       if (inputRef.current) {
