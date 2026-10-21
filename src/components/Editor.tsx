@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { marked } from 'marked';
+import ReactMarkdown from 'react-markdown';
 
 interface EditorProps {
   value: string;
@@ -32,8 +32,6 @@ export const Editor = ({ value, onChange }: EditorProps) => {
 
   // Early encrypted detection - do this on the raw string
   const isEncrypted = (value || '').trim().startsWith('---ENCRYPTED_V1---') || (typeof window !== 'undefined' && (window as any).__E2E_NOTE_IS_ENCRYPTED);
-
-  const htmlContent = mode === 'preview' ? marked.parse(value || '') as string : '';
 
   const filteredCommands = COMMANDS.filter(cmd => cmd.label.toLowerCase().includes(slashQuery.toLowerCase()));
 
@@ -185,8 +183,9 @@ export const Editor = ({ value, onChange }: EditorProps) => {
         ) : (
           <div
             className="absolute inset-0 w-full h-full overflow-y-auto p-10 leading-loose prose prose-slate dark:prose-invert max-w-none transition-colors duration-200"
-            dangerouslySetInnerHTML={{ __html: htmlContent }}
-          />
+          >
+            <ReactMarkdown>{value || ''}</ReactMarkdown>
+          </div>
         )}
       </div>
     </div>
