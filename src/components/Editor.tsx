@@ -39,11 +39,11 @@ export const Editor = ({ value, onChange }: EditorProps) => {
     if (slashMenuOpen) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSlashIndex(prev => (prev + 1) % filteredCommands.length);
+        setSlashIndex(prev => (prev + 1) % (filteredCommands.length || 1));
         return;
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSlashIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+        setSlashIndex(prev => (prev - 1 + filteredCommands.length) % (filteredCommands.length || 1));
         return;
       } else if (e.key === 'Enter') {
         if (filteredCommands[slashIndex]) {
