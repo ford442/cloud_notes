@@ -309,10 +309,10 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev + 1) % results.length);
+        setSelectedIndex(prev => (prev + 1) % (results.length || 1));
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex(prev => (prev - 1 + results.length) % results.length);
+        setSelectedIndex(prev => (prev - 1 + results.length) % (results.length || 1));
       } else if (e.key === 'Enter') {
         e.preventDefault();
         if (results[selectedIndex]) {
