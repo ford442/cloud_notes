@@ -377,6 +377,8 @@ export const CommandPalette = ({ isOpen, onClose, notes, actions, onNavigate, on
 
         {/* Modal */}
         <motion.div
+          role="dialog"
+          aria-label="Command Palette"
           initial={{ opacity: 0, scale: 0.95, y: -10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: -10 }}
