@@ -24,11 +24,11 @@ export const NoteLinkList = forwardRef((props: NoteLinkListProps, ref) => {
   }
 
   const upHandler = () => {
-    setSelectedIndex((selectedIndex + props.items.length - 1) % props.items.length)
+    setSelectedIndex((selectedIndex + props.items.length - 1) % (props.items.length || 1))
   }
 
   const downHandler = () => {
-    setSelectedIndex((selectedIndex + 1) % props.items.length)
+    setSelectedIndex((selectedIndex + 1) % (props.items.length || 1))
   }
 
   const enterHandler = () => {

@@ -45,11 +45,11 @@ export const SlashCommandList = forwardRef((props: SlashCommandListProps, ref) =
   }
 
   const upHandler = () => {
-    setSelectedIndex((selectedIndex + sortedItems.length - 1) % sortedItems.length)
+    setSelectedIndex((selectedIndex + sortedItems.length - 1) % (sortedItems.length || 1))
   }
 
   const downHandler = () => {
-    setSelectedIndex((selectedIndex + 1) % sortedItems.length)
+    setSelectedIndex((selectedIndex + 1) % (sortedItems.length || 1))
   }
 
   const enterHandler = () => {
