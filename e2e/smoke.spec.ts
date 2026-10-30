@@ -54,7 +54,7 @@ test('command palette opens on Cmd/Ctrl+K and filters', async ({ app }) => {
   await app.locator('body').click();
   await app.keyboard.press('ControlOrMeta+k');
 
-  const input = app.getByRole('dialog').getByRole('textbox');
+  const input = app.getByRole('dialog', { name: 'Command Palette' }).getByRole('textbox');
 
   // Explicitly wait for the input to be attached, visible, and ready for events
   await input.waitFor({ state: 'visible', timeout: 10000 });
